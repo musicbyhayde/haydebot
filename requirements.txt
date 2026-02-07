@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+openai
+pyairtable
+apscheduler
+requests
+pydantic
+pydantic-settings

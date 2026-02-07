@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env*
+!.env.example
+.venv
+scripts/test_*
+scripts/list_models.py
+env/
+venv/
+.DS_Store
