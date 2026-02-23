@@ -44,6 +44,8 @@ class LeadBase(BaseSchema):
     guests: Optional[str] = Field(None, alias="Guests")
     bot_mute_until: Optional[datetime] = Field(None, alias="Bot_Mute_Until")
     last_summary: Optional[str] = Field(None, alias="Last_Summary")
+    closing_amount: Optional[float] = Field(None, alias="Closing_Amount")
+    lost_reason: Optional[str] = Field(None, alias="Lost_Reason")
 
 class LeadCreate(LeadBase):
     pass
@@ -60,6 +62,8 @@ class LeadUpdate(BaseSchema):
     musician_assigned: Optional[List[str]] = Field(None, alias="Musician_Assigned") 
     bot_mute_until: Optional[datetime] = Field(None, alias="Bot_Mute_Until")
     last_summary: Optional[str] = Field(None, alias="Last_Summary")
+    closing_amount: Optional[float] = Field(None, alias="Closing_Amount")
+    lost_reason: Optional[str] = Field(None, alias="Lost_Reason")
 
 class LeadResponse(LeadBase):
     id: str # Airtable Record ID
@@ -69,9 +73,8 @@ class LeadResponse(LeadBase):
 class MusicianBase(BaseSchema):
     name: str = Field(..., alias="Name")
     phone: str = Field(..., alias="Phone")
-    is_favorite: bool = Field(False, alias="Is_Favorite")
     is_active: bool = Field(True, alias="Is_Active")
-    score: int = Field(0, alias="Score")
+    score: int = Field(5, alias="Score")
 
 class MusicianResponse(MusicianBase):
     id: str
@@ -81,6 +84,8 @@ class MessageCreate(BaseSchema):
     musician: Optional[List[str]] = Field(None, alias="Musician") # Link to Musician Record ID
     direction: str = Field(..., alias="Direction") # Inbound/Outbound
     content: str = Field(..., alias="Content")
+    media_url: Optional[str] = Field(None, alias="Media_URL")
+    media_type: Optional[str] = Field(None, alias="Media_Type")
     timestamp: datetime = Field(..., alias="Timestamp")
     status: str = Field("Sent", alias="Status")
     id: Optional[str] = Field(None, alias="ID") # Was WhatsApp_ID

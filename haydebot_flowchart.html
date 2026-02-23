@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תרשים זרימה - HaydeBot</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #64748b;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .mermaid {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            max-width: 100%;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>המוח של HaydeBot 🧠</h1>
+    <p>תרשים זרימה מלא של תהליך הבוזוקי מקצה לקצה</p>
+
+    <div class="mermaid">
+        graph TD
+        classDef user fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+        classDef bot fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px;
+        classDef musician fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
+        classDef admin fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
+        classDef system fill:#ffebee,stroke:#d32f2f,stroke-width:2px;
+
+        Node_Start("לקוח שולח הודעה ראשונה מ-וואטסאפ"):::user
+        Node_CheckMute{"האם הבוט הושתק ל-24 שעות\n בגלל שנציג אנושי התערב?"}:::system
+        Node_AdminNotify("שליחת התראה למנהל במערכת:\n'הלקוח הגיב בצ'אט הידני'"):::admin
+        Node_CheckTimeout{"האם חלפו יותר מ-4 שעות\nמההודעה הקודמת של הלקוח?"}:::system
+        Node_PromptResume("בוט: לשחזר את השיחה מהמקום שעצרנו\nאו להתחיל מחדש?"):::bot
+        Node_AskService("בוט: איזה שירות מעניין אותך?"):::bot
+        Node_HumanTransfer("מסומן כליד כללי\nהעברה לטיפול אנושי/משרד"):::admin
+        Node_AskDate("בוט: מתי אירוע הבוזוקי?"):::bot
+        Node_AskLocation("בוט: איפה החגיגה?"):::bot
+        Node_AskGuests("בוט: כמה מוזמנים בערך?"):::bot
+        Node_Summary("בוט: מוסר ללקוח סיכום פרטים לוידוא"):::bot
+        Node_Distribute("הליד הופך לזמין הפצה\nסטטוס: DISTRIBUTED"):::system
+
+        Node_NotifyTierA("מתריע לנגני Tier A\n(ציון 8-10)\nדקה 0"):::bot
+        Node_NotifyTierB("מתריע לנגני Tier B\n(ציון 5-7)\nבדקה 10"):::bot
+        Node_NotifyTierC("מתריע לנגני Tier C\n(ציון 1-4)\nבדקה 20"):::bot
+
+        Node_MusicianAction{"נגן לוחץ 'אני פנוי'"}:::musician
+        Node_CheckClaim{"האם הליד עדיין פנוי?"}:::system
+        Node_TellLate("בוט: מישהו אחר הקדים אותך.\nהליד נתפס"):::bot
+        Node_AssignLead("הליד משוייך רשמית.\nסטטוס: ASSIGNED"):::system
+
+        Node_TrackTimer{"מערכת מתחילה למדוד אוטומטית\n15 דקות מרגע החיבור"}:::system
+        Node_Warning15m("התראת 15 דקות לנגן:\nלחץ 'התקשרתי' או 'וותר'"):::bot
+        Node_LeadContacted("נגן אישר שהתקשר\nסטטוס: טיפול"):::system
+        Node_RevokeLead("הנגן ויתר צ'אט או עברו 30 דקות\nהליד נלקח ומופץ מחדש"):::system
+
+        Node_Wait24h{"מערכת ממתינה\n24 שעות באופן שקט"}:::system
+        Node_FinalCheck("בוט לנגן: חלפה יממה.\nהאירוע נסגר בסוף?"):::bot
+
+        Node_StatusClosed("סגרנו!\nבוט מבקש להקליד סכום סגירה"):::bot
+        Node_CalcCommission("מערכת מעדכנת עמלה ב-Supabase\n(15% או 400₪)"):::system
+        Node_StatusLost("לא רלוונטי\nבוט שואל: מה סיבת ההפסד?"):::bot
+        Node_AdminLostNotify("התראה נשלחת לווטסאפ מנהל\nלנסיון שימור הלקוח"):::admin
+
+        Node_ForceManual("מנהל מקליד הודעה ללקוח\nבאמצעות לוח הבקרה"):::admin
+        Node_AdminTakeover("הבוט מרגיש התערבות אנושית\nומושתק ל-24 שעות אוטומטית"):::system
+
+        %% תהליכים נפרדים (Cron Jobs)
+        Node_CronSunday("תזמון מערכת:\nכל יום ראשון ב-10:00 בבוקר"):::system
+        Node_QueryStats("מערכת שולפת נתוני לידים ועמלות\nמהשבוע האחרון (מ-Supabase)"):::system
+        Node_AdminReport("שליחת דוח כללי למנהל\n(מספר לידים שנסגרו/אבדו)"):::bot
+        Node_MusiciansReport("שליחת דוח אישי לכל נגן עובד\n(כמה סגר, סכום עסקאות ועמלה)"):::bot
+
+        %% קשרים
+        Node_Start --> Node_CheckMute
+        Node_CheckMute --> |כן| Node_AdminNotify
+        Node_CheckMute --> |לא| Node_CheckTimeout
+
+        Node_CheckTimeout --> |כן למשל בבוקר| Node_PromptResume
+        Node_PromptResume --> |תתחיל מחדש| Node_AskService
+        Node_PromptResume --> |נמשיך| Node_AskDate
+        Node_CheckTimeout --> |לא, רגף תקין| Node_AskService
+
+        Node_AskService --> |בוזוקי| Node_AskDate
+        Node_AskService --> |ומה לגבי להקה?| Node_HumanTransfer
+
+        Node_AskDate --> |הלקוח עונה מתי| Node_AskLocation
+        Node_AskLocation --> |הלקוח עונה עיר| Node_AskGuests
+        Node_AskGuests --> |הלקוח עונה מספר| Node_Summary
+
+        Node_Summary --> Node_Distribute
+        Node_Distribute --> Node_NotifyTierA
+        Node_NotifyTierA --> |אם עברו 10 דקות| Node_NotifyTierB
+        Node_NotifyTierB --> |אם עברו עוד 10 דקות| Node_NotifyTierC
+
+        Node_NotifyTierA -.-> Node_MusicianAction
+        Node_NotifyTierB -.-> Node_MusicianAction
+        Node_NotifyTierC -.-> Node_MusicianAction
+
+        Node_MusicianAction --> Node_CheckClaim
+
+        Node_CheckClaim --> |לא פנוי, אחר לחץ לפניך| Node_TellLate
+        Node_CheckClaim --> |פנוי| Node_AssignLead
+
+        Node_AssignLead --> Node_TrackTimer
+        Node_TrackTimer --> |נגן לא לחץ 15 דקות| Node_Warning15m
+        Node_Warning15m --> Node_LeadContacted
+        Node_Warning15m --> Node_RevokeLead
+        Node_RevokeLead --> |מחזיר למאגר| Node_Distribute
+        Node_TrackTimer --> |נגן אישר מיד| Node_LeadContacted
+
+        Node_LeadContacted --> Node_Wait24h
+        Node_Wait24h --> Node_FinalCheck
+
+        Node_FinalCheck --> |✅| Node_StatusClosed
+        Node_StatusClosed --> |הקלדת סכום| Node_CalcCommission
+
+        Node_FinalCheck --> |❌| Node_StatusLost
+        Node_StatusLost --> |הקלדת סיבה| Node_AdminLostNotify
+
+        Node_ForceManual -.-> |עוקף הכל| Node_AdminTakeover
+
+        %% קשרים לתהליכי רקע
+        Node_CronSunday --> Node_QueryStats
+        Node_QueryStats --> Node_AdminReport
+        Node_QueryStats --> Node_MusiciansReport
+    </div>
+
+    <!-- Script to render Mermaid flowchart -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: true, theme: 'base',
+            themeVariables: {
+                primaryColor: '#f8fafc',
+                lineColor: '#64748b',
+                textColor: '#1e293b'
+            }
+        });
+    </script>
+</body>
+
+</html>

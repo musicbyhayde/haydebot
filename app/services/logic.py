@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
 from typing import Optional
-from app.services.airtable import airtable_service
+from app.services.supabase_service import airtable_service
 from app.services.whatsapp import whatsapp_service
 from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, ServiceType, ConversationState, MessageCreate
 from app.core.scheduler import scheduler
@@ -14,6 +14,7 @@ settings = get_settings()
 class HaydeBotLogic:
     def __init__(self):
         self.processed_messages = set()
+        self.pending_musician_actions = {}
 
     async def process_webhook(self, body: dict):
         """
@@ -35,6 +36,8 @@ class HaydeBotLogic:
                 msg_type = message.get("type")
                 text_content = ""
                 interactive_id = None
+                media_url = None
+                media_type = None
                 
                 if msg_type == "text":
                     text_content = message["text"]["body"]
@@ -46,17 +49,32 @@ class HaydeBotLogic:
                     elif interaction["type"] == "list_reply":
                         interactive_id = interaction["list_reply"]["id"]
                         text_content = interaction["list_reply"]["title"]
+                elif msg_type in ["image", "audio", "video", "document", "voice"]:
+                    media_obj = message.get(msg_type, {})
+                    media_id = media_obj.get("id")
+                    if media_id:
+                        import uuid
+                        file_bytes, mime_type = whatsapp_service.download_media(media_id)
+                        if file_bytes:
+                            ext = mime_type.split('/')[-1].split(';')[0] if mime_type else "bin"
+                            file_name = f"{uuid.uuid4().hex}.{ext}"
+                            media_url = airtable_service.upload_media(file_bytes, file_name, mime_type)
+                            media_type = mime_type
+                            text_content = f"[{msg_type.upper()} RECEIVED]"
+                        else:
+                            text_content = f"[Failed to download {msg_type.upper()}]"
+                    else:
+                        text_content = f"[{msg_type.upper()} RECEIVED]"
                 else:
-                    # Generic media handler placeholder
                     text_content = f"[{msg_type.upper()} RECEIVED]"
 
                 # Process
-                await self.handle_incoming_message(sender_phone, sender_name, text_content, interactive_id, message.get("id"))
+                await self.handle_incoming_message(sender_phone, sender_name, text_content, interactive_id, message.get("id"), media_url, media_type)
 
         except Exception as e:
             print(f"Error processing webhook: {e}")
 
-    async def handle_incoming_message(self, phone: str, name: str, text: str, interactive_id: str, whatsapp_id: str = None):
+    async def handle_incoming_message(self, phone: str, name: str, text: str, interactive_id: str, whatsapp_id: str = None, media_url: str = None, media_type: str = None):
         if whatsapp_id:
             if whatsapp_id in self.processed_messages:
                 print(f"DEBUG: Skipping already processed message (local cache): {whatsapp_id}")
@@ -92,6 +110,8 @@ class HaydeBotLogic:
                 musician=[musician_id],
                 direction="Inbound",
                 content=text,
+                media_url=media_url,
+                media_type=media_type,
                 timestamp=datetime.now(),
                 id=whatsapp_id,
                 status="Delivered"
@@ -99,9 +119,41 @@ class HaydeBotLogic:
             if is_musician_interaction:
                 await self.handle_musician_interaction(phone, interactive_id)
             else:
-                 # Musician just sent text, maybe remind them how to use? 
-                 # For now just log it.
-                 pass
+                # Check if this musician has a pending action (Closing Amount or Lost Reason)
+                if phone in self.pending_musician_actions:
+                    pending = self.pending_musician_actions[phone]
+                    p_lead_id = pending["lead_id"]
+                    action = pending["action"]
+                    
+                    if action == "AWAITING_AMOUNT":
+                        try:
+                            # Clean string and extract numbers
+                            import re
+                            amount_str = re.sub(r'[^\d.]', '', text)
+                            amount = float(amount_str)
+                            commission = max(amount * 0.15, 400.0) # 15% or 400 ILS
+                            airtable_service.update_lead(p_lead_id, LeadUpdate(closing_amount=amount))
+                            del self.pending_musician_actions[phone]
+                            self._send_message(phone, f"נקלט בהצלחה ({amount} ₪). העמלה המחושבת היא ₪{commission:.0f} כולל מע״מ. תודה! 💸", musician_id=musician_id)
+                        except ValueError:
+                            self._send_message(phone, "אנא הזן מספר בלבד (לדוגמה: 2500).", musician_id=musician_id)
+                        return # Stop processing
+                        
+                    elif action == "AWAITING_REASON":
+                        airtable_service.update_lead(p_lead_id, LeadUpdate(lost_reason=text))
+                        del self.pending_musician_actions[phone]
+                        self._send_message(phone, "תודה, העדכון נשמר במערכת. 🙏", musician_id=musician_id)
+                        
+                        # Notify Admins with the lost reason
+                        lead_failed = airtable_service.leads_table.get(p_lead_id)
+                        if lead_failed:
+                            lf_fields = lead_failed["fields"]
+                            alert_msg = f"🚨 ליד מת (בוזוקי) ברח לנו!\n\nהלקוח: {lf_fields.get('Name')} / {lf_fields.get('Phone')}\nנגן דיווח סיבת הפסד:\n\"{text}\"\n\nהיכנס עכשיו לפנל לראות אם אפשר להציל אותו עם הצעת מחיר חלופית."
+                            if settings.NOTIFICATION_NUMBERS:
+                                for admin_phone in settings.NOTIFICATION_NUMBERS.split(","):
+                                    if admin_phone.strip():
+                                        whatsapp_service.send_message(admin_phone.strip(), alert_msg)
+                        return # Stop processing
             return
 
         # 2. Identify or Create Lead
@@ -116,6 +168,8 @@ class HaydeBotLogic:
                 lead=[lead_id],
                 direction="Inbound",
                 content=text,
+                media_url=media_url,
+                media_type=media_type,
                 timestamp=datetime.now(),
                 id=whatsapp_id,
                 status="Delivered"
@@ -127,6 +181,8 @@ class HaydeBotLogic:
             lead=[lead_id],
             direction="Inbound",
             content=text,
+            media_url=media_url,
+            media_type=media_type,
             timestamp=datetime.now(),
             id=whatsapp_id,
             status="Delivered"
@@ -136,7 +192,27 @@ class HaydeBotLogic:
         fields = lead["fields"]
         state = fields.get("Conversation_State", ConversationState.START)
         
-        # 3. Detect Global Commands (e.g., Restart/Menu)
+        # 3. Detect Bot Mute (Human Takeover)
+        bot_mute_until = fields.get("Bot_Mute_Until")
+        if bot_mute_until:
+            try:
+                mute_time = datetime.fromisoformat(bot_mute_until.replace('Z', '+00:00'))
+                if datetime.now(mute_time.tzinfo) < mute_time:
+                    # Bot is muted, just log the message and don't reply
+                    print(f"Bot is muted for lead {lead_id}, ignoring automated response.")
+                    
+                    # Notify Admin that the human-taken-over lead replied
+                    if settings.NOTIFICATION_NUMBERS:
+                        for idx, admin_phone in enumerate(settings.NOTIFICATION_NUMBERS.split(",")):
+                            if admin_phone.strip() and phone != admin_phone.strip():
+                                preview = f"[מדיה]" if media_url else f'"{text}"'
+                                alert_msg = f"🔔 הודעה חדשה מ-{name or phone} (בצאט ידני):\n\n{preview}\n\nהיכנס עכשיו לפנל הניהול כדי להשיב."
+                                whatsapp_service.send_message(admin_phone.strip(), alert_msg)
+                    return
+            except Exception as e:
+                print(f"Error parsing bot_mute_until: {e}")
+
+        # 4. Detect Global Commands (e.g., Restart/Menu)
         clean_text = text.lower().strip()
         if clean_text in ["התחל מחדש", "תפריט", "שלום", "היי", "menu", "restart"]:
              await self.handle_reset_command(phone, lead_id)
@@ -415,8 +491,12 @@ class HaydeBotLogic:
 
         if button_id.startswith("claim_"):
             lead_id = button_id.split("_")[1]
-            lead = airtable_service.leads_table.get(lead_id)
-            if not lead: return
+            try:
+                lead = airtable_service.leads_table.get(lead_id)
+            except Exception as e:
+                print(f"Warning: Lead {lead_id} not found: {e}")
+                self._send_message(musician_phone, "סליחה, לא מצאתי את פרטי האירוע במערכת. 😔", musician_id=m_id)
+                return
             fields = lead["fields"]
             
             # Check if already assigned or lead is no longer valid
@@ -443,41 +523,60 @@ class HaydeBotLogic:
 
         elif button_id.startswith("unavailable_"):
              lead_id = button_id.split("_")[1]
-             lead = airtable_service.leads_table.get(lead_id)
-             if lead:
+             try:
+                 lead = airtable_service.leads_table.get(lead_id)
                  fields = lead["fields"]
                  if fields.get("Musician_Assigned") or fields.get("Status") in [LeadStatus.CLOSED.value, LeadStatus.LOST.value]:
                      self._send_message(musician_phone, "הבנתי, בכל מקרה האירוע הזה כבר לא רלוונטי או נתפס. נתראה בבא! 😊", musician_id=m_id)
                      return
+             except Exception:
+                 pass  # Lead not found, treat as unavailable anyway
              self._send_message(musician_phone, "הבנתי, תודה על העדכון! נתראה באירוע הבא. 😊", musician_id=m_id)
 
         elif button_id.startswith("contacted_"):
              lead_id = button_id.split("_")[1]
-             airtable_service.update_lead(lead_id, LeadUpdate(last_summary="Musician confirmed contact"))
-             musicians = airtable_service.musicians_table.all(formula=f"{{Phone}}='{musician_phone}'")
-             m_id = musicians[0]["id"] if musicians else None
+             try:
+                 airtable_service.update_lead(lead_id, LeadUpdate(last_summary="Musician confirmed contact"))
+             except Exception as e:
+                 print(f"Warning: Failed to update lead {lead_id}: {e}")
              self._send_message(musician_phone, "מעולה! בהצלחה. נדבר עוד 24 שעות.", musician_id=m_id)
+             
+        elif button_id.startswith("revoke_"):
+             lead_id = button_id.split("_")[1]
+             lead = airtable_service.leads_table.get(lead_id)
+             if lead and lead["fields"].get("Status") == LeadStatus.ASSIGNED.value:
+                  self._send_message(musician_phone, "אין בעיה, הליד הועבר בחזרה לכל הנגנים. 😔", musician_id=m_id)
+                  airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.DISTRIBUTED, musician_assigned=[]))
+                  # The event loop needs to spawn start_bouzouki_protocol. This interacts directly:
+                  import asyncio
+                  asyncio.create_task(self.start_bouzouki_protocol(lead_id, lead["fields"]))
 
         elif button_id.startswith("closed_"):
              lead_id = button_id.split("_")[1]
-             airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.CLOSED))
-             musicians = airtable_service.musicians_table.all(formula=f"{{Phone}}='{musician_phone}'")
-             m_id = musicians[0]["id"] if musicians else None
-             self._send_message(musician_phone, "אלוף! 🏆 עוד אחד לאוסף.", musician_id=m_id)
+             try:
+                 airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.CLOSED))
+             except Exception as e:
+                 print(f"Warning: Failed to update lead {lead_id}: {e}")
+             self.pending_musician_actions[musician_phone] = {"action": "AWAITING_AMOUNT", "lead_id": lead_id}
+             self._send_message(musician_phone, "מעולה! מוזמן להזין עכשיו את סכום הסגירה (לדוגמה: 2500) לצורך מעקב עמלות (העמלה היא 15% או 400 שקל).", musician_id=m_id)
 
         elif button_id.startswith("lost_"):
              lead_id = button_id.split("_")[1]
-             airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.LOST))
-             musicians = airtable_service.musicians_table.all(formula=f"{{Phone}}='{musician_phone}'")
-             m_id = musicians[0]["id"] if musicians else None
-             self._send_message(musician_phone, "לא נורא, הבא בתור שלך! 💪", musician_id=m_id)
+             try:
+                 airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.LOST))
+             except Exception as e:
+                 print(f"Warning: Failed to update lead {lead_id}: {e}")
+             self.pending_musician_actions[musician_phone] = {"action": "AWAITING_REASON", "lead_id": lead_id}
+             self._send_message(musician_phone, "חבל. מה סיבת ההפסד כדאי שנוכל ללמוד מזה? (למשל: יקר מדי / סגר עם הרכב אחר / ביטל אירוע)", musician_id=m_id)
 
     async def start_bouzouki_protocol(self, lead_id: str, lead_fields: dict):
-        favorites = airtable_service.get_favorite_musicians()
+        active_musicians = airtable_service.get_active_musicians()
+        tier_a = [m for m in active_musicians if m["fields"].get("Score", 5) >= 8]
+        
         msg_body = f"הזדמנות חדשה!\nבוזוקי ב{lead_fields.get('Location')}\nתאריך: {lead_fields.get('Event_Date')}"
         claim_btn_id = f"claim_{lead_id}"
         
-        for mus in favorites:
+        for mus in tier_a:
             phone = mus["fields"].get("Phone")
             m_id = mus["id"]
             if phone:
@@ -493,21 +592,22 @@ class HaydeBotLogic:
                     ]
                 )
 
-        # Schedule step 2 (All active)
+        # Schedule step 2 (Tier B) after 10 minutes
         run_date = datetime.now() + timedelta(minutes=10)
-        scheduler.add_job(self.continue_bouzouki_protocol, 'date', run_date=run_date, args=[lead_id, msg_body, claim_btn_id])
+        scheduler.add_job(self.continue_bouzouki_protocol_tier_b, 'date', run_date=run_date, args=[lead_id, msg_body, claim_btn_id])
 
-    async def continue_bouzouki_protocol(self, lead_id: str, msg_body: str, claim_btn_id: str):
-        print(f"Running continue_bouzouki_protocol for {lead_id}")
+    async def continue_bouzouki_protocol_tier_b(self, lead_id: str, msg_body: str, claim_btn_id: str):
+        print(f"Running continue_bouzouki_protocol_tier_b for {lead_id}")
         lead = airtable_service.leads_table.get(lead_id)
         if lead["fields"].get("Musician_Assigned"): return
 
-        active = airtable_service.get_active_musicians()
-        for mus in active:
+        active_musicians = airtable_service.get_active_musicians()
+        tier_b = [m for m in active_musicians if 5 <= m["fields"].get("Score", 5) <= 7]
+        
+        for mus in tier_b:
              phone = mus["fields"].get("Phone")
              m_id = mus["id"]
-             # Skip if favorite (already sent)
-             if phone and not mus["fields"].get("Is_Favorite"): 
+             if phone: 
                   self._send_interactive(
                     phone, 
                     msg_body, 
@@ -520,18 +620,46 @@ class HaydeBotLogic:
                     ]
                 )
 
-        # Schedule final check after 20 mins total (10 mins after this step)
+        # Schedule step 3 (Tier C) after 10 more minutes
+        run_date_c = datetime.now() + timedelta(minutes=10)
+        scheduler.add_job(self.continue_bouzouki_protocol_tier_c, 'date', run_date=run_date_c, args=[lead_id, msg_body, claim_btn_id])
+        
+    async def continue_bouzouki_protocol_tier_c(self, lead_id: str, msg_body: str, claim_btn_id: str):
+        print(f"Running continue_bouzouki_protocol_tier_c for {lead_id}")
+        lead = airtable_service.leads_table.get(lead_id)
+        if lead["fields"].get("Musician_Assigned"): return
+
+        active_musicians = airtable_service.get_active_musicians()
+        tier_c = [m for m in active_musicians if m["fields"].get("Score", 5) < 5]
+        
+        for mus in tier_c:
+             phone = mus["fields"].get("Phone")
+             m_id = mus["id"]
+             if phone: 
+                  self._send_interactive(
+                    phone, 
+                    msg_body, 
+                    None, 
+                    None, 
+                    musician_id=m_id,
+                    buttons=[
+                        (claim_btn_id, "✅ אני פנוי"),
+                        (f"unavailable_{lead_id}", "❌ לא פנוי")
+                    ]
+                )
+
+        # Schedule final check after 10 mins (30 mins total)
         run_date_final = datetime.now() + timedelta(minutes=10)
         scheduler.add_job(self.check_if_claimed, 'date', run_date=run_date_final, args=[lead_id])
 
-    async def schedule_musician_followups(self, lead_id: str, musician_phone: str):
-        # 1. Remind in 15 mins
+    async def schedule_musician_followups(self, lead_id: str, musician_phone: str, musician_id: str = None):
+        # 1. Remind in 15 mins (First Warning)
         run_date_1 = datetime.now() + timedelta(minutes=15)
-        scheduler.add_job(self.remind_musician_contact, 'date', run_date=run_date_1, args=[lead_id, musician_phone])
+        scheduler.add_job(self.remind_musician_contact, 'date', run_date=run_date_1, args=[lead_id, musician_phone, musician_id])
 
         # 2. Ask closing status in 24 hours
         run_date_2 = datetime.now() + timedelta(hours=24)
-        scheduler.add_job(self.finalize_musician_check, 'date', run_date=run_date_2, args=[lead_id, musician_phone])
+        scheduler.add_job(self.finalize_musician_check, 'date', run_date=run_date_2, args=[lead_id, musician_phone, musician_id])
 
     async def remind_musician_contact(self, lead_id: str, musician_phone: str, musician_id: str = None):
         lead = airtable_service.leads_table.get(lead_id)
@@ -540,7 +668,30 @@ class HaydeBotLogic:
 
         # Only remind if lead is still "Assigned" and not yet contacted or closed
         if fields.get("Status") == LeadStatus.ASSIGNED.value and "Musician confirmed contact" not in fields.get("Last_Summary", ""):
-             self._send_message(musician_phone, "היי, לא לשכוח להתקשר ללקוח! 👻", musician_id=musician_id)
+             self._send_interactive(
+                 musician_phone,
+                 "עברו 15 דקות. התקשרת פליז? 🙏",
+                 btn_id=None, btn_title=None, musician_id=musician_id,
+                 buttons=[
+                     (f"contacted_{lead_id}", "✅ התקשרתי!"),
+                     (f"revoke_{lead_id}", "❌ לא יכול לטפל בזה")
+                 ]
+             )
+             
+             # Schedule final revocation check 15 mins from now
+             run_date_final = datetime.now() + timedelta(minutes=15)
+             scheduler.add_job(self.revoke_musician_contact, 'date', run_date=run_date_final, args=[lead_id, musician_phone])
+
+    async def revoke_musician_contact(self, lead_id: str, musician_phone: str):
+        lead = airtable_service.leads_table.get(lead_id)
+        if not lead: return
+        fields = lead["fields"]
+
+        if fields.get("Status") == LeadStatus.ASSIGNED.value and "Musician confirmed contact" not in fields.get("Last_Summary", ""):
+             self._send_message(musician_phone, "עברה חצי שעה ולא אישרת שחייגת ללקוח. הליד הועבר בחזרה לכל הנגנים. 😔")
+             airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.DISTRIBUTED, musician_assigned=[]))
+             import asyncio
+             asyncio.create_task(self.start_bouzouki_protocol(lead_id, fields))
 
     async def finalize_musician_check(self, lead_id: str, musician_phone: str, musician_id: str = None):
         lead = airtable_service.leads_table.get(lead_id)
@@ -613,45 +764,83 @@ class HaydeBotLogic:
         await email_service.send_notification(email_subject, email_body)
 
     async def send_weekly_summary(self):
-        """Send a weekly summary of leads to admins."""
-        print("DEBUG: Generating weekly summary...")
+        """Send a weekly summary of leads to admins and personalized reports to musicians."""
+        print("DEBUG: Generating weekly summaries...")
         leads = airtable_service.get_all_leads()
+        active_musicians = airtable_service.get_active_musicians()
         now = datetime.now()
         last_week = now - timedelta(days=7)
 
+        # 1. Admin Summary Stats
         new_leads = 0
-        closed_leads = 0
-        lost_leads = 0
+        total_closed_leads = 0
+        total_lost_leads = 0
         
+        # 2. Musician Personal Stats
+        musician_stats = {m["id"]: {"phone": m["fields"].get("Phone"), "received": 0, "closed": 0, "closing_amount_sum": 0, "commission_sum": 0.0} for m in active_musicians}
+
         for l in leads:
-             # Basic filter by Created time if available, or just check recent ones
-             # Airtable typically has a 'Created' field if we enabled it
              fields = l["fields"]
-             created_str = l.get("createdTime") # Built-in field in Airtable API
-             if created_str:
-                 created_at = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
-                 if created_at > last_week:
-                      new_leads += 1
-                      status = fields.get("Status")
-                      if status == LeadStatus.CLOSED.value: closed_leads += 1
-                      elif status == LeadStatus.LOST.value: lost_leads += 1
+             # We rely on Last_Interaction as a reliable proxy for recent activity
+             last_interaction_str = fields.get("Last_Interaction")
+             if last_interaction_str:
+                 try:
+                     ts = last_interaction_str.replace('Z', '+00:00')
+                     last_time = datetime.fromisoformat(ts)
+                 except: 
+                     continue
+                 
+                 if last_time.tzinfo:
+                     if datetime.now(last_time.tzinfo) - last_time < timedelta(days=7):
+                          new_leads += 1
+                          status = fields.get("Status")
+                          if status == LeadStatus.CLOSED.value: total_closed_leads += 1
+                          elif status == LeadStatus.LOST.value: total_lost_leads += 1
+                          
+                          # Attribute to Musician
+                          assigned_list = fields.get("Musician_Assigned", [])
+                          if assigned_list and isinstance(assigned_list, list):
+                              m_id = assigned_list[0]
+                              if m_id in musician_stats:
+                                  musician_stats[m_id]["received"] += 1
+                                  if status == LeadStatus.CLOSED.value:
+                                      musician_stats[m_id]["closed"] += 1
+                                      amount = fields.get("Closing_Amount")
+                                      if amount:
+                                          musician_stats[m_id]["closing_amount_sum"] += float(amount)
+                                          # Commission: 15% or 400 NIS (includes VAT)
+                                          commission = max(float(amount) * 0.15, 400.0)
+                                          musician_stats[m_id]["commission_sum"] += commission
         
-        summary_msg = (
-            f"📊 *סיכום שבועי HaydeBot*\n\n"
-            f"✨ לידים חדשים השבוע: {new_leads}\n"
-            f"✅ אירועים שנסגרו: {closed_leads}\n"
-            f"❌ אירועים שאבדו: {lost_leads}\n\n"
-            f"שיהיה שבוע מוצלח! 🎸"
+        # Send Admin Summary
+        admin_msg = (
+            f"📊 *סיכום שבועי כללי ל-Hayde*\n\n"
+            f"✨ לידים שטופלו השבוע: {new_leads}\n"
+            f"✅ אירועים שנסגרו: {total_closed_leads}\n"
+            f"❌ אירועים שאבדו: {total_lost_leads}\n\n"
+            f"שיהיה שבוע אש! 🎸"
         )
+        await self.notify_admins({}, custom_msg=admin_msg)
         
-        await self.notify_admins({}, custom_msg=summary_msg)
+        # Send Musician Individual Reports
+        for m_id, stats in musician_stats.items():
+            if stats["phone"] and stats["received"] > 0: # Only send if they were active
+                musician_msg = (
+                    f"בוקר טוב מ-Hayde🎸!\nהנה סיכום הפעילות שלך לשבוע האחרון:\n\n"
+                    f"📥 קיבלת מיונים ל: {stats['received']} אירועים\n"
+                    f"🏆 סגרת בהצלחה: {stats['closed']} אירועים\n"
+                    f"💰 סך עסקאות שנסגרו: ₪{stats['closing_amount_sum']:,.0f}\n"
+                    f"💸 עמלת Hayde (משוערת): ₪{stats['commission_sum']:,.0f}\n\n"
+                    f"שבוע מטורף ומלא במוזיקה פצצה! 🔥"
+                )
+                self._send_message(stats["phone"], musician_msg, musician_id=m_id)
 
     async def check_if_claimed(self, lead_id: str):
         lead = airtable_service.leads_table.get(lead_id)
         if not lead: return
         if not lead["fields"].get("Musician_Assigned"):
              # NO ONE CLAIMED - ALERT ADMIN
-             print(f"ALERT: No musician claimed lead {lead_id} after 20 mins.")
+             print(f"ALERT: No musician claimed lead {lead_id} after 30 mins.")
              admin_msg = f"⚠️ *אף נגן לא תפס את האירוע!*\n\nפרטי האירוע:\nשם: {lead['fields'].get('Name')}\nטלפון: {lead['fields'].get('Phone')}\nשירות: בוזוקי\n\nכדאי ליצור קשר ידני עם נגנים."
              await self.notify_admins(lead["fields"], custom_msg=admin_msg)
 

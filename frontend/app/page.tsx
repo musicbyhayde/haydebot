@@ -6,6 +6,7 @@ import ChatWindow from "@/components/ChatWindow";
 import LeadsDashboard from "@/components/LeadsDashboard";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
+import clsx from "clsx";
 
 export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -14,6 +15,12 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians'>('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Auto-close menu when changing view
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [view]);
 
   // Poll for leads, musicians and messages
   useEffect(() => {
@@ -86,29 +93,43 @@ export default function Home() {
     return <div className="h-screen w-screen flex items-center justify-center font-bold text-slate-400 italic">Hayde is Warming Up... 🎸</div>;
   }
 
-  return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900">
-      <Sidebar
-        leads={leads}
-        musicians={musicians}
-        activeId={activeId}
-        onSelect={handleSelect}
-        currentView={view}
-        onViewChange={(v) => { setView(v); setActiveId(null); }}
-      />
+  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && activeId === null);
 
-      {view === 'dashboard' ? (
-        <LeadsDashboard
+  return (
+    <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
+      <div className={clsx(
+        "h-full w-full md:w-80 flex-shrink-0 transition-all",
+        showSidebar ? "block" : "hidden md:block"
+      )}>
+        <Sidebar
           leads={leads}
-          onSelectLead={handleSelect}
+          musicians={musicians}
+          activeId={activeId}
+          onSelect={handleSelect}
+          currentView={view}
+          onViewChange={(v) => { setView(v); setActiveId(null); }}
         />
-      ) : (
-        <ChatWindow
-          item={activeItem}
-          messages={messages}
-          onSend={handleSendMessage}
-        />
-      )}
+      </div>
+
+      <div className={clsx(
+        "flex-1 h-full w-full",
+        showSidebar ? "hidden md:flex" : "flex"
+      )}>
+        {view === 'dashboard' ? (
+          <LeadsDashboard
+            leads={leads}
+            onSelectLead={handleSelect}
+            onMenuClick={() => setMobileMenuOpen(true)}
+          />
+        ) : (
+          <ChatWindow
+            item={activeItem}
+            messages={messages}
+            onSend={handleSendMessage}
+            onBack={() => setActiveId(null)}
+          />
+        )}
+      </div>
     </div>
   );
 }

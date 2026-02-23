@@ -77,10 +77,6 @@ class AirtableService:
         """Get all musicians marked as Is_Active."""
         return self.musicians_table.all(formula="{Is_Active} = 1")
 
-    def get_favorite_musicians(self) -> List[dict]:
-        """Get all musicians marked as Is_Active AND Is_Favorite."""
-        return self.musicians_table.all(formula="AND({Is_Active} = 1, {Is_Favorite} = 1)")
-    
     def get_all_musicians(self) -> List[dict]:
         """Fetch all musicians."""
         return self.musicians_table.all()

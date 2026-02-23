@@ -10,9 +10,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
 
-    # Airtable
-    AIRTABLE_TOKEN: str
-    AIRTABLE_BASE_ID: str
+    # Supabase
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_KEY: Optional[str] = None
+
+    # Airtable (Deprecated, moving to Supabase)
+    AIRTABLE_TOKEN: Optional[str] = None
+    AIRTABLE_BASE_ID: Optional[str] = None
     AIRTABLE_TABLE_LEADS: str = "Leads"
     AIRTABLE_TABLE_MUSICIANS: str = "Musicians"
     AIRTABLE_TABLE_MESSAGES: str = "Messages"

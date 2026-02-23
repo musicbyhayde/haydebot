@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
+from app.models.schemas import LeadUpdate, LeadStatus
 from app.core.config import get_settings
 from app.services.logic import bot_logic
 
@@ -37,7 +39,7 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
         return {"status": "error"}
 
 from typing import List
-from app.services.airtable import airtable_service
+from app.services.supabase_service import airtable_service
 
 @router.get("/leads")
 async def get_leads():
@@ -60,6 +62,10 @@ async def send_manual_message(lead_id: str, payload: SendMessageRequest):
     phone = lead["fields"].get("Phone")
     if not phone:
          raise HTTPException(status_code=400, detail="Lead has no phone")
+
+    # Mute the bot for 24 hours since the human is taking over the conversation
+    mute_time = datetime.now() + timedelta(hours=24)
+    airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.MANUAL, bot_mute_until=mute_time))
 
     bot_logic._send_message(phone, payload.text, lead_id)
     return {"status": "sent"}

@@ -110,4 +110,28 @@ class WhatsAppService:
             print(f"WhatsApp Error: {e}")
             return {"error": str(e)}
 
+    def download_media(self, media_id: str) -> tuple[bytes, str]:
+        """Download media from WhatsApp using its media ID. Returns bytes and mime_type."""
+        try:
+            # Step 1: Query API for the media URL
+            media_url_req = f"https://graph.facebook.com/v17.0/{media_id}"
+            res = requests.get(media_url_req, headers=self.headers)
+            res.raise_for_status()
+            media_info = res.json()
+            
+            download_url = media_info.get("url")
+            mime_type = media_info.get("mime_type", "application/octet-stream")
+            
+            if not download_url:
+                raise Exception("Could not get download URL from Meta")
+
+            # Step 2: Download the actual binary using the same Bearer token
+            file_res = requests.get(download_url, headers=self.headers)
+            file_res.raise_for_status()
+            
+            return file_res.content, mime_type
+        except Exception as e:
+            print(f"Error downloading WhatsApp media: {e}")
+            return None, None
+
 whatsapp_service = WhatsAppService()

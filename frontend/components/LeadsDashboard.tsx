@@ -1,13 +1,14 @@
 import { Lead } from '@/types';
-import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu } from 'lucide-react';
 import clsx from 'clsx';
 
 interface LeadsDashboardProps {
     leads: Lead[];
     onSelectLead: (id: string) => void;
+    onMenuClick?: () => void;
 }
 
-export default function LeadsDashboard({ leads, onSelectLead }: LeadsDashboardProps) {
+export default function LeadsDashboard({ leads, onSelectLead, onMenuClick }: LeadsDashboardProps) {
     const stats = {
         total: leads.length,
         new: leads.filter(l => l.fields.Status === 'New').length,
@@ -39,9 +40,16 @@ export default function LeadsDashboard({ leads, onSelectLead }: LeadsDashboardPr
     return (
         <div className="flex-1 overflow-y-auto bg-slate-50 p-8">
             <div className="max-w-7xl mx-auto">
-                <header className="mb-8">
-                    <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Hayde Dashboard 🎸</h1>
-                    <p className="text-slate-500">ניהול לידים ומעקב אירועים בזמן אמת</p>
+                <header className="mb-8 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-1 md:mb-2">Hayde Dashboard 🎸</h1>
+                        <p className="text-sm md:text-base text-slate-500">ניהול לידים ומעקב אירועים בזמן אמת</p>
+                    </div>
+                    {onMenuClick && (
+                        <button onClick={onMenuClick} className="md:hidden p-2 bg-white rounded-lg shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                            <Menu size={24} />
+                        </button>
+                    )}
                 </header>
 
                 {/* Stats Grid */}

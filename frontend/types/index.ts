@@ -21,6 +21,8 @@ export interface Message {
         ID?: string;
         Direction: 'Inbound' | 'Outbound';
         Content: string;
+        Media_Type?: string;
+        Media_URL?: string;
         Timestamp: string;
         Status: string;
     };
