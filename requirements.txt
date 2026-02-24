@@ -7,3 +7,5 @@ apscheduler
 requests
 pydantic
 pydantic-settings
+supabase
+google-generativeai
