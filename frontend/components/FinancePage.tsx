@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Edit, Check, X, TrendingUp, TrendingDown, Menu, AlertCircle, Link, Search } from 'lucide-react';
+import { Plus, Trash2, Edit, Check, X, TrendingUp, TrendingDown, Menu, AlertCircle, Link, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import { api } from '@/lib/api';
 import { FinanceEntry, Lead } from '@/types';
 import { AppUser } from '@/lib/auth';
@@ -35,9 +35,9 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     const [showLeadDropdown, setShowLeadDropdown] = useState(false);
     const leadDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Sorting and Grouping State
+    // Sorting State
     const [sortBy, setSortBy] = useState<'date' | 'type'>('date');
-    const [groupBy, setGroupBy] = useState<'none' | 'event'>('none');
+    const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
     const [form, setForm] = useState({
         Type: 'income',
@@ -205,14 +205,50 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     const incomeEntries = (owner: string) => ownerEntries(owner).filter(e => e.fields.Type === 'income');
     const expenseEntries = (owner: string) => ownerEntries(owner).filter(e => e.fields.Type === 'expense');
 
+    const parseDateToMs = (dateStr?: string) => {
+        if (!dateStr) return 0;
+        if (dateStr.includes('-')) {
+            return new Date(dateStr).getTime();
+        }
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                let year = parts[2];
+                if (year.length === 2) year = '20' + year;
+                return new Date(`${year}-${month}-${day}`).getTime();
+            }
+        }
+        return new Date(dateStr).getTime() || 0;
+    };
+
     const sortEntries = (list: FinanceEntry[]) => {
         return [...list].sort((a, b) => {
+            const dateA = parseDateToMs(a.fields.Date);
+            const dateB = parseDateToMs(b.fields.Date);
+
             if (sortBy === 'date') {
-                return new Date(b.fields.Date || 0).getTime() - new Date(a.fields.Date || 0).getTime();
+                if (dateA !== dateB) {
+                    return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+                }
+                // Same date: group logically by Event Name so they stick together
+                const evtA = (a.fields.Event_Name || a.fields.Description || '').toLowerCase();
+                const evtB = (b.fields.Event_Name || b.fields.Description || '').toLowerCase();
+                if (evtA !== evtB) {
+                    return evtA.localeCompare(evtB, 'he');
+                }
+                // Same event/date: Income before Expense
+                if (a.fields.Type !== b.fields.Type) return a.fields.Type === 'income' ? -1 : 1;
+                // Same type: highest amount first
+                return (b.fields.Amount || 0) - (a.fields.Amount || 0);
             } else {
                 // type sorting: Income first, then Expense. Secondary sort by Date
                 if (a.fields.Type !== b.fields.Type) return a.fields.Type === 'income' ? -1 : 1;
-                return new Date(b.fields.Date || 0).getTime() - new Date(a.fields.Date || 0).getTime();
+                if (dateA !== dateB) {
+                    return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+                }
+                return (b.fields.Amount || 0) - (a.fields.Amount || 0);
             }
         });
     };
@@ -267,9 +303,11 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                         )}
                     </div>
                 </td>
-                {type === 'income' && <td className="py-2 px-3 text-xs text-slate-600">{e.fields.Musician || '—'}</td>}
-                <td className="py-2 px-3 text-xs font-bold text-left" dir="ltr">
-                    <span className={type === 'income' ? 'text-green-700' : 'text-red-700'}>{formatCurrency(e.fields.Amount)}</span>
+                <td className="py-2 px-3 text-xs text-slate-600">{e.fields.Event_Name ? e.fields.Musician || '—' : '—'}</td>
+                <td className="py-2 px-3 text-xs font-bold text-left w-28" dir="ltr">
+                    <span className={clsx("px-2 py-1 rounded-md shadow-sm border", type === 'income' ? 'bg-[#00FF00] text-green-950 font-extrabold border-green-500' : 'bg-[#FF0000] text-white border-red-600')}>
+                        {type === 'expense' ? '-' : ''}{formatCurrency(e.fields.Amount)}
+                    </span>
                 </td>
                 <td className="py-2 px-3">
                     <div className="flex flex-col gap-1 items-start">
@@ -299,86 +337,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         const rawEntries = ownerEntries(owner);
         const sortedEntries = sortEntries(rawEntries);
 
-        let tableContent;
-
-        if (groupBy === 'none') {
-            tableContent = (
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-slate-100 text-slate-700">
-                                    <th className="py-2 px-3 text-right text-[11px] font-bold">תאריך</th>
-                                    <th className="py-2 px-3 text-right text-[11px] font-bold">אירוע</th>
-                                    <th className="py-2 px-3 text-right text-[11px] font-bold">נגן</th>
-                                    <th className="py-2 px-3 text-left text-[11px] font-bold">סכום</th>
-                                    <th className="py-2 px-3 text-right text-[11px] font-bold">סטטוס</th>
-                                    <th className="py-2 px-3 w-16"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedEntries.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-8 text-slate-400 text-sm">אין תנועות</td></tr>
-                                ) : sortedEntries.map(e => renderRow(e))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            );
-        } else {
-            // Group by event
-            const groups: Record<string, FinanceEntry[]> = {};
-            sortedEntries.forEach(e => {
-                const eventName = (e.fields.Event_Name || e.fields.Description || 'ללא שיוך').trim();
-                if (!groups[eventName]) groups[eventName] = [];
-                groups[eventName].push(e);
-            });
-
-            tableContent = (
-                <div className="space-y-4 mb-4">
-                    {Object.entries(groups).map(([eventName, groupEntries]) => {
-                        const sum = groupEntries.reduce((acc, curr) => {
-                            const val = curr.fields.Amount || 0;
-                            return curr.fields.Type === 'income' ? acc + val : acc - val;
-                        }, 0);
-                        const isPositive = sum >= 0;
-
-                        return (
-                            <div key={eventName} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex justify-between items-center">
-                                    <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                        {eventName}
-                                        <span className="text-[10px] text-slate-400 font-normal">({groupEntries.length} תנועות)</span>
-                                    </h4>
-                                    <div className={clsx("text-sm font-extrabold px-3 py-1 rounded-full", isPositive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")} dir="ltr">
-                                        {formatCurrency(sum)}
-                                    </div>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="bg-white text-slate-500 border-b border-slate-100">
-                                                <th className="py-2 px-3 text-right text-[11px] font-normal w-24">תאריך</th>
-                                                <th className="py-2 px-3 text-right text-[11px] font-normal">תיאור</th>
-                                                <th className="py-2 px-3 text-right text-[11px] font-normal w-32">נגן</th>
-                                                <th className="py-2 px-3 text-left text-[11px] font-normal w-28">סכום</th>
-                                                <th className="py-2 px-3 text-right text-[11px] font-normal w-28">סטטוס</th>
-                                                <th className="py-2 px-3 w-16"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {groupEntries.map(e => renderRow(e))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            );
-        }
-
         return (
             <div className="flex-1 min-w-0">
                 <div className="grid grid-cols-3 gap-3 mb-6">
@@ -403,30 +361,46 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                 <div className="flex flex-col sm:flex-row items-center justify-between mb-4 bg-white p-2 border border-slate-200 rounded-xl gap-2 shadow-sm">
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                         <span className="text-xs font-bold text-slate-500 mr-2">מיון לפי:</span>
-                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'date' | 'type')} className="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-blue-500 min-w-[120px]">
-                            <option value="date">📅 תאריך</option>
-                            <option value="type">📈 עסקאות (הכנסה/הוצאה)</option>
-                        </select>
-                    </div>
-                    <div className="flex items-center w-full sm:w-auto">
-                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 w-full">
-                            <button
-                                onClick={() => setGroupBy('none')}
-                                className={clsx("flex-1 text-xs px-4 py-1.5 rounded-md transition-all font-medium", groupBy === 'none' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-                            >
-                                רשימה
-                            </button>
-                            <button
-                                onClick={() => setGroupBy('event')}
-                                className={clsx("flex-1 text-xs px-4 py-1.5 rounded-md transition-all font-medium", groupBy === 'event' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-                            >
-                                לפי אירוע
-                            </button>
+                        <div className="flex gap-1 items-center">
+                            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'date' | 'type')} className="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-blue-500 min-w-[120px]">
+                                <option value="date">📅 תאריך</option>
+                                <option value="type">📈 עסקאות (הכנסה/הוצאה)</option>
+                            </select>
+                            {sortBy === 'date' && (
+                                <button
+                                    onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                                    className="flex items-center justify-center p-1.5 border border-slate-200 rounded-lg outline-none bg-slate-50 text-slate-600 hover:bg-slate-100 transition shadow-sm w-[72px]"
+                                    title={sortOrder === 'desc' ? 'מהחדש לישן' : 'מהישן לחדש'}
+                                >
+                                    {sortOrder === 'desc' ? <ArrowDown size={14} className="ml-1" /> : <ArrowUp size={14} className="ml-1" />}
+                                    <span className="text-[10px] font-bold">{sortOrder === 'desc' ? 'מהחדש' : 'מהישן'}</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {tableContent}
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4 shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-slate-100/80 text-slate-600 border-b border-slate-200">
+                                    <th className="py-2.5 px-3 text-right text-[11px] font-bold">תאריך</th>
+                                    <th className="py-2.5 px-3 text-right text-[11px] font-bold">אירוע</th>
+                                    <th className="py-2.5 px-3 text-right text-[11px] font-bold">הערות / משתתפים</th>
+                                    <th className="py-2.5 px-3 text-left text-[11px] font-bold">סכום</th>
+                                    <th className="py-2.5 px-3 text-right text-[11px] font-bold">סטטוס</th>
+                                    <th className="py-2.5 px-3 w-16"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedEntries.length === 0 ? (
+                                    <tr><td colSpan={6} className="text-center py-8 text-slate-400 text-sm">אין תנועות</td></tr>
+                                ) : sortedEntries.map(e => renderRow(e))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         );
     };
