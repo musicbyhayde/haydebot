@@ -1,8 +1,9 @@
 from supabase import create_client, Client
 from app.core.config import get_settings
-from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate
+from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate
 from typing import List, Optional
 import uuid
+from datetime import datetime
 
 settings = get_settings()
 
@@ -28,8 +29,9 @@ class SupabaseService:
         return [self._to_airtable_format(r) for r in records]
 
     def _generate_id(self) -> str:
-        # Generate a unique text ID similar to Airtable "recXXXXXX"
         return "rec" + uuid.uuid4().hex[:14]
+
+    # ─── Messages ─────────────────────────────────────────
 
     def is_message_processed(self, whatsapp_id: str) -> bool:
         """Check if a message with this WhatsApp ID has already been processed."""
@@ -43,17 +45,16 @@ class SupabaseService:
         if not self.client: return {}
         data = message.model_dump(exclude_none=True, by_alias=True, mode='json')
         if "ID" in data:
-            data["id"] = data.pop("ID") # WhatsApp ID or generated ID
+            data["id"] = data.pop("ID")
         if not data.get("id"):
             data["id"] = self._generate_id()
         response = self.client.table("messages").insert(data).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
 
+    # ─── Leads ────────────────────────────────────────────
+
     def get_active_lead_by_phone(self, phone: str) -> Optional[dict]:
-        """
-        Find an ACTIVE lead by their phone number.
-        Meaning: Status is NOT 'Closed' or 'Lost'.
-        """
+        """Find an ACTIVE lead by phone. Status is NOT 'Closed' or 'Lost'."""
         if not self.client: return None
         response = self.client.table("leads").select("*").eq("Phone", phone).neq("Status", LeadStatus.CLOSED.value).neq("Status", LeadStatus.LOST.value).order("Last_Interaction", desc=True).limit(1).execute()
         return self._to_airtable_format(response.data[0]) if response.data else None
@@ -83,12 +84,13 @@ class SupabaseService:
         """Fetch all messages linked to a lead."""
         if not self.client: return []
         try:
-            # Using contains operator for array inclusion:
             response = self.client.table("messages").select("*").contains("Lead", [lead_id]).order("Timestamp", desc=False).execute()
             return self._to_airtable_list(response.data)
         except Exception as e:
             print(f"Error fetching messages for lead {lead_id}: {e}")
             return []
+
+    # ─── Musicians ────────────────────────────────────────
 
     def get_active_musicians(self) -> List[dict]:
         """Get all musicians marked as Is_Active."""
@@ -115,32 +117,101 @@ class SupabaseService:
     def assign_musician(self, lead_id: str, musician_id: str):
         """Link a musician to a lead."""
         if not self.client: return {}
-        # In Supabase, Musician_Assigned is an array of strings
         response = self.client.table("leads").update({
             "Musician_Assigned": [musician_id],
             "Status": LeadStatus.ASSIGNED.value
         }).eq("id", lead_id).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
 
+    # ─── Media ────────────────────────────────────────────
+
     def upload_media(self, file_bytes: bytes, file_name: str, mime_type: str) -> Optional[str]:
         """Uploads a file to Supabase storage and returns public URL."""
         if not self.client: return None
         try:
-            # Upsert overwrites if same file_name exists
-            res = self.client.storage.from_("media").upload(
+            self.client.storage.from_("media").upload(
                 path=file_name,
                 file=file_bytes,
                 file_options={"content-type": mime_type, "upsert": "true"}
             )
-            
-            # Fetch public URL after upload
             public_url = self.client.storage.from_("media").get_public_url(file_name)
             return public_url
         except Exception as e:
             print(f"Error uploading media to Supabase: {e}")
             return None
 
-    # Compatibility methods to mimic Airtable's api.table(X).get / .all etc.
+    # ─── Notes CRUD ───────────────────────────────────────
+
+    def create_note(self, note: NoteCreate) -> dict:
+        """Create a note for a lead."""
+        if not self.client: return {}
+        data = note.model_dump(exclude_none=True, by_alias=True, mode='json')
+        data["id"] = self._generate_id()
+        data["Created_At"] = datetime.now().isoformat()
+        response = self.client.table("notes").insert(data).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def get_notes_for_lead(self, lead_id: str) -> List[dict]:
+        """Fetch all notes for a lead, newest first."""
+        if not self.client: return []
+        try:
+            response = self.client.table("notes").select("*").eq("Lead_ID", lead_id).order("Created_At", desc=True).execute()
+            return self._to_airtable_list(response.data)
+        except Exception as e:
+            print(f"Error fetching notes for lead {lead_id}: {e}")
+            return []
+
+    # ─── Finance CRUD ─────────────────────────────────────
+
+    def create_finance_entry(self, entry: FinanceEntryCreate) -> dict:
+        """Create a finance ledger entry."""
+        if not self.client: return {}
+        data = entry.model_dump(exclude_none=True, by_alias=True, mode='json')
+        data["id"] = self._generate_id()
+        data["Created_At"] = datetime.now().isoformat()
+        response = self.client.table("finance").insert(data).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def get_finance_entries(self, owner: Optional[str] = None) -> List[dict]:
+        """Fetch all finance entries, optionally filtered by owner."""
+        if not self.client: return []
+        query = self.client.table("finance").select("*")
+        if owner:
+            query = query.eq("Owner", owner)
+        response = query.order("Date", desc=True).execute()
+        return self._to_airtable_list(response.data)
+
+    def update_finance_entry(self, entry_id: str, data: FinanceEntryUpdate) -> dict:
+        """Update a finance entry."""
+        if not self.client: return {}
+        update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        response = self.client.table("finance").update(update_data).eq("id", entry_id).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def delete_finance_entry(self, entry_id: str):
+        """Delete a finance entry."""
+        if not self.client: return
+        self.client.table("finance").delete().eq("id", entry_id).execute()
+
+    def get_finance_summary(self) -> dict:
+        """Get aggregated totals per partner."""
+        if not self.client: return {}
+        entries = self.client.table("finance").select("*").execute()
+        summary = {}
+        for entry in entries.data:
+            owner = entry.get("Owner", "Unknown")
+            if owner not in summary:
+                summary[owner] = {"income": 0, "expenses": 0, "balance": 0}
+            amount = float(entry.get("Amount", 0))
+            if entry.get("Type") == "income":
+                summary[owner]["income"] += amount
+            else:
+                summary[owner]["expenses"] += amount
+            summary[owner]["balance"] = summary[owner]["income"] - summary[owner]["expenses"]
+        return summary
+
+    # ─── Compatibility (MockTable) ────────────────────────
+
     class _MockTable:
         def __init__(self, service, table_name):
             self.service = service
@@ -152,15 +223,11 @@ class SupabaseService:
             return self.service._to_airtable_format(res.data[0]) if res.data else None
             
         def all(self, formula=None, sort=None):
-            # Simplistic fallback for dynamic Airtable queries used around the app.
             if not self.service.client: return []
             query = self.service.client.table(self.table_name).select("*")
-            # For simplicity, we assume we fetch all and let the caller filter, except where formula mapped easily.
-            # In logic.py we have a few places using .all(formula=f"{{Phone}}='{musician_phone}'")
             if formula and "{Phone}=" in formula:
                 phone = formula.split("'")[1]
                 query = query.eq("Phone", phone)
-            
             res = query.execute()
             return self.service._to_airtable_list(res.data)
 
@@ -174,7 +241,16 @@ class SupabaseService:
 
     @property
     def messages_table(self):
-         return self._MockTable(self, "messages")
+        return self._MockTable(self, "messages")
+
+    @property
+    def notes_table(self):
+        return self._MockTable(self, "notes")
+
+    @property
+    def finance_table(self):
+        return self._MockTable(self, "finance")
+
 
 supabase_service = SupabaseService()
 # Export it as airtable_service so we don't have to rewrite imports everywhere right now!

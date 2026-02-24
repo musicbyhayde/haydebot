@@ -15,6 +15,9 @@ class LeadStatus(str, Enum):
     MANUAL = "Manual"
     CLOSED = "Closed"
     LOST = "Lost"
+    QUOTE_SENT = "Quote_Sent"
+    WAITING_PAYMENT = "Waiting_Payment"
+    TALKING = "Talking"
 
 class ConversationState(str, Enum):
     START = "START"
@@ -46,6 +49,7 @@ class LeadBase(BaseSchema):
     last_summary: Optional[str] = Field(None, alias="Last_Summary")
     closing_amount: Optional[float] = Field(None, alias="Closing_Amount")
     lost_reason: Optional[str] = Field(None, alias="Lost_Reason")
+    owner: Optional[str] = Field(None, alias="Owner")
 
 class LeadCreate(LeadBase):
     pass
@@ -64,6 +68,7 @@ class LeadUpdate(BaseSchema):
     last_summary: Optional[str] = Field(None, alias="Last_Summary")
     closing_amount: Optional[float] = Field(None, alias="Closing_Amount")
     lost_reason: Optional[str] = Field(None, alias="Lost_Reason")
+    owner: Optional[str] = Field(None, alias="Owner")
 
 class LeadResponse(LeadBase):
     id: str # Airtable Record ID
@@ -89,3 +94,33 @@ class MessageCreate(BaseSchema):
     timestamp: datetime = Field(..., alias="Timestamp")
     status: str = Field("Sent", alias="Status")
     id: Optional[str] = Field(None, alias="ID") # Was WhatsApp_ID
+
+
+class NoteCreate(BaseSchema):
+    lead_id: str = Field(..., alias="Lead_ID")
+    author: str = Field(..., alias="Author")
+    content: str = Field(..., alias="Content")
+    file_url: Optional[str] = Field(None, alias="File_URL")
+    file_name: Optional[str] = Field(None, alias="File_Name")
+
+
+class FinanceEntryCreate(BaseSchema):
+    owner: str = Field(..., alias="Owner")
+    entry_type: str = Field(..., alias="Type")  # income / expense
+    date: str = Field(..., alias="Date")
+    description: str = Field(..., alias="Description")
+    event_name: Optional[str] = Field(None, alias="Event_Name")
+    musician: Optional[str] = Field(None, alias="Musician")
+    amount: float = Field(..., alias="Amount")
+    payment_status: str = Field("לא שולם", alias="Payment_Status")
+    lead_id: Optional[str] = Field(None, alias="Lead_ID")
+
+
+class FinanceEntryUpdate(BaseSchema):
+    entry_type: Optional[str] = Field(None, alias="Type")
+    date: Optional[str] = Field(None, alias="Date")
+    description: Optional[str] = Field(None, alias="Description")
+    event_name: Optional[str] = Field(None, alias="Event_Name")
+    musician: Optional[str] = Field(None, alias="Musician")
+    amount: Optional[float] = Field(None, alias="Amount")
+    payment_status: Optional[str] = Field(None, alias="Payment_Status")

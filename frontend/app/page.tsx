@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import LeadsDashboard from "@/components/LeadsDashboard";
+import FinancePage from "@/components/FinancePage";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
+import { getCurrentUser, signOut, AppUser } from "@/lib/auth";
 import clsx from "clsx";
 
 export default function Home() {
@@ -14,8 +16,14 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians'>('dashboard');
+  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance'>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+
+  // Load current user
+  useEffect(() => {
+    getCurrentUser().then(setCurrentUser);
+  }, []);
 
   // Auto-close menu when changing view
   useEffect(() => {
@@ -89,11 +97,16 @@ export default function Home() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    window.location.href = '/login';
+  };
+
   if (loading) {
     return <div className="h-screen w-screen flex items-center justify-center font-bold text-slate-400 italic">Hayde is Warming Up... 🎸</div>;
   }
 
-  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && activeId === null);
+  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && activeId === null);
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
@@ -108,6 +121,8 @@ export default function Home() {
           onSelect={handleSelect}
           currentView={view}
           onViewChange={(v) => { setView(v); setActiveId(null); }}
+          currentUser={currentUser}
+          onSignOut={handleSignOut}
         />
       </div>
 
@@ -119,6 +134,13 @@ export default function Home() {
           <LeadsDashboard
             leads={leads}
             onSelectLead={handleSelect}
+            onMenuClick={() => setMobileMenuOpen(true)}
+            currentUser={currentUser}
+            onRefresh={fetchData}
+          />
+        ) : view === 'finance' ? (
+          <FinancePage
+            currentUser={currentUser}
             onMenuClick={() => setMobileMenuOpen(true)}
           />
         ) : (

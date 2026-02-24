@@ -11,6 +11,9 @@ export interface Lead {
         Location?: string;
         Guests?: string;
         Last_Summary?: string;
+        Owner?: string;
+        Closing_Amount?: number;
+        Lost_Reason?: string;
     };
 }
 
@@ -27,13 +30,41 @@ export interface Message {
         Status: string;
     };
 }
+
 export interface Musician {
     id: string;
     fields: {
         Name: string;
         Phone: string;
-        Is_Favorite?: boolean;
         Is_Active?: boolean;
         Score?: number;
+    };
+}
+
+export interface Note {
+    id: string;
+    fields: {
+        Lead_ID: string;
+        Author: string;
+        Content: string;
+        File_URL?: string;
+        File_Name?: string;
+        Created_At: string;
+    };
+}
+
+export interface FinanceEntry {
+    id: string;
+    fields: {
+        Owner: string;
+        Type: 'income' | 'expense';
+        Date: string;
+        Description: string;
+        Event_Name?: string;
+        Musician?: string;
+        Amount: number;
+        Payment_Status: string;
+        Lead_ID?: string;
+        Created_At?: string;
     };
 }
