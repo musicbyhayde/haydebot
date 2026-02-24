@@ -35,6 +35,10 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     const [showLeadDropdown, setShowLeadDropdown] = useState(false);
     const leadDropdownRef = useRef<HTMLDivElement>(null);
 
+    // Sorting and Grouping State
+    const [sortBy, setSortBy] = useState<'date' | 'type'>('date');
+    const [groupBy, setGroupBy] = useState<'none' | 'event'>('none');
+
     const [form, setForm] = useState({
         Type: 'income',
         Date: new Date().toISOString().split('T')[0],
@@ -201,12 +205,25 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     const incomeEntries = (owner: string) => ownerEntries(owner).filter(e => e.fields.Type === 'income');
     const expenseEntries = (owner: string) => ownerEntries(owner).filter(e => e.fields.Type === 'expense');
 
+    const sortEntries = (list: FinanceEntry[]) => {
+        return [...list].sort((a, b) => {
+            if (sortBy === 'date') {
+                return new Date(b.fields.Date || 0).getTime() - new Date(a.fields.Date || 0).getTime();
+            } else {
+                // type sorting: Income first, then Expense. Secondary sort by Date
+                if (a.fields.Type !== b.fields.Type) return a.fields.Type === 'income' ? -1 : 1;
+                return new Date(b.fields.Date || 0).getTime() - new Date(a.fields.Date || 0).getTime();
+            }
+        });
+    };
+
     const FieldError = ({ error }: { error?: string }) => {
         if (!error || !submitAttempted) return null;
         return <p className="text-red-500 text-[10px] mt-0.5 flex items-center gap-0.5"><AlertCircle size={10} /> {error}</p>;
     };
 
-    const renderRow = (e: FinanceEntry, type: 'income' | 'expense') => {
+    const renderRow = (e: FinanceEntry) => {
+        const type = e.fields.Type;
         const isEditing = editingId === e.id;
         const editable = canEdit(e);
         const linkedLead = getLinkedLeadName(e.fields.Lead_ID);
@@ -278,37 +295,19 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     };
 
     const renderTable = (owner: string) => {
-        const income = incomeEntries(owner);
-        const expenses = expenseEntries(owner);
-        const ownerSummary = summary[owner] || { income: 0, expenses: 0, balance: 0 };
+        const ownerSummary = summary[owner] || { income: 0, expenses: 0, balance: 0, cash_balance: 0, bank_balance: 0 };
+        const rawEntries = ownerEntries(owner);
+        const sortedEntries = sortEntries(rawEntries);
 
-        return (
-            <div className="flex-1 min-w-0">
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-center">
-                        <div className="text-[10px] font-bold text-green-600 uppercase">הכנסות</div>
-                        <div className="text-lg font-extrabold text-green-700">{formatCurrency(ownerSummary.income)}</div>
-                    </div>
-                    <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-center">
-                        <div className="text-[10px] font-bold text-red-600 uppercase">הוצאות</div>
-                        <div className="text-lg font-extrabold text-red-700">{formatCurrency(ownerSummary.expenses)}</div>
-                    </div>
-                    <div className={clsx("border rounded-xl p-3 text-center", ownerSummary.balance >= 0 ? "bg-blue-50 border-blue-100" : "bg-orange-50 border-orange-100")}>
-                        <div className="text-[10px] font-bold text-slate-600 uppercase">יתרה</div>
-                        <div className={clsx("text-lg font-extrabold", ownerSummary.balance >= 0 ? "text-blue-700" : "text-orange-700")}>{formatCurrency(ownerSummary.balance)}</div>
-                        <div className="flex justify-center gap-2 mt-2">
-                            <span className="text-[10px] bg-white/60 px-2 py-0.5 rounded-md text-slate-600 border border-slate-200" title="יתרה בחשבון">🏦 {formatCurrency(ownerSummary.bank_balance || 0)}</span>
-                            <span className="text-[10px] bg-white/60 px-2 py-0.5 rounded-md text-slate-600 border border-slate-200" title="יתרה במזומן">💵 {formatCurrency(ownerSummary.cash_balance || 0)}</span>
-                        </div>
-                    </div>
-                </div>
+        let tableContent;
 
-                <h4 className="text-xs font-bold text-green-700 mb-2 flex items-center gap-1"><TrendingUp size={14} /> הכנסות ({income.length})</h4>
+        if (groupBy === 'none') {
+            tableContent = (
                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="bg-green-50 text-green-800">
+                                <tr className="bg-slate-100 text-slate-700">
                                     <th className="py-2 px-3 text-right text-[11px] font-bold">תאריך</th>
                                     <th className="py-2 px-3 text-right text-[11px] font-bold">אירוע</th>
                                     <th className="py-2 px-3 text-right text-[11px] font-bold">נגן</th>
@@ -318,35 +317,116 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                                 </tr>
                             </thead>
                             <tbody>
-                                {income.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-4 text-slate-400 text-xs">אין הכנסות</td></tr>
-                                ) : income.map(e => renderRow(e, 'income'))}
+                                {sortedEntries.length === 0 ? (
+                                    <tr><td colSpan={6} className="text-center py-8 text-slate-400 text-sm">אין תנועות</td></tr>
+                                ) : sortedEntries.map(e => renderRow(e))}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            );
+        } else {
+            // Group by event
+            const groups: Record<string, FinanceEntry[]> = {};
+            sortedEntries.forEach(e => {
+                const eventName = (e.fields.Event_Name || e.fields.Description || 'ללא שיוך').trim();
+                if (!groups[eventName]) groups[eventName] = [];
+                groups[eventName].push(e);
+            });
+
+            tableContent = (
+                <div className="space-y-4 mb-4">
+                    {Object.entries(groups).map(([eventName, groupEntries]) => {
+                        const sum = groupEntries.reduce((acc, curr) => {
+                            const val = curr.fields.Amount || 0;
+                            return curr.fields.Type === 'income' ? acc + val : acc - val;
+                        }, 0);
+                        const isPositive = sum >= 0;
+
+                        return (
+                            <div key={eventName} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex justify-between items-center">
+                                    <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                        {eventName}
+                                        <span className="text-[10px] text-slate-400 font-normal">({groupEntries.length} תנועות)</span>
+                                    </h4>
+                                    <div className={clsx("text-sm font-extrabold px-3 py-1 rounded-full", isPositive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")} dir="ltr">
+                                        {formatCurrency(sum)}
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="bg-white text-slate-500 border-b border-slate-100">
+                                                <th className="py-2 px-3 text-right text-[11px] font-normal w-24">תאריך</th>
+                                                <th className="py-2 px-3 text-right text-[11px] font-normal">תיאור</th>
+                                                <th className="py-2 px-3 text-right text-[11px] font-normal w-32">נגן</th>
+                                                <th className="py-2 px-3 text-left text-[11px] font-normal w-28">סכום</th>
+                                                <th className="py-2 px-3 text-right text-[11px] font-normal w-28">סטטוס</th>
+                                                <th className="py-2 px-3 w-16"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {groupEntries.map(e => renderRow(e))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        return (
+            <div className="flex-1 min-w-0">
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-center">
+                        <div className="text-[10px] font-bold text-green-600 uppercase">הכנסות</div>
+                        <div className="text-lg font-extrabold text-green-700">{formatCurrency(ownerSummary.income)}</div>
+                    </div>
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-center">
+                        <div className="text-[10px] font-bold text-red-600 uppercase">הוצאות</div>
+                        <div className="text-lg font-extrabold text-red-700">{formatCurrency(ownerSummary.expenses)}</div>
+                    </div>
+                    <div className={clsx("border rounded-xl p-3 text-center shadow-sm", ownerSummary.balance >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200")}>
+                        <div className="text-[10px] font-bold text-slate-600 uppercase">יתרה</div>
+                        <div className={clsx("text-lg font-extrabold", ownerSummary.balance >= 0 ? "text-blue-700" : "text-orange-700")}>{formatCurrency(ownerSummary.balance)}</div>
+                        <div className="flex justify-center gap-2 mt-2">
+                            <span className="text-[10px] bg-white/80 px-2 py-0.5 rounded-md text-slate-700 border border-slate-200" title="יתרה בחשבון">🏦 {formatCurrency(ownerSummary.bank_balance || 0)}</span>
+                            <span className="text-[10px] bg-white/80 px-2 py-0.5 rounded-md text-slate-700 border border-slate-200" title="יתרה במזומן">💵 {formatCurrency(ownerSummary.cash_balance || 0)}</span>
+                        </div>
                     </div>
                 </div>
 
-                <h4 className="text-xs font-bold text-red-700 mb-2 flex items-center gap-1"><TrendingDown size={14} /> הוצאות ({expenses.length})</h4>
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-red-50 text-red-800">
-                                    <th className="py-2 px-3 text-right text-[11px] font-bold">תאריך</th>
-                                    <th className="py-2 px-3 text-right text-[11px] font-bold">פירוט</th>
-                                    <th className="py-2 px-3 text-left text-[11px] font-bold">סכום</th>
-                                    <th className="py-2 px-3 text-right text-[11px] font-bold">סטטוס</th>
-                                    <th className="py-2 px-3 w-16"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {expenses.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center py-4 text-slate-400 text-xs">אין הוצאות</td></tr>
-                                ) : expenses.map(e => renderRow(e, 'expense'))}
-                            </tbody>
-                        </table>
+                <div className="flex flex-col sm:flex-row items-center justify-between mb-4 bg-white p-2 border border-slate-200 rounded-xl gap-2 shadow-sm">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <span className="text-xs font-bold text-slate-500 mr-2">מיון לפי:</span>
+                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'date' | 'type')} className="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-blue-500 min-w-[120px]">
+                            <option value="date">📅 תאריך</option>
+                            <option value="type">📈 עסקאות (הכנסה/הוצאה)</option>
+                        </select>
+                    </div>
+                    <div className="flex items-center w-full sm:w-auto">
+                        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 w-full">
+                            <button
+                                onClick={() => setGroupBy('none')}
+                                className={clsx("flex-1 text-xs px-4 py-1.5 rounded-md transition-all font-medium", groupBy === 'none' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                            >
+                                רשימה
+                            </button>
+                            <button
+                                onClick={() => setGroupBy('event')}
+                                className={clsx("flex-1 text-xs px-4 py-1.5 rounded-md transition-all font-medium", groupBy === 'event' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                            >
+                                לפי אירוע
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                {tableContent}
             </div>
         );
     };
