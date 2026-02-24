@@ -201,13 +201,26 @@ class SupabaseService:
         for entry in entries.data:
             owner = entry.get("Owner", "Unknown")
             if owner not in summary:
-                summary[owner] = {"income": 0, "expenses": 0, "balance": 0}
+                summary[owner] = {"income": 0, "expenses": 0, "balance": 0, "cash_balance": 0, "bank_balance": 0}
             amount = float(entry.get("Amount", 0))
-            if entry.get("Type") == "income":
+            is_income = entry.get("Type") == "income"
+            
+            if is_income:
                 summary[owner]["income"] += amount
             else:
                 summary[owner]["expenses"] += amount
+                
             summary[owner]["balance"] = summary[owner]["income"] - summary[owner]["expenses"]
+            
+            # Cash vs Bank tracking
+            payment_method = entry.get("Payment_Method", "חשבון")
+            method_amount = amount if is_income else -amount
+            
+            if payment_method == "מזומן":
+                summary[owner]["cash_balance"] += method_amount
+            else:
+                summary[owner]["bank_balance"] += method_amount
+                
         return summary
 
     # ─── Compatibility (MockTable) ────────────────────────

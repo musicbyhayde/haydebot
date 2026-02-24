@@ -66,6 +66,7 @@ export interface FinanceEntry {
         Musician?: string;
         Amount: number;
         Payment_Status: string;
+        Payment_Method?: 'חשבון' | 'מזומן';
         Lead_ID?: string;
         Created_At?: string;
     };

@@ -113,6 +113,7 @@ class FinanceEntryCreate(BaseSchema):
     musician: Optional[str] = Field(None, alias="Musician")
     amount: float = Field(..., alias="Amount")
     payment_status: str = Field("לא שולם", alias="Payment_Status")
+    payment_method: str = Field("חשבון", alias="Payment_Method")
     lead_id: Optional[str] = Field(None, alias="Lead_ID")
 
 
@@ -124,3 +125,4 @@ class FinanceEntryUpdate(BaseSchema):
     musician: Optional[str] = Field(None, alias="Musician")
     amount: Optional[float] = Field(None, alias="Amount")
     payment_status: Optional[str] = Field(None, alias="Payment_Status")
+    payment_method: Optional[str] = Field(None, alias="Payment_Method")
