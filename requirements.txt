@@ -9,3 +9,4 @@ pydantic
 pydantic-settings
 supabase
 google-generativeai
+python-multipart
