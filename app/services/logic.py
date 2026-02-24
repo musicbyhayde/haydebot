@@ -539,7 +539,53 @@ class HaydeBotLogic:
                  airtable_service.update_lead(lead_id, LeadUpdate(last_summary="Musician confirmed contact"))
              except Exception as e:
                  print(f"Warning: Failed to update lead {lead_id}: {e}")
+             # Clear no_answer tracking if exists
+             if musician_phone in self.pending_musician_actions and "no_answer_count" in self.pending_musician_actions.get(musician_phone, {}):
+                 del self.pending_musician_actions[musician_phone]
              self._send_message(musician_phone, "מעולה! בהצלחה. נדבר עוד 24 שעות.", musician_id=m_id)
+
+        elif button_id.startswith("noanswer_"):
+             lead_id = button_id.split("_")[1]
+             try:
+                 lead = airtable_service.leads_table.get(lead_id)
+             except Exception:
+                 self._send_message(musician_phone, "לא מצאתי את הליד. 😔", musician_id=m_id)
+                 return
+             if not lead or lead["fields"].get("Status") != LeadStatus.ASSIGNED.value:
+                 self._send_message(musician_phone, "הליד הזה כבר לא רלוונטי. 🚫", musician_id=m_id)
+                 return
+
+             # Track no-answer count
+             if musician_phone not in self.pending_musician_actions or "no_answer_count" not in self.pending_musician_actions.get(musician_phone, {}):
+                 self.pending_musician_actions[musician_phone] = {"no_answer_count": 0, "lead_id": lead_id}
+             self.pending_musician_actions[musician_phone]["no_answer_count"] += 1
+             count = self.pending_musician_actions[musician_phone]["no_answer_count"]
+
+             if count == 1:
+                 # First no-answer: 2-hour extension
+                 airtable_service.update_lead(lead_id, LeadUpdate(last_summary="No answer - 2hr extension granted"))
+                 self._send_message(musician_phone, "הבנתי, ניתנה לך הארכה של שעתיים. ⏰\nננסה לתזכר אותך שוב.", musician_id=m_id)
+                 run_date = datetime.now() + timedelta(hours=2)
+                 scheduler.add_job(self.remind_musician_contact, 'date', run_date=run_date, args=[lead_id, musician_phone, m_id])
+
+             elif count == 2:
+                 # Second no-answer: 22-hour extension + admin notification
+                 airtable_service.update_lead(lead_id, LeadUpdate(last_summary="No answer - 22hr final extension"))
+                 self._send_message(musician_phone, "הארכה אחרונה — 22 שעות. ⏰\nאם לא תצליח לדבר עם הלקוח, הליד יועבר הלאה.", musician_id=m_id)
+                 run_date = datetime.now() + timedelta(hours=22)
+                 scheduler.add_job(self.remind_musician_contact, 'date', run_date=run_date, args=[lead_id, musician_phone, m_id])
+
+             else:
+                 # Third+ no-answer: notify admin and revoke
+                 lead_fields = lead["fields"]
+                 musician_name = musician_record["fields"].get("Name", musician_phone)
+                 lead_name = lead_fields.get("Name", lead_fields.get("Phone", "לא ידוע"))
+                 await self.notify_admins(lead_fields, custom_msg=f"⚠️ הנגן {musician_name} לא הצליח ליצור קשר עם {lead_name} אחרי מספר נסיונות. הליד הועבר בחזרה להפצה.")
+                 self._send_message(musician_phone, "לא הצלחת ליצור קשר אחרי מספר נסיונות. הליד הועבר בחזרה לכל הנגנים. 😔", musician_id=m_id)
+                 airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.DISTRIBUTED, musician_assigned=[], last_summary="No answer - revoked after extensions"))
+                 del self.pending_musician_actions[musician_phone]
+                 import asyncio
+                 asyncio.create_task(self.start_bouzouki_protocol(lead_id, lead_fields))
              
         elif button_id.startswith("revoke_"):
              lead_id = button_id.split("_")[1]
@@ -674,7 +720,8 @@ class HaydeBotLogic:
                  btn_id=None, btn_title=None, musician_id=musician_id,
                  buttons=[
                      (f"contacted_{lead_id}", "✅ התקשרתי!"),
-                     (f"revoke_{lead_id}", "❌ לא יכול לטפל בזה")
+                     (f"noanswer_{lead_id}", "📵 לא עונה"),
+                     (f"revoke_{lead_id}", "❌ ויתרתי")
                  ]
              )
              

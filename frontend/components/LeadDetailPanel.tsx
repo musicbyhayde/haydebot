@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Lead, Note } from '@/types';
 import clsx from 'clsx';
@@ -9,6 +9,7 @@ import clsx from 'clsx';
 interface LeadDetailPanelProps {
     lead: Lead;
     currentUserName: string;
+    isAdmin?: boolean;
     onClose: () => void;
     onStatusChange: (leadId: string, status: string) => void;
 }
@@ -24,7 +25,7 @@ const STATUS_OPTIONS = [
     { value: 'Lost', label: 'אבוד', color: 'bg-red-100 text-red-800' },
 ];
 
-export default function LeadDetailPanel({ lead, currentUserName, onClose, onStatusChange }: LeadDetailPanelProps) {
+export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false, onClose, onStatusChange }: LeadDetailPanelProps) {
     const [tab, setTab] = useState<'updates' | 'files' | 'info'>('updates');
     const [notes, setNotes] = useState<Note[]>([]);
     const [noteText, setNoteText] = useState('');
@@ -166,6 +167,52 @@ export default function LeadDetailPanel({ lead, currentUserName, onClose, onStat
                         </button>
                     ))}
                 </div>
+
+                {/* Admin Flow Control */}
+                {isAdmin && (
+                    <div className="px-5 py-2.5 border-b border-slate-100 bg-slate-50">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <Wrench size={12} className="text-slate-500" />
+                            <span className="text-[10px] font-bold text-slate-500">שליטה בפלואו (מנהל)</span>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                            <button
+                                onClick={() => {
+                                    if (confirm('להחזיר את הליד להפצה לכל הנגנים?')) {
+                                        api.updateLead(lead.id, { Status: 'Distributed', Musician_Assigned: [] });
+                                        onStatusChange(lead.id, 'Distributed');
+                                    }
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 text-indigo-700 text-[11px] font-bold rounded-lg hover:bg-indigo-100 transition-all"
+                            >
+                                <RefreshCw size={12} /> החזר להפצה
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (confirm('לאפס את הליד לסטטוס "חדש"? זה ינקה את שיוך הנגן.')) {
+                                        api.updateLead(lead.id, { Status: 'New', Musician_Assigned: [] });
+                                        onStatusChange(lead.id, 'New');
+                                    }
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 text-blue-700 text-[11px] font-bold rounded-lg hover:bg-blue-100 transition-all"
+                            >
+                                <RotateCcw size={12} /> החזר לחדש
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (confirm('להשתיק את הבוט ל-24 שעות עבור ליד זה?')) {
+                                        const muteUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+                                        api.updateLead(lead.id, { Bot_Mute_Until: muteUntil });
+                                        alert('הבוט הושתק ל-24 שעות עבור ליד זה.');
+                                    }
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 text-amber-700 text-[11px] font-bold rounded-lg hover:bg-amber-100 transition-all"
+                            >
+                                <BellOff size={12} /> השתק בוט 24ש׳
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Closing Amount (shown when Closed) */}
                 {lead.fields.Status === 'Closed' || lead.fields.Closing_Amount ? (

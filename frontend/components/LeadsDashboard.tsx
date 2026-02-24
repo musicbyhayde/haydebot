@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Lead } from '@/types';
-import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText } from 'lucide-react';
+import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import AddLeadModal from './AddLeadModal';
 import LeadDetailPanel from './LeadDetailPanel';
@@ -36,6 +36,8 @@ const OWNER_COLORS: Record<string, string> = {
 
 export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh }: LeadsDashboardProps) {
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showClosed, setShowClosed] = useState(false);
+    const [showLost, setShowLost] = useState(false);
     const [detailLead, setDetailLead] = useState<Lead | null>(null);
 
     const stats = {
@@ -46,6 +48,71 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     };
 
     const activeLeads = leads.filter(l => l.fields.Status !== 'Closed' && l.fields.Status !== 'Lost');
+    const closedLeads = leads.filter(l => l.fields.Status === 'Closed');
+    const lostLeads = leads.filter(l => l.fields.Status === 'Lost');
+
+    const renderArchiveTable = (items: Lead[], isOpen: boolean, toggle: () => void, title: string, emoji: string, badgeColor: string) => {
+        if (items.length === 0) return null;
+        return (
+            <div className="mt-4">
+                <button
+                    onClick={toggle}
+                    className="w-full flex items-center justify-between px-5 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                >
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-600">{emoji} {title}</span>
+                        <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-bold", badgeColor)}>{items.length}</span>
+                    </div>
+                    <ChevronDown size={18} className={clsx("text-slate-400 transition-transform", isOpen && "rotate-180")} />
+                </button>
+                {isOpen && (
+                    <div className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden opacity-80">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-right">
+                                <thead className="bg-slate-50 text-slate-400 text-[11px] uppercase tracking-wider">
+                                    <tr>
+                                        <th className="px-4 md:px-6 py-3 font-semibold">לקוח</th>
+                                        <th className="px-4 md:px-6 py-3 font-semibold hidden md:table-cell">שירות</th>
+                                        <th className="px-4 md:px-6 py-3 font-semibold hidden md:table-cell">סכום / סיבה</th>
+                                        <th className="px-4 md:px-6 py-3 font-semibold">פעולות</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {items.map(lead => (
+                                        <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-4 md:px-6 py-3">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-sm text-slate-600">{lead.fields.Name || 'ללא שם'}</span>
+                                                    <span className="text-[11px] text-slate-400">{lead.fields.Phone}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 md:px-6 py-3 text-sm text-slate-500 hidden md:table-cell">
+                                                {lead.fields.Service || '—'}
+                                            </td>
+                                            <td className="px-4 md:px-6 py-3 text-sm text-slate-500 hidden md:table-cell">
+                                                {lead.fields.Closing_Amount
+                                                    ? `₪${lead.fields.Closing_Amount.toLocaleString()}`
+                                                    : (lead.fields.Lost_Reason || '—')}
+                                            </td>
+                                            <td className="px-4 md:px-6 py-3">
+                                                <button
+                                                    onClick={() => setDetailLead(lead)}
+                                                    className="text-slate-400 hover:text-blue-600 transition-colors"
+                                                    title="פרטים"
+                                                >
+                                                    <FileText size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" dir="rtl">
@@ -179,6 +246,18 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                         </table>
                     </div>
                 </div>
+
+                {/* Closed Leads */}
+                {renderArchiveTable(
+                    closedLeads, showClosed, () => setShowClosed(!showClosed),
+                    'לידים סגורים', '✅', 'bg-green-100 text-green-700'
+                )}
+
+                {/* Lost Leads */}
+                {renderArchiveTable(
+                    lostLeads, showLost, () => setShowLost(!showLost),
+                    'לידים אבודים', '❌', 'bg-red-100 text-red-700'
+                )}
             </div>
 
             {/* Modals */}
@@ -193,6 +272,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 <LeadDetailPanel
                     lead={detailLead}
                     currentUserName={currentUser?.displayName || ''}
+                    isAdmin={currentUser?.role === 'admin' || currentUser?.role === 'partner'}
                     onClose={() => setDetailLead(null)}
                     onStatusChange={() => { setDetailLead(null); onRefresh?.(); }}
                 />

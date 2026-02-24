@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit, Check, X, DollarSign, TrendingUp, TrendingDown, Menu, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, Edit, Check, X, TrendingUp, TrendingDown, Menu, AlertCircle, Link, Search } from 'lucide-react';
 import { api } from '@/lib/api';
-import { FinanceEntry } from '@/types';
+import { FinanceEntry, Lead } from '@/types';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
 
@@ -18,11 +18,11 @@ interface FormErrors {
     Description?: string;
     Amount?: string;
     Date?: string;
-    Event_Name?: string;
 }
 
 export default function FinancePage({ currentUser, onMenuClick }: FinancePageProps) {
     const [entries, setEntries] = useState<FinanceEntry[]>([]);
+    const [leads, setLeads] = useState<Lead[]>([]);
     const [summary, setSummary] = useState<Record<string, { income: number; expenses: number; balance: number }>>({});
     const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
@@ -31,34 +31,38 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     const [editForm, setEditForm] = useState<any>({});
     const [errors, setErrors] = useState<FormErrors>({});
     const [submitAttempted, setSubmitAttempted] = useState(false);
+    const [leadSearch, setLeadSearch] = useState('');
+    const [showLeadDropdown, setShowLeadDropdown] = useState(false);
+    const leadDropdownRef = useRef<HTMLDivElement>(null);
 
     const [form, setForm] = useState({
         Type: 'income',
         Date: new Date().toISOString().split('T')[0],
         Description: '',
-        Event_Name: '',
         Musician: '',
         Amount: '',
         Payment_Status: 'לא שולם',
+        Lead_ID: '',
     });
 
     useEffect(() => {
         fetchData();
     }, []);
 
-    // Set default active tab to current user's name
     useEffect(() => {
         if (currentUser?.displayName === 'קובי') setActiveTab('קובי');
     }, [currentUser]);
 
     const fetchData = async () => {
         try {
-            const [entriesData, summaryData] = await Promise.all([
+            const [entriesData, summaryData, leadsData] = await Promise.all([
                 api.getFinanceEntries(),
-                api.getFinanceSummary()
+                api.getFinanceSummary(),
+                api.getLeads(),
             ]);
             setEntries(entriesData);
             setSummary(summaryData);
+            setLeads(leadsData);
         } catch (e) {
             console.error(e);
         } finally {
@@ -69,14 +73,12 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     // --- Validation ---
     const validateForm = (data: typeof form): FormErrors => {
         const errs: FormErrors = {};
-        if (!data.Description.trim()) errs.Description = 'חובה להזין פירוט';
+        if (!data.Description.trim()) errs.Description = 'חובה להזין פירוט / שם אירוע';
         if (!data.Amount || isNaN(parseFloat(data.Amount)) || parseFloat(data.Amount) <= 0) errs.Amount = 'חובה להזין סכום חיובי';
         if (!data.Date) errs.Date = 'חובה לבחור תאריך';
-        if (data.Type === 'income' && !data.Event_Name.trim()) errs.Event_Name = 'חובה להזין שם אירוע להכנסה';
         return errs;
     };
 
-    // --- Determine which owner the user can add entries for ---
     const canAddForOwner = (owner: string): boolean => {
         if (!currentUser) return false;
         if (currentUser.role === 'admin') return true;
@@ -85,8 +87,25 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
 
     const getAddOwner = (): string | null => {
         if (!currentUser) return null;
-        if (currentUser.role === 'admin') return null; // admin picks from both
+        if (currentUser.role === 'admin') return null;
         return currentUser.displayName;
+    };
+
+    // When a lead is selected, auto-fill description
+    const handleLeadSelect = (leadId: string) => {
+        setForm(prev => {
+            const updated = { ...prev, Lead_ID: leadId };
+            if (leadId) {
+                const lead = leads.find(l => l.id === leadId);
+                if (lead) {
+                    const name = lead.fields.Name || lead.fields.Phone;
+                    const service = lead.fields.Service ? ` - ${lead.fields.Service}` : '';
+                    const date = lead.fields.Event_Date ? ` (${lead.fields.Event_Date})` : '';
+                    updated.Description = `${name}${service}${date}`;
+                }
+            }
+            return updated;
+        });
     };
 
     // --- Add ---
@@ -102,12 +121,13 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                 Type: form.Type,
                 Date: form.Date,
                 Description: form.Description,
-                Event_Name: form.Type === 'income' ? form.Event_Name : undefined,
+                Event_Name: form.Type === 'income' ? form.Description : undefined,
                 Musician: form.Type === 'income' ? (form.Musician || undefined) : undefined,
                 Amount: parseFloat(form.Amount),
                 Payment_Status: form.Payment_Status,
+                Lead_ID: form.Lead_ID || undefined,
             });
-            setForm({ Type: 'income', Date: new Date().toISOString().split('T')[0], Description: '', Event_Name: '', Musician: '', Amount: '', Payment_Status: 'לא שולם' });
+            setForm({ Type: 'income', Date: new Date().toISOString().split('T')[0], Description: '', Musician: '', Amount: '', Payment_Status: 'לא שולם', Lead_ID: '' });
             setShowAddForm(false);
             setSubmitAttempted(false);
             setErrors({});
@@ -121,8 +141,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     const startEdit = (entry: FinanceEntry) => {
         setEditingId(entry.id);
         setEditForm({
-            Description: entry.fields.Description,
-            Event_Name: entry.fields.Event_Name || '',
+            Description: entry.fields.Event_Name || entry.fields.Description,
             Musician: entry.fields.Musician || '',
             Amount: String(entry.fields.Amount),
             Payment_Status: entry.fields.Payment_Status,
@@ -134,7 +153,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         try {
             await api.updateFinanceEntry(id, {
                 Description: editForm.Description,
-                Event_Name: editForm.Event_Name || undefined,
+                Event_Name: editForm.Description,
                 Musician: editForm.Musician || undefined,
                 Amount: parseFloat(editForm.Amount),
                 Payment_Status: editForm.Payment_Status,
@@ -147,7 +166,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         }
     };
 
-    // --- Delete ---
     const handleDelete = async (id: string) => {
         if (!confirm('האם למחוק את הרשומה?')) return;
         try {
@@ -158,7 +176,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         }
     };
 
-    // --- Permissions ---
     const canEdit = (entry: FinanceEntry) => {
         if (!currentUser) return false;
         if (currentUser.role === 'admin') return true;
@@ -169,26 +186,32 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n);
     };
 
+    // Find linked lead name
+    const getLinkedLeadName = (leadId?: string) => {
+        if (!leadId) return null;
+        const lead = leads.find(l => l.id === leadId);
+        return lead ? (lead.fields.Name || lead.fields.Phone) : null;
+    };
+
     const ownerEntries = (owner: string) => entries.filter(e => e.fields.Owner === owner);
     const incomeEntries = (owner: string) => ownerEntries(owner).filter(e => e.fields.Type === 'income');
     const expenseEntries = (owner: string) => ownerEntries(owner).filter(e => e.fields.Type === 'expense');
 
-    // --- Field Error Component ---
     const FieldError = ({ error }: { error?: string }) => {
         if (!error || !submitAttempted) return null;
         return <p className="text-red-500 text-[10px] mt-0.5 flex items-center gap-0.5"><AlertCircle size={10} /> {error}</p>;
     };
 
-    // --- Render Entry Row ---
     const renderRow = (e: FinanceEntry, type: 'income' | 'expense') => {
         const isEditing = editingId === e.id;
         const editable = canEdit(e);
+        const linkedLead = getLinkedLeadName(e.fields.Lead_ID);
 
         if (isEditing) {
             return (
                 <tr key={e.id} className="bg-amber-50">
                     <td className="py-2 px-3"><input type="date" value={editForm.Date} onChange={(ev) => setEditForm({ ...editForm, Date: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-full bg-white" dir="ltr" /></td>
-                    <td className="py-2 px-3"><input type="text" value={type === 'income' ? editForm.Event_Name : editForm.Description} onChange={(ev) => setEditForm({ ...editForm, [type === 'income' ? 'Event_Name' : 'Description']: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-full bg-white" /></td>
+                    <td className="py-2 px-3"><input type="text" value={editForm.Description} onChange={(ev) => setEditForm({ ...editForm, Description: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-full bg-white" /></td>
                     {type === 'income' && <td className="py-2 px-3"><input type="text" value={editForm.Musician} onChange={(ev) => setEditForm({ ...editForm, Musician: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-full bg-white" /></td>}
                     <td className="py-2 px-3"><input type="number" value={editForm.Amount} onChange={(ev) => setEditForm({ ...editForm, Amount: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-20 bg-white" dir="ltr" /></td>
                     <td className="py-2 px-3">
@@ -209,7 +232,16 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         return (
             <tr key={e.id} className="border-t border-slate-50 hover:bg-slate-50 transition-colors">
                 <td className="py-2 px-3 text-xs text-slate-600">{e.fields.Date}</td>
-                <td className="py-2 px-3 text-xs font-medium text-slate-800">{type === 'income' ? (e.fields.Event_Name || e.fields.Description) : e.fields.Description}</td>
+                <td className="py-2 px-3">
+                    <div className="flex flex-col">
+                        <span className="text-xs font-medium text-slate-800">{e.fields.Event_Name || e.fields.Description}</span>
+                        {linkedLead && (
+                            <span className="text-[10px] text-blue-500 flex items-center gap-0.5 mt-0.5">
+                                <Link size={9} /> {linkedLead}
+                            </span>
+                        )}
+                    </div>
+                </td>
                 {type === 'income' && <td className="py-2 px-3 text-xs text-slate-600">{e.fields.Musician || '—'}</td>}
                 <td className="py-2 px-3 text-xs font-bold text-left" dir="ltr">
                     <span className={type === 'income' ? 'text-green-700' : 'text-red-700'}>{formatCurrency(e.fields.Amount)}</span>
@@ -232,7 +264,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         );
     };
 
-    // --- Render Table ---
     const renderTable = (owner: string) => {
         const income = incomeEntries(owner);
         const expenses = expenseEntries(owner);
@@ -240,7 +271,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
 
         return (
             <div className="flex-1 min-w-0">
-                {/* Summary Cards */}
                 <div className="grid grid-cols-3 gap-3 mb-4">
                     <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-center">
                         <div className="text-[10px] font-bold text-green-600 uppercase">הכנסות</div>
@@ -256,7 +286,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     </div>
                 </div>
 
-                {/* Income Table */}
                 <h4 className="text-xs font-bold text-green-700 mb-2 flex items-center gap-1"><TrendingUp size={14} /> הכנסות ({income.length})</h4>
                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4">
                     <div className="overflow-x-auto">
@@ -280,7 +309,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     </div>
                 </div>
 
-                {/* Expense Table */}
                 <h4 className="text-xs font-bold text-red-700 mb-2 flex items-center gap-1"><TrendingDown size={14} /> הוצאות ({expenses.length})</h4>
                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                     <div className="overflow-x-auto">
@@ -311,11 +339,30 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     }
 
     const isIncome = form.Type === 'income';
-    const addOwner = getAddOwner(); // null for admin (picks), string for partner
+    const addOwner = getAddOwner();
+
+    // Filter leads for the dropdown — show leads with events
+    const linkableLeads = leads.filter(l => l.fields.Status !== 'Lost' && (l.fields.Name || l.fields.Service));
+    const filteredLeads = linkableLeads.filter(l => {
+        if (!leadSearch) return true;
+        const q = leadSearch.toLowerCase();
+        return (
+            (l.fields.Name || '').toLowerCase().includes(q) ||
+            (l.fields.Phone || '').includes(q) ||
+            (l.fields.Service || '').toLowerCase().includes(q)
+        );
+    });
+
+    const selectedLeadLabel = form.Lead_ID
+        ? (() => {
+            const l = leads.find(x => x.id === form.Lead_ID);
+            return l ? `${l.fields.Name || l.fields.Phone}${l.fields.Service ? ` (${l.fields.Service})` : ''}` : '';
+        })()
+        : '';
 
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50" dir="rtl">
-            {/* Page Header */}
+            {/* Header */}
             <div className="px-4 md:px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     {onMenuClick && (
@@ -328,7 +375,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                         <p className="text-xs text-slate-500">קופה רושמת — הייד מיוזיק</p>
                     </div>
                 </div>
-                {/* Only show Add button if user can add for at least one owner */}
                 {(canAddForOwner('אילן') || canAddForOwner('קובי')) && (
                     <button
                         onClick={() => { setShowAddForm(!showAddForm); setSubmitAttempted(false); setErrors({}); }}
@@ -346,7 +392,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                         <div>
                             <label className="block text-[10px] font-bold text-slate-500 mb-1">סוג תנועה *</label>
-                            <select value={form.Type} onChange={(e) => setForm({ ...form, Type: e.target.value, Event_Name: '', Musician: '' })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all">
+                            <select value={form.Type} onChange={(e) => setForm({ ...form, Type: e.target.value, Musician: '' })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all">
                                 <option value="income">💰 הכנסה</option>
                                 <option value="expense">💸 הוצאה</option>
                             </select>
@@ -363,32 +409,85 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                         </div>
                     </div>
 
-                    {/* Row 2: Dynamic fields based on type */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
-                        {isIncome ? (
-                            <>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">שם אירוע *</label>
-                                    <input type="text" value={form.Event_Name} onChange={(e) => setForm({ ...form, Event_Name: e.target.value })} placeholder="למשל: חתונה כהן" className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white transition-all", errors.Event_Name && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200')} />
-                                    <FieldError error={errors.Event_Name} />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">נגן</label>
-                                    <input type="text" value={form.Musician} onChange={(e) => setForm({ ...form, Musician: e.target.value })} placeholder="אופציונלי" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white" />
-                                </div>
-                            </>
-                        ) : (
-                            <div className="col-span-2">
-                                <label className="block text-[10px] font-bold text-slate-500 mb-1">פירוט ההוצאה *</label>
-                                <input type="text" value={form.Description} onChange={(e) => setForm({ ...form, Description: e.target.value })} placeholder="למשל: קנייה של ציוד, שכירת רמקול" className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white transition-all", errors.Description && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200')} />
-                                <FieldError error={errors.Description} />
+                    {/* Row 2: Description + Lead link + Musician (income only) */}
+                    <div className={clsx("grid gap-3 mb-3", isIncome ? "grid-cols-2 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2")}>
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1">{isIncome ? 'שם אירוע / פירוט' : 'פירוט ההוצאה'} *</label>
+                            <input
+                                type="text"
+                                value={form.Description}
+                                onChange={(e) => setForm({ ...form, Description: e.target.value })}
+                                placeholder={isIncome ? 'למשל: חתונה כהן 15.3' : 'למשל: קנייה של ציוד'}
+                                className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white transition-all", errors.Description && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200')}
+                            />
+                            <FieldError error={errors.Description} />
+                        </div>
+                        <div className="relative" ref={leadDropdownRef}>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                                <Link size={9} className="inline ml-0.5" /> קישור לליד
+                            </label>
+                            <div
+                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white cursor-pointer flex items-center justify-between hover:border-slate-300 transition-colors"
+                                onClick={() => setShowLeadDropdown(!showLeadDropdown)}
+                            >
+                                <span className={form.Lead_ID ? 'text-slate-800' : 'text-slate-400'}>
+                                    {selectedLeadLabel || '— ללא קישור —'}
+                                </span>
+                                {form.Lead_ID && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleLeadSelect(''); setLeadSearch(''); }}
+                                        className="text-slate-300 hover:text-red-500 mr-1"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
                             </div>
-                        )}
+                            {showLeadDropdown && (
+                                <div className="absolute top-full right-0 left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-56 flex flex-col overflow-hidden">
+                                    <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100">
+                                        <Search size={14} className="text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={leadSearch}
+                                            onChange={(e) => setLeadSearch(e.target.value)}
+                                            placeholder="חפש לפי שם, טלפון או שירות..."
+                                            className="w-full text-sm focus:outline-none bg-transparent placeholder:text-slate-400"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="overflow-y-auto flex-1">
+                                        <button
+                                            onClick={() => { handleLeadSelect(''); setShowLeadDropdown(false); setLeadSearch(''); }}
+                                            className="w-full text-right px-3 py-2 text-sm text-slate-400 hover:bg-slate-50 transition-colors"
+                                        >
+                                            — ללא קישור —
+                                        </button>
+                                        {filteredLeads.map(l => (
+                                            <button
+                                                key={l.id}
+                                                onClick={() => { handleLeadSelect(l.id); setShowLeadDropdown(false); setLeadSearch(''); }}
+                                                className={clsx(
+                                                    "w-full text-right px-3 py-2 text-sm hover:bg-blue-50 transition-colors flex flex-col",
+                                                    form.Lead_ID === l.id && 'bg-blue-50'
+                                                )}
+                                            >
+                                                <span className="font-medium text-slate-800">{l.fields.Name || l.fields.Phone}</span>
+                                                <span className="text-[10px] text-slate-500">
+                                                    {l.fields.Service || ''}{l.fields.Event_Date ? ` · ${l.fields.Event_Date}` : ''}{l.fields.Status ? ` · ${l.fields.Status}` : ''}
+                                                </span>
+                                            </button>
+                                        ))}
+                                        {filteredLeads.length === 0 && (
+                                            <p className="text-center py-3 text-xs text-slate-400">לא נמצאו לידים</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         {isIncome && (
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-500 mb-1">{isIncome ? 'פירוט' : 'פירוט'} *</label>
-                                <input type="text" value={form.Description} onChange={(e) => setForm({ ...form, Description: e.target.value })} placeholder={isIncome ? 'פירוט ההכנסה' : 'פירוט ההוצאה'} className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white transition-all", errors.Description && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200')} />
-                                <FieldError error={errors.Description} />
+                                <label className="block text-[10px] font-bold text-slate-500 mb-1">נגן</label>
+                                <input type="text" value={form.Musician} onChange={(e) => setForm({ ...form, Musician: e.target.value })} placeholder="אופציונלי" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white" />
                             </div>
                         )}
                     </div>
@@ -402,14 +501,11 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                             </select>
                         </div>
                         <div className="flex items-end gap-2">
-                            {/* Show one or two buttons based on role */}
                             {addOwner ? (
-                                // Partner: single button for their own name
                                 <button onClick={() => handleAdd(addOwner)} className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md">
                                     הוסף ל-{addOwner}
                                 </button>
                             ) : (
-                                // Admin: two buttons
                                 <>
                                     <button onClick={() => handleAdd('אילן')} className="flex-1 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md">+ אילן</button>
                                     <button onClick={() => handleAdd('קובי')} className="flex-1 py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition-all shadow-md">+ קובי</button>
@@ -418,7 +514,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                         </div>
                     </div>
 
-                    {/* Validation summary */}
                     {submitAttempted && Object.keys(errors).length > 0 && (
                         <div className="mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
                             <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
@@ -430,7 +525,6 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6">
-                {/* Mobile: Tabs */}
                 <div className="md:hidden flex mb-4 bg-white rounded-xl border border-slate-200 p-1">
                     {(['אילן', 'קובי'] as const).map(name => (
                         <button
@@ -444,12 +538,10 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     ))}
                 </div>
 
-                {/* Mobile: Single table */}
                 <div className="md:hidden">
                     {renderTable(activeTab)}
                 </div>
 
-                {/* Desktop: Side by side */}
                 <div className="hidden md:flex gap-6">
                     <div className="flex-1">
                         <h3 className="text-lg font-extrabold text-blue-700 mb-3">📊 אילן</h3>

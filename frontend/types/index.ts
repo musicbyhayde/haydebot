@@ -14,6 +14,8 @@ export interface Lead {
         Owner?: string;
         Closing_Amount?: number;
         Lost_Reason?: string;
+        Musician_Assigned?: string[];
+        Bot_Mute_Until?: string;
     };
 }
 
