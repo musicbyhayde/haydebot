@@ -29,7 +29,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://haydebot.vercel.app/","http://localhost:3000"], # For dev. In prod, specify domain.
+    allow_origins=["https://haydebot.vercel.app", "http://localhost:3000"], # For dev. In prod, specify domain.
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
