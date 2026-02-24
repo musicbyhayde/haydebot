@@ -797,7 +797,8 @@ class HaydeBotLogic:
 
         # Email Notification
         email_subject = "🔔 עדכון HaydeBot" if custom_msg else f"🔔 ליד חדש הגיע: {lead_fields.get('Name', 'לא צוין')} ({lead_fields.get('Service')})"
-        email_body = f"<h2>עדכון ממערכת HaydeBot</h2><p>{msg.replace('\\n', '<br>')}</p>" if custom_msg else f"""
+        msg_html = msg.replace('\n', '<br>')
+        email_body = f"<h2>עדכון ממערכת HaydeBot</h2><p>{msg_html}</p>" if custom_msg else f"""
         <h2>ליד חדש במערכת HaydeBot</h2>
         <p><strong>שם:</strong> {lead_fields.get('Name', 'לא צוין')}</p>
         <p><strong>טלפון:</strong> {lead_fields.get('Phone')}</p>

@@ -9,7 +9,7 @@
 | שירות | כתובת | מה צריך |
 |--------|--------|---------|
 | **Supabase** | supabase.com | פרויקט + URL + Service Key |
-| **Render** | render.com | חשבון חינמי/Pro |
+| **DigitalOcean** | digitalocean.com | אימות אמצעי תשלום (App Platform $5/mo) |
 | **Vercel** | vercel.com | חשבון חינמי/Pro |
 | **Meta Developers** | developers.facebook.com | אפליקציית WhatsApp Business |
 | **GitHub** | github.com | ריפו של HaydeBot |
@@ -110,25 +110,25 @@ CREATE TABLE finance (
 
 ---
 
-## 2️⃣ דיפלוי Backend (Render)
+## 2️⃣ דיפלוי Backend (DigitalOcean App Platform)
 
 ### חיבור הריפו
 
-1. היכנסו ל-[render.com](https://render.com) → **New → Web Service**
-2. חברו את ה-GitHub repo
-3. הגדרות:
+1. היכנסו ל-[digitalocean.com](https://cloud.digitalocean.com/apps) -> **Apps** -> **Create App**.
+2. בחרו פריסה מ-**GitHub** וחברו את הריפו של HaydeBot.
+3. במסך ההגדרות, בחרו את התיקייה הראשית (Root).
+4. הגדרות (Settings):
 
 | שדה | ערך |
 |------|------|
-| **Name** | `haydebot-api` |
-| **Root Directory** | `.` (שורש) |
-| **Runtime** | Python 3 |
-| **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| **Resource Type** | Web Service |
+| **Size / Plan** | Basic - $5.00/mo (512MB RAM) |
+| **Run Command** | `uvicorn app.main:app --host 0.0.0.0 --port 8080` |
+| **HTTP Port** | 8080 (שנו את הפורט בפקודת הריצה ל-8080) |
 
 ### משתני סביבה (Environment Variables)
 
-הגדירו ב-Render Dashboard → Environment:
+הגדירו ב-DigitalOcean (במסך Environment Variables בעת יצירת ה-App):
 
 ```
 WHATSAPP_TOKEN=<your-token>
@@ -137,7 +137,14 @@ WHATSAPP_VERIFY_TOKEN=<random-string-you-choose>
 SUPABASE_URL=<your-supabase-url>
 SUPABASE_KEY=<your-service-role-key>
 GOOGLE_API_KEY=<your-gemini-api-key>
-NOTIFICATION_NUMBERS=972541234567,972509876543
+
+# Admin config
+NOTIFICATION_NUMBERS=972544500529
+
+# Error tracking via Email
+SMTP_USER=musicbyhayde@gmail.com
+SMTP_PASSWORD=<your-gmail-app-password>
+NOTIFICATION_EMAIL=musicbyhayde+haydeBot@gmail.com
 ```
 
 > [!IMPORTANT]
@@ -145,9 +152,10 @@ NOTIFICATION_NUMBERS=972541234567,972509876543
 
 ### בדיקת דיפלוי
 
-לאחר שה-build עובר, בדקו:
+לאחר שה-build עובר, תקבלו דומיין מ-DigitalOcean (למשל `haydebot-api-abcde.ondigitalocean.app`).
+כנסו אליו ובדקו:
 ```
-https://haydebot-api.onrender.com/
+https://haydebot-api-<random-id>.ondigitalocean.app/
 → {"message": "HaydeBot is running", "status": "ok"}
 ```
 
@@ -173,7 +181,7 @@ https://haydebot-api.onrender.com/
 הגדירו ב-Vercel Dashboard → Settings → Environment Variables:
 
 ```
-NEXT_PUBLIC_API_URL=https://haydebot-api.onrender.com/api/v1
+NEXT_PUBLIC_API_URL=https://haydebot-api-<random-id>.ondigitalocean.app/api/v1
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
 ```
@@ -197,9 +205,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
 2. בחרו את האפליקציה → **WhatsApp → Configuration**
 3. ב-**Webhook URL** הזינו:
    ```
-   https://haydebot-api.onrender.com/api/v1/webhook
+   https://haydebot-api-<random-id>.ondigitalocean.app/api/v1/webhook
    ```
-4. ב-**Verify Token** הזינו את אותו `WHATSAPP_VERIFY_TOKEN` שהגדרתם ב-Render
+4. ב-**Verify Token** הזינו את אותו `WHATSAPP_VERIFY_TOKEN` שהגדרתם ב-DigitalOcean
 5. לחצו **Verify and Save**
 6. ב-**Webhook Fields**, סמנו ✅ על `messages`
 
@@ -250,7 +258,7 @@ ngrok http 8000
 ## ✅ צ'קליסט Go-Live
 
 - [ ] Supabase טבלאות נוצרו ובאקט `media` קיים
-- [ ] Backend רץ ב-Render ומחזיר `{"status": "ok"}`
+- [ ] Backend רץ ב-DigitalOcean App Platform ומחזיר `{"status": "ok"}`
 - [ ] Frontend רץ ב-Vercel ומציג את הדאשבורד
 - [ ] משתני סביבה מוגדרים נכון (backend + frontend)
 - [ ] CORS מעודכן לדומיין אמיתי (לא `*`)
@@ -265,7 +273,7 @@ ngrok http 8000
 ## 🔄 עדכונים עתידיים
 
 לאחר push לריפו:
-- **Render** — יעשה build מחדש אוטומטית (auto-deploy)
+- **DigitalOcean** — יזהה את ה-commit ויבנה מחדש אוטומטית (auto-deploy)
 - **Vercel** — יעשה build מחדש אוטומטית (auto-deploy)
 
 לבדיקה לפני push:
