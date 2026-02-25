@@ -36,8 +36,8 @@ export default function Home() {
 
     const supabase = createSupabaseClient();
     const leadsSubscription = supabase
-      .channel('public:Leads')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'Leads' }, () => {
+      .channel('public:leads')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
         fetchData(); // Refetch leads when any change occurs
       })
       .subscribe();
@@ -53,11 +53,11 @@ export default function Home() {
 
       const supabase = createSupabaseClient();
       const messagesSubscription = supabase
-        .channel(`public:Messages:lead_id=eq.${activeId}`)
+        .channel(`public:messages:lead_id=eq.${activeId}`)
         .on('postgres_changes', {
           event: 'INSERT',
           schema: 'public',
-          table: 'Messages',
+          table: 'messages',
           // Note: filter might fail if Supabase requires setup, but we'll fetchMessages on insert anyway 
           // and fetchMessages limits by activeId 
         }, () => {
