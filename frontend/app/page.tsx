@@ -7,7 +7,7 @@ import LeadsDashboard from "@/components/LeadsDashboard";
 import FinancePage from "@/components/FinancePage";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
-import { getCurrentUser, signOut, AppUser } from "@/lib/auth";
+import { getCurrentUser, signOut, AppUser, createSupabaseClient } from "@/lib/auth";
 import clsx from "clsx";
 
 export default function Home() {
@@ -30,18 +30,44 @@ export default function Home() {
     setMobileMenuOpen(false);
   }, [view]);
 
-  // Poll for leads, musicians and messages
+  // Load initial data and subscribe to Leads realtime changes
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 15000);
-    return () => clearInterval(interval);
+
+    const supabase = createSupabaseClient();
+    const leadsSubscription = supabase
+      .channel('public:Leads')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Leads' }, () => {
+        fetchData(); // Refetch leads when any change occurs
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(leadsSubscription);
+    };
   }, []);
 
   useEffect(() => {
     if (activeId) {
       fetchMessages(activeId);
-      const interval = setInterval(() => fetchMessages(activeId), 5000);
-      return () => clearInterval(interval);
+
+      const supabase = createSupabaseClient();
+      const messagesSubscription = supabase
+        .channel(`public:Messages:lead_id=eq.${activeId}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'Messages',
+          // Note: filter might fail if Supabase requires setup, but we'll fetchMessages on insert anyway 
+          // and fetchMessages limits by activeId 
+        }, () => {
+          fetchMessages(activeId);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(messagesSubscription);
+      };
     } else {
       setMessages([]);
     }
