@@ -148,11 +148,8 @@ class HaydeBotLogic:
                         lead_failed = airtable_service.leads_table.get(p_lead_id)
                         if lead_failed:
                             lf_fields = lead_failed["fields"]
-                            alert_msg = f"🚨 ליד מת (בוזוקי) ברח לנו!\n\nהלקוח: {lf_fields.get('Name')} / {lf_fields.get('Phone')}\nנגן דיווח סיבת הפסד:\n\"{text}\"\n\nהיכנס עכשיו לפנל לראות אם אפשר להציל אותו עם הצעת מחיר חלופית."
-                            if settings.NOTIFICATION_NUMBERS:
-                                for admin_phone in settings.NOTIFICATION_NUMBERS.split(","):
-                                    if admin_phone.strip():
-                                        whatsapp_service.send_message(admin_phone.strip(), alert_msg)
+                            alert_msg = f"הלקוח: {lf_fields.get('Name')} / {lf_fields.get('Phone')}\nנגן דיווח סיבת הפסד:\n\"{text}\"\n\nהיכנס לפנל לראות אם אפשר להציל אותו."
+                            self._send_admin_alert("🚨 ליד בוזוקי חמק לנו!", alert_msg)
                         return # Stop processing
             return
 
@@ -202,12 +199,8 @@ class HaydeBotLogic:
                     print(f"Bot is muted for lead {lead_id}, ignoring automated response.")
                     
                     # Notify Admin that the human-taken-over lead replied
-                    if settings.NOTIFICATION_NUMBERS:
-                        for idx, admin_phone in enumerate(settings.NOTIFICATION_NUMBERS.split(",")):
-                            if admin_phone.strip() and phone != admin_phone.strip():
-                                preview = f"[מדיה]" if media_url else f'"{text}"'
-                                alert_msg = f"🔔 הודעה חדשה מ-{name or phone} (בצאט ידני):\n\n{preview}\n\nהיכנס עכשיו לפנל הניהול כדי להשיב."
-                                whatsapp_service.send_message(admin_phone.strip(), alert_msg)
+                    preview = f"[מדיה]" if media_url else f'"{text}"'
+                    self._send_admin_alert(f"הודעה חדשה מ-{name or phone}", preview)
                     return
             except Exception as e:
                 print(f"Error parsing bot_mute_until: {e}")
@@ -768,6 +761,21 @@ class HaydeBotLogic:
         ))
         await self.send_welcome_menu(phone)
 
+    def _send_admin_alert(self, subject: str, message: str):
+        admin_numbers = settings.NOTIFICATION_NUMBERS
+        if not admin_numbers: return
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": subject[:1024]},
+                {"type": "text", "text": message[:1024]}
+            ]
+        }]
+        for num in admin_numbers.split(","):
+            num = num.strip()
+            if num:
+                whatsapp_service.send_template(num, "admin_system_alert", components=components)
+
     async def notify_admins(self, lead_fields: dict, custom_msg: str = None):
         """Send notification to admins about a new non-bouzouki lead."""
         print(f"DEBUG: notify_admins called for {lead_fields.get('Phone')}")
@@ -779,25 +787,29 @@ class HaydeBotLogic:
                 return "טרם נקבע"
             return val
 
-        msg = custom_msg if custom_msg else (
-            f"🔔 *ליד חדש הגיע (לא בוזוקי)*\n\n"
-            f"👤 שם: {lead_fields.get('Name', 'לא צוין')}\n"
-            f"📞 טלפון: {lead_fields.get('Phone')}\n"
-            f"🎸 שירות: {lead_fields.get('Service')}\n"
-            f"📅 תאריך: {_get_display_val('Event_Date')}\n"
-            f"📍 מיקום: {_get_display_val('Location')}\n"
-            f"👥 אורחים: {_get_display_val('Guests')}"
-        )
-
-        if admin_numbers:
-            for num in admin_numbers.split(","):
-                num = num.strip()
-                if num:
-                    whatsapp_service.send_message(num, msg)
+        if custom_msg:
+             self._send_admin_alert("הודעת מערכת מ-HaydeBot", custom_msg)
+        elif admin_numbers:
+             components = [{
+                 "type": "body",
+                 "parameters": [
+                     {"type": "text", "text": lead_fields.get('Name', 'לא צוין')},
+                     {"type": "text", "text": lead_fields.get('Phone', 'לא צוין')},
+                     {"type": "text", "text": lead_fields.get('Service', 'לא צוין')},
+                     {"type": "text", "text": _get_display_val('Event_Date')},
+                     {"type": "text", "text": _get_display_val('Location')},
+                     {"type": "text", "text": _get_display_val('Guests')}
+                 ]
+             }]
+             for num in admin_numbers.split(","):
+                 num = num.strip()
+                 if num:
+                     whatsapp_service.send_template(num, "admin_new_lead", components=components)
 
         # Email Notification
         email_subject = "🔔 עדכון HaydeBot" if custom_msg else f"🔔 ליד חדש הגיע: {lead_fields.get('Name', 'לא צוין')} ({lead_fields.get('Service')})"
-        msg_html = msg.replace('\n', '<br>')
+        msg_raw = custom_msg if custom_msg else f"ליד חדש: {lead_fields.get('Name')} / {lead_fields.get('Phone')}"
+        msg_html = msg_raw.replace('\n', '<br>')
         email_body = f"<h2>עדכון ממערכת HaydeBot</h2><p>{msg_html}</p>" if custom_msg else f"""
         <h2>ליד חדש במערכת HaydeBot</h2>
         <p><strong>שם:</strong> {lead_fields.get('Name', 'לא צוין')}</p>
@@ -861,27 +873,34 @@ class HaydeBotLogic:
                                           musician_stats[m_id]["commission_sum"] += commission
         
         # Send Admin Summary
-        admin_msg = (
-            f"📊 *סיכום שבועי כללי ל-Hayde*\n\n"
-            f"✨ לידים שטופלו השבוע: {new_leads}\n"
-            f"✅ אירועים שנסגרו: {total_closed_leads}\n"
-            f"❌ אירועים שאבדו: {total_lost_leads}\n\n"
-            f"שיהיה שבוע אש! 🎸"
-        )
-        await self.notify_admins({}, custom_msg=admin_msg)
+        admin_num_str = settings.NOTIFICATION_NUMBERS
+        if admin_num_str:
+             components = [{
+                 "type": "body",
+                 "parameters": [
+                     {"type": "text", "text": str(new_leads)},
+                     {"type": "text", "text": str(total_closed_leads)},
+                     {"type": "text", "text": str(total_lost_leads)}
+                 ]
+             }]
+             for admin_phone in admin_num_str.split(","):
+                 num = admin_phone.strip()
+                 if num:
+                     whatsapp_service.send_template(num, "admin_weekly_summary", components=components)
         
         # Send Musician Individual Reports
         for m_id, stats in musician_stats.items():
             if stats["phone"] and stats["received"] > 0: # Only send if they were active
-                musician_msg = (
-                    f"בוקר טוב מ-Hayde🎸!\nהנה סיכום הפעילות שלך לשבוע האחרון:\n\n"
-                    f"📥 קיבלת מיונים ל: {stats['received']} אירועים\n"
-                    f"🏆 סגרת בהצלחה: {stats['closed']} אירועים\n"
-                    f"💰 סך עסקאות שנסגרו: ₪{stats['closing_amount_sum']:,.0f}\n"
-                    f"💸 עמלת Hayde (משוערת): ₪{stats['commission_sum']:,.0f}\n\n"
-                    f"שבוע מטורף ומלא במוזיקה פצצה! 🔥"
-                )
-                self._send_message(stats["phone"], musician_msg, musician_id=m_id)
+                components = [{
+                     "type": "body",
+                     "parameters": [
+                         {"type": "text", "text": str(stats['received'])},
+                         {"type": "text", "text": str(stats['closed'])},
+                         {"type": "text", "text": f"{stats['closing_amount_sum']:,.0f}"},
+                         {"type": "text", "text": f"{stats['commission_sum']:,.0f}"}
+                     ]
+                 }]
+                whatsapp_service.send_template(stats["phone"], "musician_weekly_summary", components=components)
 
     async def check_if_claimed(self, lead_id: str):
         lead = airtable_service.leads_table.get(lead_id)
@@ -889,8 +908,8 @@ class HaydeBotLogic:
         if not lead["fields"].get("Musician_Assigned"):
              # NO ONE CLAIMED - ALERT ADMIN
              print(f"ALERT: No musician claimed lead {lead_id} after 30 mins.")
-             admin_msg = f"⚠️ *אף נגן לא תפס את האירוע!*\n\nפרטי האירוע:\nשם: {lead['fields'].get('Name')}\nטלפון: {lead['fields'].get('Phone')}\nשירות: בוזוקי\n\nכדאי ליצור קשר ידני עם נגנים."
-             await self.notify_admins(lead["fields"], custom_msg=admin_msg)
+             msg = f"פרטי האירוע:\nשם: {lead['fields'].get('Name')}\nטלפון: {lead['fields'].get('Phone')}\nשירות: בוזוקי\n\nצור קשר ידני."
+             self._send_admin_alert("⚠️ אף נגן לא תפס אירוע", msg)
 
     # Helpers
     def _normalize_phone(self, phone: str) -> str:
