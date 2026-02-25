@@ -375,11 +375,9 @@ class HaydeBotLogic:
         ))
 
         # Ask Date
-        self._send_interactive(
+        self._send_message(
             phone,
-            "מעולה! 🤘\nמתי האירוע מתוכנן?",
-            "DATE_UNKNOWN",
-            "🤔 עדיין אין תאריך",
+            "מעולה! 🤘\nמתי האירוע מתוכנן?\n(אם עדיין אין תאריך סגור, אפשר פשוט לרשום 'עדיין לא סגור')",
             lead_id
         )
 
@@ -409,11 +407,9 @@ class HaydeBotLogic:
 
         # Ask Location
         print(f"DEBUG: Sending location question to {phone}")
-        self._send_interactive(
+        self._send_message(
             phone,
-            "ואיפה חוגגים? (עיר/אולם)",
-            "LOC_UNKNOWN",
-            "🤔 עדיין אין מיקום",
+            "ואיפה חוגגים? (עיר/אולם)\n(אם לא ידוע, הכל טוב - פשוט תרשמו 'לא ידוע')",
             lead_id
         )
         print(f"DEBUG: handle_date_input finished.")
@@ -434,11 +430,9 @@ class HaydeBotLogic:
         ))
 
         # Ask Guests
-        self._send_interactive(
+        self._send_message(
             phone,
-            "ואחרון חביב - לכמה אורחים האירוע?",
-            "GUESTS_UNKNOWN",
-            "🤔 עדיין לא בטוח",
+            "ואחרון חביב - לכמה אורחים האירוע פחות או יותר?\n(אין כמות ברורה? הכל טוב, נזרום)",
             lead_id
         )
 
