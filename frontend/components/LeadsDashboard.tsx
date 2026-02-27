@@ -38,6 +38,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [showAddModal, setShowAddModal] = useState(false);
     const [showClosed, setShowClosed] = useState(false);
     const [showLost, setShowLost] = useState(false);
+    const [showWaitingPayment, setShowWaitingPayment] = useState(false);
     const [detailLead, setDetailLead] = useState<Lead | null>(null);
 
     const stats = {
@@ -47,9 +48,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         assigned: leads.filter(l => ['Assigned', 'Closed', 'Waiting_Payment'].includes(l.fields.Status)).length,
     };
 
-    const activeLeads = leads.filter(l => l.fields.Status !== 'Closed' && l.fields.Status !== 'Lost');
+    const activeLeads = leads.filter(l => !['Closed', 'Lost', 'Waiting_Payment'].includes(l.fields.Status));
     const closedLeads = leads.filter(l => l.fields.Status === 'Closed');
     const lostLeads = leads.filter(l => l.fields.Status === 'Lost');
+    const waitingPaymentLeads = leads.filter(l => l.fields.Status === 'Waiting_Payment');
 
     const renderArchiveTable = (items: Lead[], isOpen: boolean, toggle: () => void, title: string, emoji: string, badgeColor: string) => {
         if (items.length === 0) return null;
@@ -246,6 +248,12 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                         </table>
                     </div>
                 </div>
+
+                {/* Waiting Payment Leads */}
+                {renderArchiveTable(
+                    waitingPaymentLeads, showWaitingPayment, () => setShowWaitingPayment(!showWaitingPayment),
+                    'מחכים לתשלום', '⏳', 'bg-orange-100 text-orange-700'
+                )}
 
                 {/* Closed Leads */}
                 {renderArchiveTable(
