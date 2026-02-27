@@ -1,6 +1,6 @@
 from supabase import create_client, Client
 from app.core.config import get_settings
-from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate
+from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate
 from typing import List, Optional
 import uuid
 from datetime import datetime
@@ -223,6 +223,35 @@ class SupabaseService:
                 
         return summary
 
+    # ─── Tasks CRUD ─────────────────────────────────────
+
+    def get_tasks(self) -> List[dict]:
+        """Fetch all tasks."""
+        if not self.client: return []
+        response = self.client.table("tasks").select("*").order("Due_Date", desc=True).execute()
+        return self._to_airtable_list(response.data)
+
+    def create_task(self, task: TaskCreate) -> dict:
+        """Create a new task."""
+        if not self.client: return {}
+        data = task.model_dump(exclude_none=True, by_alias=True, mode='json')
+        data["id"] = self._generate_id()
+        data["Created_At"] = datetime.now().isoformat()
+        response = self.client.table("tasks").insert(data).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def update_task(self, task_id: str, data: TaskUpdate) -> dict:
+        """Update a task."""
+        if not self.client: return {}
+        update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        response = self.client.table("tasks").update(update_data).eq("id", task_id).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def delete_task(self, task_id: str):
+        """Delete a task."""
+        if not self.client: return
+        self.client.table("tasks").delete().eq("id", task_id).execute()
+
     # ─── Compatibility (MockTable) ────────────────────────
 
     class _MockTable:
@@ -263,6 +292,10 @@ class SupabaseService:
     @property
     def finance_table(self):
         return self._MockTable(self, "finance")
+
+    @property
+    def tasks_table(self):
+        return self._MockTable(self, "tasks")
 
 
 supabase_service = SupabaseService()

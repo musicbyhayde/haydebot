@@ -1,5 +1,5 @@
 import { Lead, Musician } from '@/types';
-import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut } from 'lucide-react';
+import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
 
@@ -8,8 +8,8 @@ interface SidebarProps {
     musicians: Musician[];
     activeId: string | null;
     onSelect: (id: string) => void;
-    currentView: 'inbox' | 'dashboard' | 'musicians' | 'finance';
-    onViewChange: (view: 'inbox' | 'dashboard' | 'musicians' | 'finance') => void;
+    currentView: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks';
+    onViewChange: (view: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks') => void;
     currentUser?: AppUser | null;
     onSignOut?: () => void;
 }
@@ -75,9 +75,18 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <DollarSign size={18} /> 💰 כספים
                 </button>
+                <button
+                    onClick={() => onViewChange('tasks')}
+                    className={clsx(
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all",
+                        currentView === 'tasks' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-100" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                >
+                    <ListTodo size={18} /> 📋 משימות
+                </button>
             </div>
 
-            {currentView !== 'finance' && (
+            {currentView !== 'finance' && currentView !== 'tasks' && (
                 <>
                     <div className="p-4 border-b border-gray-200">
                         <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">

@@ -126,3 +126,17 @@ class FinanceEntryUpdate(BaseSchema):
     amount: Optional[float] = Field(None, alias="Amount")
     payment_status: Optional[str] = Field(None, alias="Payment_Status")
     payment_method: Optional[str] = Field(None, alias="Payment_Method")
+
+class TaskCreate(BaseSchema):
+    title: str = Field(..., alias="Title")
+    assignee: Optional[str] = Field(None, alias="Assignee") # 'אילן' or 'קובי'
+    due_date: Optional[str] = Field(None, alias="Due_Date")
+    is_completed: bool = Field(False, alias="Is_Completed")
+    lead_id: Optional[str] = Field(None, alias="Lead_ID")
+
+class TaskUpdate(BaseSchema):
+    title: Optional[str] = Field(None, alias="Title")
+    assignee: Optional[str] = Field(None, alias="Assignee")
+    due_date: Optional[str] = Field(None, alias="Due_Date")
+    is_completed: Optional[bool] = Field(None, alias="Is_Completed")
+    lead_id: Optional[str] = Field(None, alias="Lead_ID")

@@ -71,3 +71,15 @@ export interface FinanceEntry {
         Created_At?: string;
     };
 }
+
+export interface Task {
+    id: string;
+    fields: {
+        Title: string;
+        Assignee?: string;
+        Due_Date?: string;
+        Is_Completed: boolean;
+        Lead_ID?: string;
+        Created_At?: string;
+    };
+}

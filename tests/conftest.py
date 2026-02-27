@@ -24,6 +24,7 @@ class MockSupabaseService:
             "musicians": [],
             "notes": [],
             "finance": [],
+            "tasks": [],
         }
 
     def _gen_id(self):
@@ -153,6 +154,29 @@ class MockSupabaseService:
             summary[owner]["balance"] = summary[owner]["income"] - summary[owner]["expenses"]
         return summary
 
+    # ── Tasks ─────────────────────────
+
+    def get_tasks(self):
+        return self._to_airtable_list(self._stores["tasks"])
+
+    def create_task(self, task):
+        data = task.model_dump(exclude_none=True, by_alias=True, mode='json')
+        data["id"] = self._gen_id()
+        data["Created_At"] = datetime.now().isoformat()
+        self._stores["tasks"].append(data)
+        return self._to_airtable_format(data)
+
+    def update_task(self, task_id, data):
+        update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        for rec in self._stores["tasks"]:
+            if rec["id"] == task_id:
+                rec.update(update_data)
+                return self._to_airtable_format(rec)
+        return {}
+
+    def delete_task(self, task_id):
+        self._stores["tasks"] = [t for t in self._stores["tasks"] if t["id"] != task_id]
+
     # ── Media ─────────────────────────
 
     def upload_media(self, file_bytes, file_name, mime_type):
@@ -193,6 +217,9 @@ class MockSupabaseService:
     def finance_table(self):
         return self._MockTable(self, "finance")
 
+    @property
+    def tasks_table(self):
+        return self._MockTable(self, "tasks")
 
 # ─── Fixtures ─────────────────────────────────────────
 

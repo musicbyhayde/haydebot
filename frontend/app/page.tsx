@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import LeadsDashboard from "@/components/LeadsDashboard";
 import FinancePage from "@/components/FinancePage";
+import TasksSection from "@/components/TasksSection";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
 import { getCurrentUser, signOut, AppUser, createSupabaseClient } from "@/lib/auth";
@@ -16,7 +17,7 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance'>('dashboard');
+  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks'>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
 
@@ -132,7 +133,7 @@ export default function Home() {
     return <div className="h-screen w-screen flex items-center justify-center font-bold text-slate-400 italic">Hayde is Warming Up... 🎸</div>;
   }
 
-  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && activeId === null);
+  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && activeId === null);
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
@@ -163,12 +164,26 @@ export default function Home() {
             onMenuClick={() => setMobileMenuOpen(true)}
             currentUser={currentUser}
             onRefresh={fetchData}
+            onNavigateToTasks={() => { setView('tasks'); setActiveId(null); }}
           />
         ) : view === 'finance' ? (
           <FinancePage
             currentUser={currentUser}
             onMenuClick={() => setMobileMenuOpen(true)}
           />
+        ) : view === 'tasks' ? (
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" dir="rtl">
+            <div className="max-w-4xl mx-auto">
+              {/* Header with Mobile Button */}
+              <div className="mb-6 flex items-center gap-3">
+                <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 bg-white rounded-lg shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></svg>
+                </button>
+                <h1 className="text-xl md:text-3xl font-extrabold text-slate-900">לוח משימות 📋</h1>
+              </div>
+              <TasksSection currentUser={currentUser} />
+            </div>
+          </div>
         ) : (
           <ChatWindow
             item={activeItem}

@@ -227,3 +227,34 @@ async def update_finance_entry(entry_id: str, request: Request):
 async def delete_finance_entry(entry_id: str):
     airtable_service.delete_finance_entry(entry_id)
     return {"status": "deleted"}
+
+# ─── Tasks ───────────────────────────────────────────
+
+@router.get("/tasks")
+async def get_tasks():
+    return airtable_service.get_tasks()
+
+@router.post("/tasks")
+async def create_task(request: Request):
+    body = await request.json()
+    from app.models.schemas import TaskCreate
+    task = TaskCreate(
+        title=body.get("Title", ""),
+        assignee=body.get("Assignee"),
+        due_date=body.get("Due_Date"),
+        is_completed=body.get("Is_Completed", False),
+        lead_id=body.get("Lead_ID")
+    )
+    return airtable_service.create_task(task)
+
+@router.patch("/tasks/{task_id}")
+async def update_task(task_id: str, request: Request):
+    body = await request.json()
+    from app.models.schemas import TaskUpdate
+    data = TaskUpdate(**{k: v for k, v in body.items() if v is not None})
+    return airtable_service.update_task(task_id, data)
+
+@router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str):
+    airtable_service.delete_task(task_id)
+    return {"status": "deleted"}

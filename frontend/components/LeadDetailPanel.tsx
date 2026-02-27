@@ -39,6 +39,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [savingInfo, setSavingInfo] = useState(false);
 
     useEffect(() => {
+        setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
         setEditData({
             Name: lead.fields.Name,
             Phone: lead.fields.Phone,
@@ -246,21 +247,43 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     </div>
                 )}
 
-                {/* Closing Amount (shown when Closed) */}
-                {lead.fields.Status === 'Closed' || lead.fields.Closing_Amount ? (
-                    <div className="px-5 py-2 border-b border-slate-100 flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-500">סכום סגירה:</span>
-                        <input
-                            type="number"
-                            value={closingAmount || lead.fields.Closing_Amount || ''}
-                            onChange={(e) => setClosingAmount(e.target.value)}
-                            className="px-2 py-1 border border-slate-200 rounded-lg text-sm w-28"
-                            placeholder="₪"
-                            dir="ltr"
-                        />
-                        <span className="text-xs text-slate-400">₪</span>
+                {/* Closing Amount / Quote */}
+                <div className="px-5 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2 bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-500">הצעת מחיר / סכום:</span>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                value={closingAmount}
+                                onChange={(e) => setClosingAmount(e.target.value)}
+                                className="pl-6 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="0"
+                                dir="ltr"
+                            />
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">₪</span>
+                        </div>
                     </div>
-                ) : null}
+                    {closingAmount !== (lead.fields.Closing_Amount?.toString() || '') && (
+                        <button
+                            onClick={async () => {
+                                try {
+                                    const val = closingAmount ? parseFloat(closingAmount) : undefined;
+                                    await api.updateLead(lead.id, { Closing_Amount: val });
+                                    // Update locally for immediate reflect
+                                    Object.assign(lead.fields, { Closing_Amount: val });
+                                    // small trick to re-evaluate the condition
+                                    setClosingAmount(val?.toString() || '');
+                                } catch (e) {
+                                    console.error(e);
+                                    alert('שגיאה בשמירת הסכום');
+                                }
+                            }}
+                            className="text-[11px] font-bold bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors shadow-sm"
+                        >
+                            שמור סכום
+                        </button>
+                    )}
+                </div>
 
                 {/* Tabs */}
                 <div className="flex border-b border-slate-100">

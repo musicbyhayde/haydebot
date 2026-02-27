@@ -1,4 +1,4 @@
-import { Lead, Message, Note, FinanceEntry } from '@/types';
+import { Lead, Message, Note, FinanceEntry, Task } from '@/types';
 
 const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -122,5 +122,39 @@ export const api = {
         const res = await fetch(`${API_Base}/finance/summary`);
         if (!res.ok) throw new Error('Failed to fetch finance summary');
         return res.json();
+    },
+
+    // ── Tasks ─────────────────────────────────────────
+
+    async getTasks(): Promise<Task[]> {
+        const res = await fetch(`${API_Base}/tasks`);
+        if (!res.ok) throw new Error('Failed to fetch tasks');
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+    },
+
+    async createTask(data: any): Promise<Task> {
+        const res = await fetch(`${API_Base}/tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to create task');
+        return res.json();
+    },
+
+    async updateTask(id: string, data: any): Promise<Task> {
+        const res = await fetch(`${API_Base}/tasks/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to update task');
+        return res.json();
+    },
+
+    async deleteTask(id: string): Promise<void> {
+        const res = await fetch(`${API_Base}/tasks/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete task');
     },
 };

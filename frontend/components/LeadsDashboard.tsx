@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Lead } from '@/types';
+import { useState, useEffect } from 'react';
+import { Lead, Task } from '@/types';
 import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import AddLeadModal from './AddLeadModal';
 import LeadDetailPanel from './LeadDetailPanel';
+import { api } from '@/lib/api';
 import clsx from 'clsx';
 
 interface LeadsDashboardProps {
@@ -14,6 +15,7 @@ interface LeadsDashboardProps {
     onMenuClick?: () => void;
     currentUser?: AppUser | null;
     onRefresh?: () => void;
+    onNavigateToTasks?: () => void;
 }
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
@@ -34,12 +36,19 @@ const OWNER_COLORS: Record<string, string> = {
     'קובי': 'bg-purple-100 text-purple-700',
 };
 
-export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh }: LeadsDashboardProps) {
+export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh, onNavigateToTasks }: LeadsDashboardProps) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showClosed, setShowClosed] = useState(false);
     const [showLost, setShowLost] = useState(false);
     const [showWaitingPayment, setShowWaitingPayment] = useState(false);
     const [detailLead, setDetailLead] = useState<Lead | null>(null);
+    const [tasks, setTasks] = useState<Task[]>([]);
+
+    useEffect(() => {
+        api.getTasks().then(setTasks).catch(console.error);
+    }, []);
+
+    const activeTasks = tasks.filter(t => !t.fields.Is_Completed);
 
     const stats = {
         total: leads.length,
@@ -154,6 +163,25 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                         </div>
                     ))}
                 </div>
+
+                {/* Tasks Alert Widget */}
+                {activeTasks.length > 0 && (
+                    <div
+                        onClick={onNavigateToTasks}
+                        className="mb-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 md:p-5 flex items-center justify-between cursor-pointer hover:bg-emerald-100 transition-colors shadow-sm"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                <AlertCircle size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-emerald-800 text-sm md:text-base">יש לך {activeTasks.length} משימות פתוחות</h3>
+                                <p className="text-xs md:text-sm text-emerald-600">לחץ כאן למעבר ללוח המשימות המלא</p>
+                            </div>
+                        </div>
+                        <ChevronDown size={20} className="text-emerald-400 -rotate-90 hidden md:block" />
+                    </div>
+                )}
 
                 {/* Leads Table */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
