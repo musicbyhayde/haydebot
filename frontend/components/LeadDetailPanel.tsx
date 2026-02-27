@@ -18,6 +18,7 @@ const STATUS_OPTIONS = [
     { value: 'New', label: 'חדש', color: 'bg-blue-100 text-blue-800' },
     { value: 'Talking', label: 'רק דיבורים', color: 'bg-cyan-100 text-cyan-800' },
     { value: 'Processing', label: 'בטיפול', color: 'bg-yellow-100 text-yellow-800' },
+    { value: 'Distributed', label: 'בהפצה', color: 'bg-purple-100 text-purple-800' },
     { value: 'Quote_Sent', label: 'נשלחה הצעת מחיר', color: 'bg-amber-100 text-amber-800' },
     { value: 'Waiting_Payment', label: 'מחכה לתשלום', color: 'bg-orange-100 text-orange-800' },
     { value: 'Assigned', label: 'שובץ נגן', color: 'bg-indigo-100 text-indigo-800' },
@@ -34,6 +35,21 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [fileError, setFileError] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [closingAmount, setClosingAmount] = useState('');
+    const [editData, setEditData] = useState<Partial<Lead['fields']>>({});
+    const [savingInfo, setSavingInfo] = useState(false);
+
+    useEffect(() => {
+        setEditData({
+            Name: lead.fields.Name,
+            Phone: lead.fields.Phone,
+            Service: lead.fields.Service,
+            Event_Date: lead.fields.Event_Date,
+            Location: lead.fields.Location,
+            Guests: lead.fields.Guests,
+            Owner: lead.fields.Owner,
+            Last_Summary: lead.fields.Last_Summary,
+        });
+    }, [lead]);
 
     useEffect(() => {
         fetchNotes();
@@ -124,6 +140,22 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         onStatusChange(lead.id, newStatus);
     };
 
+    const handleUpdateInfo = async () => {
+        setSavingInfo(true);
+        try {
+            await api.updateLead(lead.id, editData);
+            // We don't have a direct onUpdate callback here, but the realtime subscription 
+            // in the parent will catch it. However, to be immediate:
+            Object.assign(lead.fields, editData);
+            alert('הפרטים עודכנו בהצלחה');
+        } catch (e) {
+            console.error(e);
+            alert('עדכון הפרטים נכשל');
+        } finally {
+            setSavingInfo(false);
+        }
+    };
+
     const formatDate = (d: string) => {
         try {
             return new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -179,8 +211,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             <button
                                 onClick={() => {
                                     if (confirm('להחזיר את הליד להפצה לכל הנגנים?')) {
-                                        api.updateLead(lead.id, { Status: 'Distributed', Musician_Assigned: [] });
-                                        onStatusChange(lead.id, 'Distributed');
+                                        api.updateLead(lead.id, { Status: 'New', Musician_Assigned: [] });
+                                        onStatusChange(lead.id, 'New');
                                     }
                                 }}
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 text-indigo-700 text-[11px] font-bold rounded-lg hover:bg-indigo-100 transition-all"
@@ -361,22 +393,90 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     )}
 
                     {tab === 'info' && (
-                        <div className="p-5 space-y-3">
-                            {[
-                                { label: 'שם', value: lead.fields.Name },
-                                { label: 'טלפון', value: lead.fields.Phone },
-                                { label: 'שירות', value: lead.fields.Service },
-                                { label: 'תאריך אירוע', value: lead.fields.Event_Date },
-                                { label: 'מיקום', value: lead.fields.Location },
-                                { label: 'אורחים', value: lead.fields.Guests },
-                                { label: 'מוביל', value: lead.fields.Owner },
-                                { label: 'סיכום אחרון', value: lead.fields.Last_Summary },
-                            ].map((field, i) => (
-                                <div key={i} className="flex justify-between py-2 border-b border-slate-50 last:border-0">
-                                    <span className="text-xs font-semibold text-slate-500">{field.label}</span>
-                                    <span className="text-sm text-slate-800">{field.value || '—'}</span>
+                        <div className="p-5 space-y-4">
+                            <div className="space-y-3">
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-500 mr-1">שם הלקוח</label>
+                                    <input
+                                        type="text"
+                                        value={editData.Name || ''}
+                                        onChange={(e) => setEditData({ ...editData, Name: e.target.value })}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
                                 </div>
-                            ))}
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-500 mr-1">טלפון</label>
+                                    <input
+                                        type="text"
+                                        value={editData.Phone || ''}
+                                        onChange={(e) => setEditData({ ...editData, Phone: e.target.value })}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        dir="ltr"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-500 mr-1">שירות</label>
+                                    <select
+                                        value={editData.Service || ''}
+                                        onChange={(e) => setEditData({ ...editData, Service: e.target.value as any })}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                                    >
+                                        <option value="">בחר שירות...</option>
+                                        <option value="Bouzouki">נגן בוזוקי 🎸</option>
+                                        <option value="Reception">קבלת פנים 🎻</option>
+                                        <option value="Band">להקה 🥁</option>
+                                        <option value="DJ">דיג'יי 🎧</option>
+                                        <option value="Talk">לדבר עם מישהו 📞</option>
+                                        <option value="Other">אחר ✨</option>
+                                    </select>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-500 mr-1">תאריך אירוע</label>
+                                    <input
+                                        type="text"
+                                        value={editData.Event_Date || ''}
+                                        onChange={(e) => setEditData({ ...editData, Event_Date: e.target.value })}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="למשל: 25.12.24"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-500 mr-1">מיקום</label>
+                                    <input
+                                        type="text"
+                                        value={editData.Location || ''}
+                                        onChange={(e) => setEditData({ ...editData, Location: e.target.value })}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="עיר או אולם"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-500 mr-1">כמות אורחים</label>
+                                    <input
+                                        type="text"
+                                        value={editData.Guests || ''}
+                                        onChange={(e) => setEditData({ ...editData, Guests: e.target.value })}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] font-bold text-slate-500 mr-1">מוביל (בעלים)</label>
+                                    <input
+                                        type="text"
+                                        value={editData.Owner || ''}
+                                        onChange={(e) => setEditData({ ...editData, Owner: e.target.value })}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleUpdateInfo}
+                                disabled={savingInfo}
+                                className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center gap-2"
+                            >
+                                {savingInfo ? 'שומר...' : 'שמור שינויים'}
+                            </button>
                         </div>
                     )}
                 </div>

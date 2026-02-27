@@ -456,11 +456,11 @@ class HaydeBotLogic:
         self._send_message(phone, "מגניב, רשמנו את כל הפרטים, בודקים זמינות וחוזרים אלייך תיק תק! 🎸", lead_id)
 
         # Trigger Protocol if Bouzouki
-        lead = airtable_service.leads_table.get(lead_id)
-        if lead["fields"].get("Service") == ServiceType.BOUZOUKI.value:
-             await self.start_bouzouki_protocol(lead_id, lead["fields"])
-        else:
-            # For other services, human will handle - Notify Admins
+        is_bouzouki_triggered = await self.check_and_trigger_bouzouki_protocol(lead_id)
+        
+        if not is_bouzouki_triggered:
+            # For other services, or if bouzouki not yet complete, human will handle - Notify Admins
+            lead = airtable_service.leads_table.get(lead_id)
             await self.notify_admins(lead["fields"])
             print(f"Lead {lead_id} completed. Admins notified.")
 
@@ -609,7 +609,44 @@ class HaydeBotLogic:
              self.pending_musician_actions[musician_phone] = {"action": "AWAITING_REASON", "lead_id": lead_id}
              self._send_message(musician_phone, "חבל. מה סיבת ההפסד כדאי שנוכל ללמוד מזה? (למשל: יקר מדי / סגר עם הרכב אחר / ביטל אירוע)", musician_id=m_id)
 
+    async def check_and_trigger_bouzouki_protocol(self, lead_id: str):
+        """Check if a lead has all required info for Bouzouki protocol and trigger it if so."""
+        lead = airtable_service.leads_table.get(lead_id)
+        fields = lead["fields"]
+        
+        # Conditions for triggering:
+        # 1. Service is Bouzouki
+        # 2. Status is New, Talking or Processing (avoid re-triggering for Assigned/Closed/Lost)
+        
+        if fields.get("Service") != ServiceType.BOUZOUKI.value:
+            return False
+            
+        current_status = fields.get("Status")
+        if current_status not in [LeadStatus.NEW.value, LeadStatus.TALKING.value, LeadStatus.PROCESSING.value]:
+             return False
+
+        location = fields.get("Location")
+        event_date = fields.get("Event_Date")
+        guests = fields.get("Guests")
+        
+        # Check if they are valid values (not empty and not TBD)
+        is_complete = all([
+            location and location != "TBD",
+            event_date and event_date != "TBD",
+            guests and guests != "TBD"
+        ])
+        
+        if is_complete:
+            # Start protocol
+            await self.start_bouzouki_protocol(lead_id, fields)
+            return True
+            
+        return False
+
     async def start_bouzouki_protocol(self, lead_id: str, lead_fields: dict):
+        # Update status to Distributed
+        airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.DISTRIBUTED))
+        
         active_musicians = airtable_service.get_active_musicians()
         tier_a = [m for m in active_musicians if m["fields"].get("Score", 5) >= 8]
         

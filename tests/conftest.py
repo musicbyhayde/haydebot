@@ -214,8 +214,14 @@ def mock_service():
 @pytest.fixture
 def test_client(mock_service):
     """FastAPI TestClient with mocked service."""
+    from unittest.mock import AsyncMock
     with patch("app.api.routes.airtable_service", mock_service), \
+         patch("app.api.routes.bot_logic") as mock_logic_routes, \
          patch("app.services.logic.bot_logic") as mock_logic:
+        
+        mock_logic.check_and_trigger_bouzouki_protocol = AsyncMock()
+        mock_logic_routes.check_and_trigger_bouzouki_protocol = AsyncMock()
+        
         # Prevent scheduler from running
         with patch("app.core.scheduler.scheduler"):
             from app.main import app

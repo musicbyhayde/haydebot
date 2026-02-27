@@ -74,6 +74,11 @@ async def update_lead(lead_id: str, request: Request):
     data = LeadUpdate(**{k: v for k, v in body.items() if v is not None})
     result = airtable_service.update_lead(lead_id, data)
 
+    # Trigger Bouzouki protocol check if needed
+    from app.services.logic import bot_logic
+    import asyncio
+    asyncio.create_task(bot_logic.check_and_trigger_bouzouki_protocol(lead_id))
+
     # Auto-create finance entry when lead is closed with a closing amount
     if body.get("Status") == "Closed" and body.get("Closing_Amount"):
         try:
