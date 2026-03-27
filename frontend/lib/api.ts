@@ -68,6 +68,37 @@ export const api = {
         if (!res.ok) throw new Error('Failed to send musician message');
     },
 
+    async createMusician(data: any): Promise<any> {
+        const res = await fetch(`${API_Base}/musicians`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to create musician');
+        return res.json();
+    },
+
+    async updateMusician(id: string, data: any): Promise<any> {
+        const res = await fetch(`${API_Base}/musicians/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to update musician');
+        return res.json();
+    },
+
+    async deleteMusician(id: string): Promise<void> {
+        const res = await fetch(`${API_Base}/musicians/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete musician');
+    },
+
+    async getMusicianStats(id: string): Promise<{ received: number; closed: number; lost: number; revenue: number; commission: number }> {
+        const res = await fetch(`${API_Base}/musicians/${id}/stats`);
+        if (!res.ok) throw new Error('Failed to fetch musician stats');
+        return res.json();
+    },
+
     // --- Notes ---
     async getNotes(leadId: string): Promise<Note[]> {
         const res = await fetch(`${API_Base}/leads/${leadId}/notes`);

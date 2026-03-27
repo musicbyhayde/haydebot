@@ -101,6 +101,23 @@ class MockSupabaseService:
         active = [m for m in self._stores["musicians"] if m.get("Is_Active", True)]
         return self._to_airtable_list(active)
 
+    def create_musician(self, musician):
+        data = musician.model_dump(exclude_none=True, by_alias=True, mode='json')
+        data["id"] = self._gen_id()
+        self._stores["musicians"].append(data)
+        return self._to_airtable_format(data)
+
+    def update_musician(self, musician_id, data):
+        update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        for rec in self._stores["musicians"]:
+            if rec["id"] == musician_id:
+                rec.update(update_data)
+                return self._to_airtable_format(rec)
+        return {}
+
+    def delete_musician(self, musician_id):
+        self._stores["musicians"] = [m for m in self._stores["musicians"] if m["id"] != musician_id]
+
     # ── Notes ─────────────────────────
 
     def create_note(self, note):

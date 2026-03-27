@@ -6,6 +6,7 @@ import ChatWindow from "@/components/ChatWindow";
 import LeadsDashboard from "@/components/LeadsDashboard";
 import FinancePage from "@/components/FinancePage";
 import TasksSection from "@/components/TasksSection";
+import MusiciansPage from "@/components/MusiciansPage";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
 import { getCurrentUser, signOut, AppUser, createSupabaseClient } from "@/lib/auth";
@@ -133,7 +134,7 @@ export default function Home() {
     return <div className="h-screen w-screen flex items-center justify-center font-bold text-slate-400 italic">Hayde is Warming Up... 🎸</div>;
   }
 
-  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && activeId === null);
+  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && activeId === null);
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
@@ -168,6 +169,11 @@ export default function Home() {
           />
         ) : view === 'finance' ? (
           <FinancePage
+            currentUser={currentUser}
+            onMenuClick={() => setMobileMenuOpen(true)}
+          />
+        ) : view === 'musicians' ? (
+          <MusiciansPage
             currentUser={currentUser}
             onMenuClick={() => setMobileMenuOpen(true)}
           />

@@ -648,6 +648,24 @@ class HaydeBotLogic:
         airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.DISTRIBUTED))
         
         active_musicians = airtable_service.get_active_musicians()
+
+        # If no musicians at all, immediately notify admins so the lead isn't lost
+        if not active_musicians:
+            print(f"⚠️ No active musicians found for lead {lead_id}. Notifying admins immediately.")
+            await self.notify_admins(
+                lead_fields,
+                custom_msg=(
+                    f"⚠️ *ליד בוזוקי חדש — אין נגנים פעילים במערכת!*\n\n"
+                    f"👤 שם: {lead_fields.get('Name', 'לא צוין')}\n"
+                    f"📞 טלפון: {lead_fields.get('Phone')}\n"
+                    f"📅 תאריך: {lead_fields.get('Event_Date')}\n"
+                    f"📍 מיקום: {lead_fields.get('Location')}\n"
+                    f"👥 אורחים: {lead_fields.get('Guests')}\n\n"
+                    f"יש לטפל בליד הזה ידנית."
+                )
+            )
+            return
+
         tier_a = [m for m in active_musicians if m["fields"].get("Score", 5) >= 8]
         
         msg_body = f"הזדמנות חדשה!\nבוזוקי ב{lead_fields.get('Location')}\nתאריך: {lead_fields.get('Event_Date')}"

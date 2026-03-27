@@ -174,6 +174,52 @@ async def upload_file(file: UploadFile = FastAPIFile(...)):
 async def get_musicians():
     return airtable_service.get_all_musicians()
 
+@router.post("/musicians")
+async def create_musician(request: Request):
+    """Create a new musician from the dashboard."""
+    body = await request.json()
+    from app.models.schemas import MusicianCreate
+    musician = MusicianCreate(
+        name=body.get("Name", ""),
+        phone=body.get("Phone", ""),
+        is_active=body.get("Is_Active", True),
+        score=body.get("Score", 5),
+    )
+    return airtable_service.create_musician(musician)
+
+@router.patch("/musicians/{musician_id}")
+async def update_musician(musician_id: str, request: Request):
+    """Update a musician's fields."""
+    body = await request.json()
+    from app.models.schemas import MusicianUpdate
+    data = MusicianUpdate(**{k: v for k, v in body.items() if v is not None})
+    return airtable_service.update_musician(musician_id, data)
+
+@router.delete("/musicians/{musician_id}")
+async def delete_musician(musician_id: str):
+    airtable_service.delete_musician(musician_id)
+    return {"status": "deleted"}
+
+@router.get("/musicians/{musician_id}/stats")
+async def get_musician_stats(musician_id: str):
+    """Compute performance statistics for a specific musician."""
+    leads = airtable_service.get_all_leads()
+    stats = {"received": 0, "closed": 0, "lost": 0, "revenue": 0.0, "commission": 0.0}
+    for lead in leads:
+        fields = lead.get("fields", {})
+        assigned = fields.get("Musician_Assigned") or []
+        if musician_id in assigned:
+            stats["received"] += 1
+            status = fields.get("Status")
+            if status == "Closed":
+                stats["closed"] += 1
+                amount = float(fields.get("Closing_Amount") or 0)
+                stats["revenue"] += amount
+                stats["commission"] += max(amount * 0.15, 400.0) if amount else 0
+            elif status == "Lost":
+                stats["lost"] += 1
+    return stats
+
 @router.get("/musicians/{musician_id}/messages")
 async def get_musician_messages(musician_id: str):
     return airtable_service.get_messages_for_musician(musician_id)

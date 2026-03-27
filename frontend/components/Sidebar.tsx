@@ -15,7 +15,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ leads, musicians, activeId, onSelect, currentView, onViewChange, currentUser, onSignOut }: SidebarProps) {
-    const list = currentView === 'musicians' ? musicians : leads;
 
     return (
         <div className="w-full md:w-80 border-r border-gray-200 h-full flex flex-col bg-slate-50">
@@ -86,98 +85,59 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 </button>
             </div>
 
-            {currentView !== 'finance' && currentView !== 'tasks' && (
+            {currentView !== 'finance' && currentView !== 'tasks' && currentView !== 'musicians' && (
                 <>
                     <div className="p-4 border-b border-gray-200">
                         <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                            {currentView === 'musicians' ? 'רשימת נגנים' : 'לידים אחרונים (' + leads.length + ')'}
+                            {'לידים אחרונים (' + leads.length + ')'}
                         </h2>
                     </div>
                     <div className="flex-1 overflow-y-auto">
-                        {list.map((item: any) => {
-                            const isActive = item.id === activeId;
+                        {leads.map((lead) => {
+                            const isActive = lead.id === activeId;
+                            const statusColors: Record<string, string> = {
+                                'New': 'bg-blue-100 text-blue-800',
+                                'Processing': 'bg-yellow-100 text-yellow-800',
+                                'Closed': 'bg-green-100 text-green-800',
+                                'Lost': 'bg-red-100 text-red-800',
+                                'Quote_Sent': 'bg-amber-100 text-amber-800',
+                                'Waiting_Payment': 'bg-orange-100 text-orange-800',
+                                'Talking': 'bg-cyan-100 text-cyan-800',
+                            };
+                            const badgeClass = statusColors[lead.fields.Status] || 'bg-gray-100 text-gray-800';
 
-                            // Client fields
-                            if (currentView !== 'musicians') {
-                                const lead = item as Lead;
-                                const statusColors: Record<string, string> = {
-                                    'New': 'bg-blue-100 text-blue-800',
-                                    'Processing': 'bg-yellow-100 text-yellow-800',
-                                    'Closed': 'bg-green-100 text-green-800',
-                                    'Lost': 'bg-red-100 text-red-800',
-                                    'Quote_Sent': 'bg-amber-100 text-amber-800',
-                                    'Waiting_Payment': 'bg-orange-100 text-orange-800',
-                                    'Talking': 'bg-cyan-100 text-cyan-800',
-                                };
-                                const badgeClass = statusColors[lead.fields.Status] || 'bg-gray-100 text-gray-800';
-
-                                return (
-                                    <div
-                                        key={lead.id}
-                                        onClick={() => onSelect(lead.id)}
-                                        className={clsx(
-                                            "p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors",
-                                            isActive && "bg-blue-50 border-l-4 border-l-blue-500"
-                                        )}
-                                    >
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="font-semibold text-gray-900 truncate">{lead.fields.Name || lead.fields.Phone}</span>
-                                            <span className={clsx("text-xs px-2 py-0.5 rounded-full font-medium", badgeClass)}>
-                                                {lead.fields.Status}
-                                            </span>
-                                        </div>
-                                        <div className="text-sm text-gray-500 flex items-center gap-1 mb-1">
-                                            <Phone size={12} />
-                                            {lead.fields.Phone}
-                                        </div>
-                                        {lead.fields.Service && (
-                                            <div className="text-xs text-gray-600 flex items-center gap-1">
-                                                <Music size={12} />
-                                                {lead.fields.Service}
-                                            </div>
-                                        )}
-                                        {lead.fields.Owner && (
-                                            <div className="text-xs text-slate-500 mt-1">
-                                                מוביל: {lead.fields.Owner}
-                                            </div>
-                                        )}
+                            return (
+                                <div
+                                    key={lead.id}
+                                    onClick={() => onSelect(lead.id)}
+                                    className={clsx(
+                                        "p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors",
+                                        isActive && "bg-blue-50 border-l-4 border-l-blue-500"
+                                    )}
+                                >
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="font-semibold text-gray-900 truncate">{lead.fields.Name || lead.fields.Phone}</span>
+                                        <span className={clsx("text-xs px-2 py-0.5 rounded-full font-medium", badgeClass)}>
+                                            {lead.fields.Status}
+                                        </span>
                                     </div>
-                                );
-                            } else {
-                                // Musician fields
-                                const musician = item as Musician;
-                                return (
-                                    <div
-                                        key={musician.id}
-                                        onClick={() => onSelect(musician.id)}
-                                        className={clsx(
-                                            "p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors",
-                                            isActive && "bg-purple-50 border-l-4 border-l-purple-500"
-                                        )}
-                                    >
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="font-semibold text-gray-900 truncate flex items-center gap-1 text-right" dir="rtl">
-                                                {musician.fields.Name}
-                                            </span>
-                                            <span className={clsx(
-                                                "text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase",
-                                                musician.fields.Is_Active ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-500"
-                                            )}>
-                                                {musician.fields.Is_Active ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </div>
-                                        <div className="text-sm text-gray-500 flex items-center gap-1">
-                                            <Phone size={12} />
-                                            {musician.fields.Phone}
-                                        </div>
-                                        {musician.fields.Score !== undefined && (
-                                            <div className="text-xs text-slate-500 mt-1">
-                                                ציון: {musician.fields.Score}/10
-                                            </div>
-                                        )}
+                                    <div className="text-sm text-gray-500 flex items-center gap-1 mb-1">
+                                        <Phone size={12} />
+                                        {lead.fields.Phone}
                                     </div>
-                                );
-                            }
+                                    {lead.fields.Service && (
+                                        <div className="text-xs text-gray-600 flex items-center gap-1">
+                                            <Music size={12} />
+                                            {lead.fields.Service}
+                                        </div>
+                                    )}
+                                    {lead.fields.Owner && (
+                                        <div className="text-xs text-slate-500 mt-1">
+                                            מוביל: {lead.fields.Owner}
+                                        </div>
+                                    )}
+                                </div>
+                            );
                         })}
                     </div>
                 </>

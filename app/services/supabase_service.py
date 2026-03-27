@@ -104,6 +104,26 @@ class SupabaseService:
         response = self.client.table("musicians").select("*").execute()
         return self._to_airtable_list(response.data)
 
+    def create_musician(self, musician: "MusicianCreate") -> dict:
+        """Create a new musician."""
+        if not self.client: return {}
+        data = musician.model_dump(exclude_none=True, by_alias=True, mode='json')
+        data["id"] = self._generate_id()
+        response = self.client.table("musicians").insert(data).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def update_musician(self, musician_id: str, data: "MusicianUpdate") -> dict:
+        """Update a musician."""
+        if not self.client: return {}
+        update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        response = self.client.table("musicians").update(update_data).eq("id", musician_id).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def delete_musician(self, musician_id: str):
+        """Delete a musician."""
+        if not self.client: return
+        self.client.table("musicians").delete().eq("id", musician_id).execute()
+
     def get_messages_for_musician(self, musician_id: str) -> List[dict]:
         """Fetch all messages linked to a musician."""
         if not self.client: return []

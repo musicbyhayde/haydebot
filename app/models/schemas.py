@@ -81,6 +81,18 @@ class MusicianBase(BaseSchema):
     is_active: bool = Field(True, alias="Is_Active")
     score: int = Field(5, alias="Score")
 
+class MusicianCreate(BaseSchema):
+    name: str = Field(..., alias="Name")
+    phone: str = Field(..., alias="Phone")
+    is_active: bool = Field(True, alias="Is_Active")
+    score: int = Field(5, alias="Score")
+
+class MusicianUpdate(BaseSchema):
+    name: Optional[str] = Field(None, alias="Name")
+    phone: Optional[str] = Field(None, alias="Phone")
+    is_active: Optional[bool] = Field(None, alias="Is_Active")
+    score: Optional[int] = Field(None, alias="Score")
+
 class MusicianResponse(MusicianBase):
     id: str
 
