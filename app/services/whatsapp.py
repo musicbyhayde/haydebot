@@ -85,8 +85,8 @@ class WhatsAppService:
         }
         return self._send(payload)
     
-    def send_template(self, to_phone: str, template_name: str, language_code: str = "he"):
-        """Send a template message (needed for initiating 24h window if it passed, though usually we reply)."""
+    def send_template(self, to_phone: str, template_name: str, language_code: str = "he", parameters: list = None):
+        """Send a template message with optional parameters."""
         payload = {
             "messaging_product": "whatsapp",
             "to": to_phone,
@@ -96,6 +96,23 @@ class WhatsAppService:
                 "language": {"code": language_code}
             }
         }
+        
+        if parameters:
+            # WhatsApp expects the parameters inside a component of type 'body'
+            formatted_params = []
+            for param in parameters:
+                formatted_params.append({
+                    "type": "text",
+                    "text": str(param)
+                })
+                
+            payload["template"]["components"] = [
+                {
+                    "type": "body",
+                    "parameters": formatted_params
+                }
+            ]
+            
         return self._send(payload)
 
     def _send(self, payload: dict):

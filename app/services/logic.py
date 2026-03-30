@@ -828,21 +828,25 @@ class HaydeBotLogic:
                 return "טרם נקבע"
             return val
 
-        msg = custom_msg if custom_msg else (
-            f"🔔 *ליד חדש הגיע (לא בוזוקי)*\n\n"
-            f"👤 שם: {lead_fields.get('Name', 'לא צוין')}\n"
-            f"📞 טלפון: {lead_fields.get('Phone')}\n"
-            f"🎸 שירות: {lead_fields.get('Service')}\n"
-            f"📅 תאריך: {_get_display_val('Event_Date')}\n"
-            f"📍 מיקום: {_get_display_val('Location')}\n"
-            f"👥 אורחים: {_get_display_val('Guests')}"
-        )
-
         if admin_numbers:
             for num in admin_numbers.split(","):
                 num = num.strip()
                 if num:
-                    whatsapp_service.send_message(num, msg)
+                    if custom_msg:
+                        # Assuming admin_system_alert has 2 params: Subject and Message
+                        # We pass a generic subject and the custom message
+                        # Using 'en' language code as shown in the screenshot for admin_system_alert
+                        whatsapp_service.send_template(num, "admin_system_alert", "en", parameters=["עדכון אוטומטי", custom_msg])
+                    else:
+                        params = [
+                            lead_fields.get('Name', 'לא תועד'),
+                            lead_fields.get('Phone', 'לא תועד'),
+                            lead_fields.get('Service', 'לא תועד'),
+                            _get_display_val('Event_Date'),
+                            _get_display_val('Location'),
+                            _get_display_val('Guests')
+                        ]
+                        whatsapp_service.send_template(num, "admin_new_lead", "he", parameters=params)
 
         # Email Notification
         email_subject = "🔔 עדכון HaydeBot" if custom_msg else f"🔔 ליד חדש הגיע: {lead_fields.get('Name', 'לא צוין')} ({lead_fields.get('Service')})"
@@ -910,27 +914,25 @@ class HaydeBotLogic:
                                           musician_stats[m_id]["commission_sum"] += commission
         
         # Send Admin Summary
-        admin_msg = (
-            f"📊 *סיכום שבועי כללי ל-Hayde*\n\n"
-            f"✨ לידים שטופלו השבוע: {new_leads}\n"
-            f"✅ אירועים שנסגרו: {total_closed_leads}\n"
-            f"❌ אירועים שאבדו: {total_lost_leads}\n\n"
-            f"שיהיה שבוע אש! 🎸"
-        )
-        await self.notify_admins({}, custom_msg=admin_msg)
+        params_admin_summary = [new_leads, total_closed_leads, total_lost_leads]
+        # Language is English in screenshot for admin_weekly_summary
+        admin_numbers = settings.NOTIFICATION_NUMBERS
+        if admin_numbers:
+            for num in admin_numbers.split(","):
+                num = num.strip()
+                if num:
+                    whatsapp_service.send_template(num, "admin_weekly_summary", "en", parameters=params_admin_summary)
         
         # Send Musician Individual Reports
         for m_id, stats in musician_stats.items():
             if stats["phone"] and stats["received"] > 0: # Only send if they were active
-                musician_msg = (
-                    f"בוקר טוב מ-Hayde🎸!\nהנה סיכום הפעילות שלך לשבוע האחרון:\n\n"
-                    f"📥 קיבלת מיונים ל: {stats['received']} אירועים\n"
-                    f"🏆 סגרת בהצלחה: {stats['closed']} אירועים\n"
-                    f"💰 סך עסקאות שנסגרו: ₪{stats['closing_amount_sum']:,.0f}\n"
-                    f"💸 עמלת Hayde (משוערת): ₪{stats['commission_sum']:,.0f}\n\n"
-                    f"שבוע מטורף ומלא במוזיקה פצצה! 🔥"
-                )
-                self._send_message(stats["phone"], musician_msg, musician_id=m_id)
+                params_musician = [
+                    stats["received"],
+                    stats["closed"],
+                    f"{stats['closing_amount_sum']:,.0f}",
+                    f"{stats['commission_sum']:,.0f}"
+                ]
+                whatsapp_service.send_template(stats["phone"], "musician_weekly_summary", "he", parameters=params_musician)
 
     async def check_if_claimed(self, lead_id: str):
         lead = airtable_service.leads_table.get(lead_id)
