@@ -289,6 +289,10 @@ class HaydeBotLogic:
         lead_id = new_lead["id"]
         
         await self.send_welcome_menu(phone)
+
+        # Immediately notify admins that a new lead arrived (before they complete the flow)
+        await self.notify_admins_new_arrival(phone, name)
+
         return lead_id
 
     async def send_welcome_menu(self, phone: str):
@@ -859,6 +863,36 @@ class HaydeBotLogic:
         <p><strong>תאריך:</strong> {_get_display_val('Event_Date')}</p>
         <p><strong>מיקום:</strong> {_get_display_val('Location')}</p>
         <p><strong>אורחים:</strong> {_get_display_val('Guests')}</p>
+        <hr>
+        <p>זהו מייל אוטומטי ממערכת היידה.</p>
+        """
+        await email_service.send_notification(email_subject, email_body)
+
+    async def notify_admins_new_arrival(self, phone: str, name: str):
+        """Send immediate notification to admins when a new lead arrives to WhatsApp (before completing the bot flow)."""
+        print(f"DEBUG: notify_admins_new_arrival called for {phone} ({name})")
+        admin_numbers = settings.NOTIFICATION_NUMBERS
+
+        arrival_msg = (
+            f"📩 *ליד חדש הגיע לווטסאפ!*\n\n"
+            f"👤 שם: {name or 'לא ידוע'}\n"
+            f"📞 טלפון: {phone}\n\n"
+            f"הליד עדיין לא סיים את תהליך הבוט. המידע יתעדכן כשיסיים."
+        )
+
+        if admin_numbers:
+            for num in admin_numbers.split(","):
+                num = num.strip()
+                if num:
+                    whatsapp_service.send_template(num, "admin_system_alert", "en", parameters=["ליד חדש הגיע", arrival_msg])
+
+        # Email Notification
+        email_subject = f"📩 ליד חדש הגיע לווטסאפ: {name or 'לא ידוע'} ({phone})"
+        email_body = f"""
+        <h2>ליד חדש הגיע לווטסאפ</h2>
+        <p><strong>שם:</strong> {name or 'לא ידוע'}</p>
+        <p><strong>טלפון:</strong> {phone}</p>
+        <p>הליד עדיין לא סיים את תהליך הבוט. תקבל עדכון נוסף כשישלים את כל הפרטים.</p>
         <hr>
         <p>זהו מייל אוטומטי ממערכת היידה.</p>
         """
