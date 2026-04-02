@@ -258,69 +258,50 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                 </button>
             </div>
 
-            {/* Add Form */}
+            {/* Add Form Modal */}
             {showAddForm && (
-                <div className="px-4 md:px-6 py-4 bg-purple-50 border-b border-purple-100">
-                    <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">שם הנגן *</label>
-                            <input
-                                type="text"
-                                value={form.Name}
-                                onChange={(e) => setForm({ ...form, Name: e.target.value })}
-                                placeholder="למשל: יוסי כהן"
-                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-300 outline-none"
-                                required
-                            />
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowAddForm(false)}>
+                    <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-extrabold text-slate-800 flex items-center gap-2">
+                                <Plus size={16} className="text-purple-600" /> הוסף מנהל מסע / נגן
+                            </h3>
+                            <button onClick={() => setShowAddForm(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
                         </div>
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">טלפון *</label>
-                            <input
-                                type="text"
-                                value={form.Phone}
-                                onChange={(e) => setForm({ ...form, Phone: e.target.value })}
-                                placeholder="972501234567"
-                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-300 outline-none"
-                                dir="ltr"
-                                required
-                            />
+                        <div className="px-5 py-4 overflow-y-auto">
+                            <form id="add-musician-form" onSubmit={handleAdd} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">שם הנגן *</label>
+                                        <input type="text" value={form.Name} onChange={(e) => setForm({ ...form, Name: e.target.value })} placeholder="למשל: יוסי כהן" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">טלפון *</label>
+                                        <input type="text" value={form.Phone} onChange={(e) => setForm({ ...form, Phone: e.target.value })} placeholder="972501234567" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" dir="ltr" required />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">ציון (1-10)</label>
+                                        <div className="flex items-center gap-2 h-9">
+                                            <input type="range" min="1" max="10" value={form.Score} onChange={(e) => setForm({ ...form, Score: parseInt(e.target.value) })} className="flex-1 accent-purple-600" />
+                                            <span className="text-xs font-bold text-purple-700 w-6 text-center">{form.Score}</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">סטטוס</label>
+                                        <button type="button" onClick={() => setForm({ ...form, Is_Active: !form.Is_Active })} className={clsx("w-full px-3 py-2 rounded-lg text-xs font-bold transition-all border", form.Is_Active ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-500 border-slate-200")}>
+                                            {form.Is_Active ? '✅ פעיל' : '⏸️ לא פעיל'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">ציון (1-10)</label>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="10"
-                                    value={form.Score}
-                                    onChange={(e) => setForm({ ...form, Score: parseInt(e.target.value) })}
-                                    className="flex-1 accent-purple-600"
-                                />
-                                <span className="text-sm font-bold text-purple-700 w-6 text-center">{form.Score}</span>
-                            </div>
+                        <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
+                            <button onClick={() => setShowAddForm(false)} className="px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700">ביטול</button>
+                            <button type="submit" form="add-musician-form" className="px-6 py-2 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700 transition-all shadow-md">צור נגן</button>
                         </div>
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">סטטוס</label>
-                            <button
-                                type="button"
-                                onClick={() => setForm({ ...form, Is_Active: !form.Is_Active })}
-                                className={clsx(
-                                    "w-full px-3 py-2 rounded-xl text-sm font-bold transition-all border",
-                                    form.Is_Active
-                                        ? "bg-green-100 text-green-700 border-green-200"
-                                        : "bg-slate-100 text-slate-500 border-slate-200"
-                                )}
-                            >
-                                {form.Is_Active ? '✅ פעיל' : '⏸️ לא פעיל'}
-                            </button>
-                        </div>
-                        <button
-                            type="submit"
-                            className="px-6 py-2 bg-purple-600 text-white text-sm font-bold rounded-xl hover:bg-purple-700 transition-all shadow-md shadow-purple-200"
-                        >
-                            <Plus size={16} className="inline ml-1" /> הוסף
-                        </button>
-                    </form>
+                    </div>
                 </div>
             )}
 
@@ -333,7 +314,15 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                         <p className="text-sm">לחץ על &quot;הוסף נגן&quot; להתחיל</p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="flex flex-col border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm">
+                        {/* Header Row */}
+                        <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
+                            <div className="flex-1 min-w-[120px]">שם הנגן</div>
+                            <div className="w-32 shrink-0 hidden md:flex">טלפון</div>
+                            <div className="w-24 shrink-0 hidden md:flex text-center justify-center">סטטוס</div>
+                            <div className="w-28 shrink-0 hidden md:flex">ציון</div>
+                            <div className="w-32 shrink-0 flex justify-end">פעולות</div>
+                        </div>
                         {musicians.map(m => {
                             const isEditing = editingId === m.id;
                             const isExpanded = expandedId === m.id;
@@ -343,115 +332,64 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                 <div
                                     key={m.id}
                                     className={clsx(
-                                        "bg-white border rounded-2xl overflow-hidden transition-all shadow-sm",
-                                        isExpanded ? "border-purple-200 shadow-md" : "border-slate-200 hover:border-slate-300",
+                                        "flex flex-col border-b border-slate-100 transition-all group bg-white",
+                                        isExpanded && "bg-purple-50/30",
                                         !isActive && "opacity-60"
                                     )}
                                 >
                                     {/* Main Row */}
                                     {isEditing ? (
-                                        <div className="p-4 bg-amber-50 grid grid-cols-1 md:grid-cols-5 gap-3 items-center">
-                                            <input
-                                                type="text"
-                                                value={editForm.Name}
-                                                onChange={(e) => setEditForm({ ...editForm, Name: e.target.value })}
-                                                className="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white"
-                                                placeholder="שם"
-                                            />
-                                            <input
-                                                type="text"
-                                                value={editForm.Phone}
-                                                onChange={(e) => setEditForm({ ...editForm, Phone: e.target.value })}
-                                                className="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white"
-                                                dir="ltr"
-                                                placeholder="טלפון"
-                                            />
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="range"
-                                                    min="1"
-                                                    max="10"
-                                                    value={editForm.Score}
-                                                    onChange={(e) => setEditForm({ ...editForm, Score: parseInt(e.target.value) })}
-                                                    className="flex-1 accent-purple-600"
-                                                />
-                                                <span className="text-sm font-bold text-purple-700 w-6">{editForm.Score}</span>
+                                        <div className="flex items-center px-4 md:px-6 py-2 bg-amber-50 gap-3 text-xs w-full">
+                                            <div className="flex-1 min-w-[120px]">
+                                                <input type="text" value={editForm.Name} onChange={(e) => setEditForm({ ...editForm, Name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" placeholder="שם" />
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditForm({ ...editForm, Is_Active: !editForm.Is_Active })}
-                                                className={clsx(
-                                                    "px-3 py-2 rounded-xl text-sm font-bold transition-all border",
-                                                    editForm.Is_Active
-                                                        ? "bg-green-100 text-green-700 border-green-200"
-                                                        : "bg-slate-100 text-slate-500 border-slate-200"
-                                                )}
-                                            >
-                                                {editForm.Is_Active ? '✅ פעיל' : '⏸️ לא פעיל'}
-                                            </button>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => saveEdit(m.id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg"><Check size={18} /></button>
-                                                <button onClick={() => setEditingId(null)} className="p-2 text-slate-400 hover:bg-slate-50 rounded-lg"><X size={18} /></button>
+                                            <div className="w-32 hidden md:block">
+                                                <input type="text" value={editForm.Phone} onChange={(e) => setEditForm({ ...editForm, Phone: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="טלפון" />
+                                            </div>
+                                            <div className="w-24 hidden md:flex items-center justify-center">
+                                                <button type="button" onClick={() => setEditForm({ ...editForm, Is_Active: !editForm.Is_Active })} className={clsx("px-2 py-0.5 rounded text-[10px] font-bold w-full border", editForm.Is_Active ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-500 border-slate-200")}>
+                                                    {editForm.Is_Active ? 'פעיל' : 'לא פעיל'}
+                                                </button>
+                                            </div>
+                                            <div className="w-28 hidden md:flex items-center gap-2">
+                                                <input type="range" min="1" max="10" value={editForm.Score} onChange={(e) => setEditForm({ ...editForm, Score: parseInt(e.target.value) })} className="flex-1 accent-purple-600" />
+                                            </div>
+                                            <div className="w-32 flex items-center justify-end gap-1">
+                                                <button onClick={() => saveEdit(m.id)} className="p-1.5 text-green-600 hover:bg-green-100 rounded"><Check size={14} /></button>
+                                                <button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 hover:bg-slate-200 rounded"><X size={14} /></button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div
-                                            className="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
-                                            onClick={() => toggleExpand(m.id)}
-                                        >
-                                            {/* Avatar */}
-                                            <div className={clsx(
-                                                "w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-extrabold shrink-0",
-                                                isActive
-                                                    ? "bg-gradient-to-br from-purple-500 to-purple-700"
-                                                    : "bg-slate-300"
-                                            )}>
-                                                {m.fields.Name.substring(0, 1)}
+                                        <div className="flex items-center px-4 md:px-6 py-2 text-xs hover:bg-slate-50 transition-colors w-full cursor-pointer" onClick={() => toggleExpand(m.id)}>
+                                            <div className="flex-1 min-w-[120px] flex flex-col justify-center gap-0.5">
+                                                <span className="font-bold text-slate-800">{m.fields.Name}</span>
+                                                <span className="text-[10px] text-slate-400 md:hidden">{m.fields.Phone}</span>
                                             </div>
-
-                                            {/* Info */}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-0.5">
-                                                    <span className="font-bold text-slate-800 text-base truncate">{m.fields.Name}</span>
-                                                    <span className={clsx(
-                                                        "text-[10px] px-2 py-0.5 rounded-full font-bold",
-                                                        isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'
-                                                    )}>
-                                                        {isActive ? 'פעיל' : 'לא פעיל'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-4 text-sm text-slate-500">
-                                                    <span className="flex items-center gap-1">
-                                                        <Phone size={12} /> {m.fields.Phone}
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        {renderScoreStars(m.fields.Score ?? 5)}
-                                                        <span className="text-xs font-bold text-slate-400 mr-1">{m.fields.Score ?? 5}/10</span>
-                                                    </span>
-                                                </div>
+                                            
+                                            <div className="w-32 shrink-0 hidden md:flex text-slate-500 font-mono text-[11px]">
+                                                {m.fields.Phone}
                                             </div>
-
+                                            
+                                            <div className="w-24 shrink-0 hidden md:flex justify-center">
+                                                <span className={clsx("px-2 py-0.5 rounded-full text-[9px] font-bold", isActive ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-slate-100 text-slate-400')}>
+                                                    {isActive ? 'פעיל' : 'לא פעיל'}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="w-28 shrink-0 hidden md:flex items-center">
+                                                {renderScoreStars(m.fields.Score ?? 5)}
+                                            </div>
+                                            
                                             {/* Actions */}
-                                            <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                                                <button
-                                                    onClick={() => startEdit(m)}
-                                                    className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="ערוך"
-                                                >
-                                                    <Edit size={16} />
+                                            <div className="w-32 shrink-0 flex items-center justify-end gap-0.5" onClick={e => e.stopPropagation()}>
+                                                <button onClick={() => startEdit(m)} className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="ערוך">
+                                                    <Edit size={14} />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleDelete(m.id)}
-                                                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="מחק"
-                                                >
-                                                    <Trash2 size={16} />
+                                                <button onClick={() => handleDelete(m.id)} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="מחק">
+                                                    <Trash2 size={14} />
                                                 </button>
-                                                <button
-                                                    onClick={() => toggleExpand(m.id)}
-                                                    className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                                                >
-                                                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                                <button onClick={() => toggleExpand(m.id)} className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors">
+                                                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                                                 </button>
                                             </div>
                                         </div>

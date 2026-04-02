@@ -94,46 +94,46 @@ export default function TasksSection({ currentUser }: TasksSectionProps) {
                 </div>
             </div>
 
-            <div className="p-4 md:p-6 bg-slate-50 border-b border-slate-100">
-                <form onSubmit={handleAddTask} className="flex flex-col md:flex-row gap-3">
-                    <div className="flex-1">
+            <div className="p-3 md:p-4 bg-slate-50 border-b border-slate-100">
+                <form onSubmit={handleAddTask} className="flex flex-col md:flex-row items-center gap-2">
+                    <div className="flex-1 w-full bg-white border border-slate-200 rounded flex items-center px-3 py-1.5 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all">
                         <input
                             type="text"
                             placeholder="מה צריך לעשות?"
                             value={newTaskTitle}
                             onChange={(e) => setNewTaskTitle(e.target.value)}
-                            className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="flex-1 text-xs outline-none bg-transparent"
                             required
                         />
                     </div>
-                    <div className="w-full md:w-40 flex items-center bg-white border border-slate-200 rounded-xl px-3 outline-none focus-within:ring-2 focus-within:ring-blue-500">
-                        <User size={14} className="text-slate-400 ml-2 shrink-0" />
+                    <div className="w-full md:w-32 flex items-center bg-white border border-slate-200 rounded px-2 py-1.5 focus-within:border-blue-400 transition-all">
+                        <User size={12} className="text-slate-400 ml-2 shrink-0" />
                         <select
                             value={newTaskAssignee}
                             onChange={(e) => setNewTaskAssignee(e.target.value)}
-                            className="w-full py-2 bg-transparent text-sm outline-none appearance-none"
+                            className="w-full bg-transparent text-xs outline-none appearance-none"
                         >
-                            <option value="">בחר אחריות...</option>
+                            <option value="">מנהל...</option>
                             <option value="אילן">אילן</option>
                             <option value="קובי">קובי</option>
                         </select>
                     </div>
-                    <div className="w-full md:w-44 flex items-center bg-white border border-slate-200 rounded-xl px-3 outline-none focus-within:ring-2 focus-within:ring-blue-500">
-                        <Calendar size={14} className="text-slate-400 ml-2 shrink-0" />
+                    <div className="w-full md:w-32 flex items-center bg-white border border-slate-200 rounded px-2 py-1.5 focus-within:border-blue-400 transition-all">
+                        <Calendar size={12} className="text-slate-400 ml-2 shrink-0" />
                         <input
                             type="text"
                             placeholder="תאריך יעד"
                             value={newTaskDueDate}
                             onChange={(e) => setNewTaskDueDate(e.target.value)}
-                            className="w-full py-2 bg-transparent text-sm outline-none placeholder:text-slate-400"
+                            className="w-full bg-transparent text-xs outline-none placeholder:text-slate-400"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={isSaving || !newTaskTitle.trim()}
-                        className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 shadow-md shadow-blue-200 shrink-0"
+                        className="w-full md:w-auto px-4 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition-all disabled:opacity-50 shadow-sm shrink-0 flex items-center justify-center gap-1.5"
                     >
-                        <Plus size={16} /> הוסף משימה
+                        <Plus size={14} /> הוסף
                     </button>
                 </form>
             </div>
@@ -175,43 +175,42 @@ function TaskRow({ task, onToggle, onDelete }: { task: Task; onToggle: () => voi
     const isCompleted = task.fields.Is_Completed;
     return (
         <div className={clsx(
-            "flex flex-wrap md:flex-nowrap items-center gap-3 p-3 rounded-xl transition-all group",
-            isCompleted ? "opacity-60 bg-slate-50" : "hover:bg-slate-50"
+            "flex items-center px-4 py-2 border-b border-slate-50 hover:bg-slate-50 transition-colors group bg-white text-xs",
+            isCompleted && "bg-slate-50/50"
         )}>
-            <button
-                onClick={onToggle}
-                className={clsx(
-                    "flex-shrink-0 transition-colors",
-                    isCompleted ? "text-green-500 hover:text-green-600" : "text-slate-300 hover:text-blue-500"
-                )}
-            >
-                {isCompleted ? <CheckCircle2 size={22} className="fill-green-100" /> : <Circle size={22} />}
-            </button>
-            <div className="flex-1 min-w-0">
-                <span className={clsx("text-sm font-semibold truncate block", isCompleted ? "line-through text-slate-500" : "text-slate-800")}>
+            <div className="w-8 shrink-0 flex justify-center">
+                <button onClick={onToggle} className={clsx("flex-shrink-0 transition-colors", isCompleted ? "text-green-500 hover:text-green-600" : "text-slate-300 hover:text-blue-500")}>
+                    {isCompleted ? <CheckCircle2 size={16} className="fill-green-100" /> : <Circle size={16} />}
+                </button>
+            </div>
+            
+            <div className="flex-1 min-w-0 flex items-center pr-2">
+                <span className={clsx("font-bold truncate", isCompleted ? "line-through text-slate-400 font-medium" : "text-slate-700")}>
                     {task.fields.Title}
                 </span>
             </div>
 
-            <div className="flex items-center gap-3 text-xs w-full md:w-auto mt-2 md:mt-0 pl-1">
-                {task.fields.Assignee && (
-                    <span className={clsx("px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5",
-                        task.fields.Assignee === 'אילן' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+            <div className="w-24 shrink-0 hidden md:flex items-center justify-center">
+                {task.fields.Assignee ? (
+                    <span className={clsx("px-2 py-0.5 rounded font-bold text-[10px]",
+                        task.fields.Assignee === 'אילן' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'
                     )}>
-                        <User size={12} /> {task.fields.Assignee}
+                       {task.fields.Assignee}
                     </span>
-                )}
-                {task.fields.Due_Date && (
-                    <span className={clsx("flex items-center gap-1.5 font-medium", isCompleted ? "text-slate-400" : "text-orange-600")}>
-                        <Calendar size={12} /> {task.fields.Due_Date}
+                ) : <span className="text-slate-300">—</span>}
+            </div>
+            
+            <div className="w-24 shrink-0 hidden md:flex items-center text-[10px] justify-center">
+                {task.fields.Due_Date ? (
+                    <span className={clsx("font-bold", isCompleted ? "text-slate-400" : "text-slate-500")}>
+                        {task.fields.Due_Date}
                     </span>
-                )}
-                <button
-                    onClick={onDelete}
-                    className="mr-auto text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1.5 rounded-md hover:bg-red-50 shrink-0"
-                    title="מחק משימה"
-                >
-                    <Trash2 size={16} />
+                ) : <span className="text-slate-300">—</span>}
+            </div>
+            
+            <div className="w-12 shrink-0 flex items-center justify-end">
+                <button onClick={onDelete} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1 rounded hover:bg-red-50 focus:opacity-100" title="מחק">
+                    <Trash2 size={14} />
                 </button>
             </div>
         </div>

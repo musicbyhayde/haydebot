@@ -10,7 +10,7 @@ export interface AppUser {
 }
 
 const USER_MAP: Record<string, { role: UserRole; displayName: string }> = {
-    'ziv200@gmail.com': { role: 'partner', displayName: 'אילן' },
+    'ziv200@gmail.com': { role: 'admin', displayName: 'אילן' },
     'kobile@gmail.com': { role: 'partner', displayName: 'קובי' },
     'musicbyhayde@gmail.com': { role: 'admin', displayName: 'מנהל' },
 };

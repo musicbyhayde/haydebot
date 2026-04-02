@@ -25,10 +25,10 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     const [leads, setLeads] = useState<Lead[]>([]);
     const [summary, setSummary] = useState<Record<string, { income: number; expenses: number; balance: number; cash_balance: number; bank_balance: number }>>({});
     const [loading, setLoading] = useState(true);
-    const [showAddForm, setShowAddForm] = useState(false);
+    // removed showAddForm
     const [activeTab, setActiveTab] = useState<'אילן' | 'קובי'>('אילן');
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState<any>({});
+
     const [errors, setErrors] = useState<FormErrors>({});
     const [submitAttempted, setSubmitAttempted] = useState(false);
     const [leadSearch, setLeadSearch] = useState('');
@@ -36,6 +36,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     const leadDropdownRef = useRef<HTMLDivElement>(null);
 
     // Sorting State
+    const [financeModalOpen, setFinanceModalOpen] = useState(false);
     const [sortBy, setSortBy] = useState<'date' | 'type'>('date');
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
@@ -48,6 +49,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         Payment_Status: 'לא שולם',
         Payment_Method: 'חשבון',
         Lead_ID: '',
+        Owner: '',
     });
 
     useEffect(() => {
@@ -113,74 +115,93 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         });
     };
 
-    // --- Add ---
-    const handleAdd = async (owner: string) => {
+    const openFinanceModal = (type: 'income' | 'expense') => {
+        setForm({
+            Type: type,
+            Date: new Date().toISOString().split('T')[0],
+            Description: '',
+            Musician: '',
+            Amount: '',
+            Payment_Status: 'לא שולם',
+            Payment_Method: 'חשבון',
+            Lead_ID: '',
+            Owner: activeTab,
+        });
+        setEditingId(null);
+        setSubmitAttempted(false);
+        setErrors({});
+        setFinanceModalOpen(true);
+    };
+
+    const handleSaveFinance = async () => {
         setSubmitAttempted(true);
         const validationErrors = validateForm(form);
         setErrors(validationErrors);
         if (Object.keys(validationErrors).length > 0) return;
 
         try {
-            await api.createFinanceEntry({
-                Owner: owner,
-                Type: form.Type,
-                Date: form.Date,
-                Description: form.Description,
-                Event_Name: form.Type === 'income' ? form.Description : undefined,
-                Musician: form.Type === 'income' ? (form.Musician || undefined) : undefined,
-                Amount: parseFloat(form.Amount),
-                Payment_Status: form.Payment_Status,
-                Payment_Method: form.Payment_Method,
-                Lead_ID: form.Lead_ID || undefined,
-            });
-            setForm({ Type: 'income', Date: new Date().toISOString().split('T')[0], Description: '', Musician: '', Amount: '', Payment_Status: 'לא שולם', Payment_Method: 'חשבון', Lead_ID: '' });
-            setShowAddForm(false);
-            setSubmitAttempted(false);
-            setErrors({});
+            const saveOwner = getAddOwner() || form.Owner;
+            if (editingId) {
+                await api.updateFinanceEntry(editingId, {
+                    Owner: saveOwner,
+                    Type: form.Type,
+                    Description: form.Description,
+                    Event_Name: form.Type === 'income' ? form.Description : undefined,
+                    Musician: form.Type === 'income' ? (form.Musician || undefined) : undefined,
+                    Amount: parseFloat(form.Amount),
+                    Payment_Status: form.Payment_Status,
+                    Payment_Method: form.Payment_Method,
+                    Date: form.Date,
+                    Lead_ID: form.Lead_ID || undefined,
+                });
+            } else {
+                await api.createFinanceEntry({
+                    Owner: saveOwner,
+                    Type: form.Type,
+                    Date: form.Date,
+                    Description: form.Description,
+                    Event_Name: form.Type === 'income' ? form.Description : undefined,
+                    Musician: form.Type === 'income' ? (form.Musician || undefined) : undefined,
+                    Amount: parseFloat(form.Amount),
+                    Payment_Status: form.Payment_Status,
+                    Payment_Method: form.Payment_Method,
+                    Lead_ID: form.Lead_ID || undefined,
+                });
+            }
+            setFinanceModalOpen(false);
+            setEditingId(null);
             fetchData();
         } catch (e) {
             console.error(e);
+            alert('שגיאה בשמירת התנועה');
         }
     };
 
-    // --- Edit ---
-    const startEdit = (entry: FinanceEntry) => {
+    const handleEditFinance = (entry: FinanceEntry) => {
         setEditingId(entry.id);
-        setEditForm({
+        setForm({
+            Type: entry.fields.Type,
+            Date: entry.fields.Date || new Date().toISOString().split('T')[0],
             Description: entry.fields.Event_Name || entry.fields.Description,
             Musician: entry.fields.Musician || '',
             Amount: String(entry.fields.Amount),
             Payment_Status: entry.fields.Payment_Status,
             Payment_Method: entry.fields.Payment_Method || 'חשבון',
-            Date: entry.fields.Date,
+            Lead_ID: entry.fields.Lead_ID || '',
+            Owner: entry.fields.Owner,
         });
+        setSubmitAttempted(false);
+        setFinanceModalOpen(true);
     };
 
-    const saveEdit = async (id: string) => {
-        try {
-            await api.updateFinanceEntry(id, {
-                Description: editForm.Description,
-                Event_Name: editForm.Description,
-                Musician: editForm.Musician || undefined,
-                Amount: parseFloat(editForm.Amount),
-                Payment_Status: editForm.Payment_Status,
-                Payment_Method: editForm.Payment_Method,
-                Date: editForm.Date,
-            });
-            setEditingId(null);
-            fetchData();
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const handleDelete = async (id: string) => {
+    const handleDeleteFinance = async (id: string) => {
         if (!confirm('האם למחוק את הרשומה?')) return;
         try {
             await api.deleteFinanceEntry(id);
             fetchData();
         } catch (e) {
             console.error(e);
+            alert('שגיאה במחיקת תנועה');
         }
     };
 
@@ -258,77 +279,49 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         return <p className="text-red-500 text-[10px] mt-0.5 flex items-center gap-0.5"><AlertCircle size={10} /> {error}</p>;
     };
 
-    const renderRow = (e: FinanceEntry) => {
+        const renderRow = (e: FinanceEntry) => {
         const type = e.fields.Type;
-        const isEditing = editingId === e.id;
         const editable = canEdit(e);
         const linkedLead = getLinkedLeadName(e.fields.Lead_ID);
 
-        if (isEditing) {
-            return (
-                <tr key={e.id} className="bg-amber-50">
-                    <td className="py-2 px-3"><input type="date" value={editForm.Date} onChange={(ev) => setEditForm({ ...editForm, Date: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-full bg-white" dir="ltr" /></td>
-                    <td className="py-2 px-3"><input type="text" value={editForm.Description} onChange={(ev) => setEditForm({ ...editForm, Description: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-full bg-white" /></td>
-                    {type === 'income' && <td className="py-2 px-3"><input type="text" value={editForm.Musician} onChange={(ev) => setEditForm({ ...editForm, Musician: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-full bg-white" /></td>}
-                    <td className="py-2 px-3"><input type="number" value={editForm.Amount} onChange={(ev) => setEditForm({ ...editForm, Amount: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs w-20 bg-white" dir="ltr" /></td>
-                    <td className="py-2 px-3">
-                        <select value={editForm.Payment_Status} onChange={(ev) => setEditForm({ ...editForm, Payment_Status: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-xs bg-white mb-1">
-                            {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <select value={editForm.Payment_Method} onChange={(ev) => setEditForm({ ...editForm, Payment_Method: ev.target.value })} className="px-2 py-1 border border-slate-200 rounded-lg text-[10px] bg-white text-slate-500">
-                            <option value="חשבון">🏦 בנק</option>
-                            <option value="מזומן">💵 מזומן</option>
-                        </select>
-                    </td>
-                    <td className="py-2 px-3">
-                        <div className="flex items-center gap-1">
-                            <button onClick={() => saveEdit(e.id)} className="text-green-600 hover:text-green-800"><Check size={14} /></button>
-                            <button onClick={() => setEditingId(null)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
-                        </div>
-                    </td>
-                </tr>
-            );
-        }
-
         return (
-            <tr key={e.id} className="border-t border-slate-50 hover:bg-slate-50 transition-colors">
-                <td className="py-2 px-3 text-xs text-slate-600">{e.fields.Date}</td>
-                <td className="py-2 px-3">
-                    <div className="flex flex-col">
-                        <span className="text-xs font-medium text-slate-800">{e.fields.Event_Name || e.fields.Description}</span>
+            <div key={e.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-100 hover:bg-slate-50 transition-colors bg-white">
+                <div className="w-16 text-[10px] text-slate-500">{new Date(e.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
+                <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex items-center gap-1">
+                        <span className="font-semibold text-slate-700 truncate">{e.fields.Event_Name || e.fields.Description}</span>
                         {linkedLead && (
-                            <span className="text-[10px] text-blue-500 flex items-center gap-0.5 mt-0.5">
-                                <Link size={9} /> {linkedLead}
+                            <span className="text-[9px] text-blue-500 bg-blue-50 px-1 rounded-sm flex items-center gap-0.5">
+                                <Link size={8} /> {linkedLead}
                             </span>
                         )}
                     </div>
-                </td>
-                <td className="py-2 px-3 text-xs text-slate-600">{e.fields.Event_Name ? e.fields.Musician || '—' : '—'}</td>
-                <td className="py-2 px-3 text-xs font-bold text-left w-28" dir="ltr">
-                    <span className={clsx("px-2 py-1 rounded-md shadow-sm border", type === 'income' ? 'bg-[#00FF00] text-green-950 font-extrabold border-green-500' : 'bg-[#FF0000] text-white border-red-600')}>
-                        {type === 'expense' ? '-' : ''}{formatCurrency(e.fields.Amount)}
-                    </span>
-                </td>
-                <td className="py-2 px-3">
-                    <div className="flex flex-col gap-1 items-start">
-                        <span className={clsx(
-                            "text-[10px] px-2 py-0.5 rounded-full font-bold",
-                            e.fields.Payment_Status === 'תשלום' ? 'bg-green-100 text-green-700' : e.fields.Payment_Status === 'חלקי' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                        )}>{e.fields.Payment_Status}</span>
-                        <span className="text-[10px] text-slate-500 flex items-center gap-1 font-medium bg-slate-100 px-1.5 py-0.5 rounded-md">
-                            {e.fields.Payment_Method === 'מזומן' ? '💵 מזומן' : '🏦 חשבון'}
-                        </span>
-                    </div>
-                </td>
-                <td className="py-2 px-3">
+                </div>
+                <div className="w-20 text-[10px] text-slate-400">
+                    {e.fields.Event_Name ? e.fields.Musician || '' : ''}
+                </div>
+                <div className="w-24 flex flex-col items-end px-2">
+                    <span className={clsx(
+                        "text-[9px] px-1.5 py-0.5 rounded-full font-bold mb-0.5",
+                        e.fields.Payment_Status === 'תשלום' ? 'bg-green-100 text-green-700' : e.fields.Payment_Status === 'חלקי' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                    )}>{e.fields.Payment_Status}</span>
+                    <span className="text-[9px] text-slate-400">{e.fields.Payment_Method}</span>
+                </div>
+                <div className={clsx(
+                    "w-24 text-left font-bold font-mono tracking-tighter",
+                    type === 'income' ? "text-emerald-600" : "text-red-600"
+                )} dir="ltr">
+                    {type === 'income' ? '+' : '-'}{e.fields.Amount.toLocaleString()} ₪
+                </div>
+                <div className="w-12 flex items-center justify-end gap-2 text-slate-400 pl-2">
                     {editable && (
-                        <div className="flex items-center gap-1.5">
-                            <button onClick={() => startEdit(e)} className="text-slate-300 hover:text-blue-500 transition-colors" title="ערוך"><Edit size={13} /></button>
-                            <button onClick={() => handleDelete(e.id)} className="text-slate-300 hover:text-red-500 transition-colors" title="מחק"><Trash2 size={13} /></button>
-                        </div>
+                        <>
+                            <button onClick={() => handleEditFinance(e)} className="hover:text-blue-500"><Edit size={12} /></button>
+                            <button onClick={() => handleDeleteFinance(e.id)} className="hover:text-red-500"><Trash2 size={12} /></button>
+                        </>
                     )}
-                </td>
-            </tr>
+                </div>
+            </div>
         );
     };
 
@@ -380,26 +373,22 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4 shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-slate-100/80 text-slate-600 border-b border-slate-200">
-                                    <th className="py-2.5 px-3 text-right text-[11px] font-bold">תאריך</th>
-                                    <th className="py-2.5 px-3 text-right text-[11px] font-bold">אירוע</th>
-                                    <th className="py-2.5 px-3 text-right text-[11px] font-bold">הערות / משתתפים</th>
-                                    <th className="py-2.5 px-3 text-left text-[11px] font-bold">סכום</th>
-                                    <th className="py-2.5 px-3 text-right text-[11px] font-bold">סטטוס</th>
-                                    <th className="py-2.5 px-3 w-16"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedEntries.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-8 text-slate-400 text-sm">אין תנועות</td></tr>
-                                ) : sortedEntries.map(e => renderRow(e))}
-                            </tbody>
-                        </table>
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4 shadow-sm flex flex-col">
+                    {/* Header Row */}
+                    <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-200 uppercase bg-slate-50">
+                        <div className="w-16">תאריך</div>
+                        <div className="flex-1">אירוע / פירוט</div>
+                        <div className="w-20">נגן</div>
+                        <div className="w-24 text-right px-2">אמצעי/סטטוס</div>
+                        <div className="w-24 text-left">סכום</div>
+                        <div className="w-12"></div>
                     </div>
+                    {/* Rows */}
+                    {sortedEntries.length === 0 ? (
+                        <div className="text-center py-8 text-slate-400 text-sm">אין תנועות</div>
+                    ) : (
+                        sortedEntries.map(e => renderRow(e))
+                    )}
                 </div>
             </div>
         );
@@ -447,17 +436,32 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     </div>
                 </div>
                 {(canAddForOwner('אילן') || canAddForOwner('קובי')) && (
-                    <button
-                        onClick={() => { setShowAddForm(!showAddForm); setSubmitAttempted(false); setErrors({}); }}
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 text-white text-sm font-bold rounded-xl hover:bg-amber-600 transition-all shadow-md shadow-amber-200"
-                    >
-                        <Plus size={16} /> רשומה חדשה
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => openFinanceModal('income')}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                        >
+                            + הוסף הכנסה
+                        </button>
+                        <button
+                            onClick={() => openFinanceModal('expense')}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-700 text-xs font-bold rounded-lg border border-red-200 hover:bg-red-100 transition-colors"
+                        >
+                            - הוסף הוצאה
+                        </button>
+                    </div>
                 )}
             </div>
 
-            {/* Add Form */}
-            {showAddForm && (
+            {/* Modal */}
+            {financeModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setFinanceModalOpen(false)}>
+                    <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="text-sm font-bold text-slate-800">{editingId ? 'עריכת תנועה' : 'הוספת תנועה'}</h3>
+                            <button onClick={() => setFinanceModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="px-5 py-4 overflow-y-auto">
                 <div className="px-4 md:px-6 py-4 bg-amber-50 border-b border-amber-100">
                     {/* Row 1: Type + Date + Amount */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
@@ -576,19 +580,18 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                                 <option value="מזומן">💵 מזומן</option>
                             </select>
                         </div>
-                        <div className="flex items-end gap-2">
-                            {addOwner ? (
-                                <button onClick={() => handleAdd(addOwner)} className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md">
-                                    הוסף ל-{addOwner}
-                                </button>
-                            ) : (
-                                <>
-                                    <button onClick={() => handleAdd('אילן')} className="flex-1 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md">+ אילן</button>
-                                    <button onClick={() => handleAdd('קובי')} className="flex-1 py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition-all shadow-md">+ קובי</button>
-                                </>
-                            )}
+                        {/* Admin Owner Selection Wrapper */}
+                        {!getAddOwner() && (
+                            <div className="mt-3 bg-white p-3 border border-slate-200 rounded-xl">
+                                <label className="block text-[10px] font-bold text-slate-500 mb-2">למי לשייך? (פעולה למנהל)</label>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setForm({...form, Owner: 'אילן'})} className={`flex-1 py-1.5 text-xs font-bold rounded-lg ${form.Owner === 'אילן' ? 'bg-blue-100 text-blue-700 border-2 border-blue-400' : 'bg-slate-50 border border-slate-200'}`}>אילן</button>
+                                    <button onClick={() => setForm({...form, Owner: 'קובי'})} className={`flex-1 py-1.5 text-xs font-bold rounded-lg ${form.Owner === 'קובי' ? 'bg-purple-100 text-purple-700 border-2 border-purple-400' : 'bg-slate-50 border border-slate-200'}`}>קובי</button>
+                                </div>
+                            </div>
+                        )}
+                        
                         </div>
-                    </div>
 
                     {submitAttempted && Object.keys(errors).length > 0 && (
                         <div className="mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
@@ -596,6 +599,14 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                             <p className="text-red-600 text-xs font-medium">יש שדות חובה שלא מולאו — בדוק את השדות המסומנים באדום</p>
                         </div>
                     )}
+                    
+                    <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
+                        <button onClick={() => setFinanceModalOpen(false)} className="px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700">ביטול</button>
+                        <button onClick={handleSaveFinance} className="px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md">שמור רשומה</button>
+                    </div>
+                </div>
+                </div>
+                </div>
                 </div>
             )}
 

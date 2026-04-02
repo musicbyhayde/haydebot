@@ -79,46 +79,34 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 </button>
                 {isOpen && (
                     <div className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden opacity-80">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-right">
-                                <thead className="bg-slate-50 text-slate-400 text-[11px] uppercase tracking-wider">
-                                    <tr>
-                                        <th className="px-4 md:px-6 py-3 font-semibold">לקוח</th>
-                                        <th className="px-4 md:px-6 py-3 font-semibold hidden md:table-cell">שירות</th>
-                                        <th className="px-4 md:px-6 py-3 font-semibold hidden md:table-cell">סכום / סיבה</th>
-                                        <th className="px-4 md:px-6 py-3 font-semibold">פעולות</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {items.map(lead => (
-                                        <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-4 md:px-6 py-3">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-sm text-slate-600">{lead.fields.Name || 'ללא שם'}</span>
-                                                    <span className="text-[11px] text-slate-400">{lead.fields.Phone}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3 text-sm text-slate-500 hidden md:table-cell">
-                                                {lead.fields.Service || '—'}
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3 text-sm text-slate-500 hidden md:table-cell">
-                                                {lead.fields.Closing_Amount
-                                                    ? `₪${lead.fields.Closing_Amount.toLocaleString()}`
-                                                    : (lead.fields.Lost_Reason || '—')}
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3">
-                                                <button
-                                                    onClick={() => setDetailLead(lead)}
-                                                    className="text-slate-400 hover:text-blue-600 transition-colors"
-                                                    title="פרטים"
-                                                >
-                                                    <FileText size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div className="flex flex-col">
+                            {/* Header Row */}
+                            <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
+                                <div className="flex-1 min-w-[120px]">לקוח</div>
+                                <div className="w-32 hidden md:block">שירות</div>
+                                <div className="w-32 hidden md:block">סכום / סיבה</div>
+                                <div className="w-12 text-center">פרטים</div>
+                            </div>
+                            {/* Rows */}
+                            {items.map(lead => (
+                                <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
+                                    <div className="flex-1 min-w-[120px] flex flex-col justify-center">
+                                        <span className="font-bold text-slate-600">{lead.fields.Name || 'ללא שם'}</span>
+                                        <span className="text-[10px] text-slate-400">{lead.fields.Phone}</span>
+                                    </div>
+                                    <div className="w-32 hidden md:flex items-center text-slate-500">
+                                        {lead.fields.Service || '—'}
+                                    </div>
+                                    <div className="w-32 hidden md:flex items-center text-slate-500">
+                                        {lead.fields.Closing_Amount ? `₪${lead.fields.Closing_Amount.toLocaleString()}` : (lead.fields.Lost_Reason || '—')}
+                                    </div>
+                                    <div className="w-12 flex justify-center">
+                                        <button onClick={() => setDetailLead(lead)} className="text-slate-400 hover:text-blue-600 transition-colors" title="פרטים">
+                                            <FileText size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -192,101 +180,86 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             <Clock size={12} /> עדכון אחרון: {new Date().toLocaleTimeString()}
                         </span>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-right">
-                            <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider">
-                                <tr>
-                                    <th className="px-4 md:px-6 py-3 font-semibold">לקוח</th>
-                                    <th className="px-4 md:px-6 py-3 font-semibold">סטטוס</th>
-                                    <th className="px-4 md:px-6 py-3 font-semibold hidden md:table-cell">מוביל</th>
-                                    <th className="px-4 md:px-6 py-3 font-semibold hidden md:table-cell">שירות</th>
-                                    <th className="px-4 md:px-6 py-3 font-semibold hidden md:table-cell">תאריך</th>
-                                    <th className="px-4 md:px-6 py-3 font-semibold hidden lg:table-cell">מיקום</th>
-                                    <th className="px-4 md:px-6 py-3 font-semibold">פעולות</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {activeLeads.map((lead) => {
-                                    const statusInfo = STATUS_MAP[lead.fields.Status] || { label: lead.fields.Status, class: 'bg-gray-50 text-gray-700 border-gray-200' };
-                                    const ownerColor = OWNER_COLORS[lead.fields.Owner || ''] || 'bg-slate-100 text-slate-600';
+                    <div className="flex flex-col">
+                        {/* Header Row */}
+                        <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
+                            <div className="flex-1 min-w-[120px]">לקוח</div>
+                            <div className="w-24 shrink-0">סטטוס</div>
+                            <div className="w-16 shrink-0 hidden md:block">מוביל</div>
+                            <div className="w-28 shrink-0 hidden md:block">שירות</div>
+                            <div className="w-24 shrink-0 hidden md:block">תאריך</div>
+                            <div className="w-24 shrink-0 hidden lg:block">מיקום</div>
+                            <div className="w-28 shrink-0 flex justify-end">פעולות</div>
+                        </div>
+                        {/* Rows */}
+                        {activeLeads.map((lead) => {
+                            const statusInfo = STATUS_MAP[lead.fields.Status] || { label: lead.fields.Status, class: 'bg-gray-50 text-gray-700 border-gray-200' };
+                            const ownerColor = OWNER_COLORS[lead.fields.Owner || ''] || 'bg-slate-100 text-slate-600';
 
-                                    return (
-                                        <tr key={lead.id} className="hover:bg-slate-50 transition-colors group">
-                                            <td className="px-4 md:px-6 py-3">
-                                                <div className="flex flex-col relative">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-sm text-slate-900">{lead.fields.Name || 'ללא שם'}</span>
-                                                        {unreadStatus?.[lead.id]?.count > 0 && (
-                                                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm ring-1 ring-white">
-                                                                {unreadStatus[lead.id].count}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-[11px] text-slate-500">{lead.fields.Phone}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3">
-                                                <span className={clsx("inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border", statusInfo.class)}>
-                                                    {statusInfo.label}
+                            return (
+                                <div key={lead.id} className="flex items-center px-4 md:px-6 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white group">
+                                    <div className="flex-1 min-w-[120px] flex flex-col justify-center">
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                            <span className="font-bold text-slate-800">{lead.fields.Name || 'ללא שם'}</span>
+                                            {unreadStatus?.[lead.id]?.count > 0 && (
+                                                <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-bold text-white shadow-sm ring-1 ring-white">
+                                                    {unreadStatus[lead.id].count}
                                                 </span>
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3 hidden md:table-cell">
-                                                {lead.fields.Owner ? (
-                                                    <span className={clsx("text-[11px] px-2 py-0.5 rounded-full font-bold", ownerColor)}>
-                                                        {lead.fields.Owner}
-                                                    </span>
-                                                ) : '—'}
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3 text-sm text-slate-600 hidden md:table-cell">
-                                                {lead.fields.Service ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Music size={13} className="text-slate-400" />
-                                                        {lead.fields.Service}
-                                                    </div>
-                                                ) : '—'}
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3 text-sm text-slate-600 hidden md:table-cell">
-                                                {lead.fields.Event_Date ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Calendar size={13} className="text-slate-400" />
-                                                        {lead.fields.Event_Date}
-                                                    </div>
-                                                ) : '—'}
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3 hidden lg:table-cell">
-                                                {lead.fields.Location ? (
-                                                    <span className="text-xs text-slate-600 flex items-center gap-1">
-                                                        <MapPin size={12} className="text-slate-400" /> {lead.fields.Location}
-                                                    </span>
-                                                ) : '—'}
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3">
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => setDetailLead(lead)}
-                                                        className="text-slate-400 hover:text-blue-600 transition-colors"
-                                                        title="פרטים ועדכונים"
-                                                    >
-                                                        <FileText size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => onSelectLead(lead.id)}
-                                                        className={clsx(
-                                                            "flex items-center gap-1 text-xs font-bold transition-all px-2.5 py-1.5 rounded-lg",
-                                                            unreadStatus?.[lead.id]?.count > 0 
-                                                                ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700" 
-                                                                : "bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                                                        )}
-                                                    >
-                                                        צ'אט <ArrowRight size={14} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] text-slate-400">{lead.fields.Phone}</span>
+                                    </div>
+                                    <div className="w-24 shrink-0 flex items-center">
+                                        <span className={clsx("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", statusInfo.class)}>
+                                            {statusInfo.label}
+                                        </span>
+                                    </div>
+                                    <div className="w-16 shrink-0 hidden md:flex items-center">
+                                        {lead.fields.Owner ? (
+                                            <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-bold", ownerColor)}>
+                                                {lead.fields.Owner}
+                                            </span>
+                                        ) : <span className="text-slate-300">—</span>}
+                                    </div>
+                                    <div className="w-28 shrink-0 hidden md:flex items-center text-slate-500">
+                                        {lead.fields.Service ? (
+                                            <>
+                                                <Music size={11} className="ml-1 text-slate-400" />
+                                                <span className="truncate pr-1">{lead.fields.Service}</span>
+                                            </>
+                                        ) : <span className="text-slate-300">—</span>}
+                                    </div>
+                                    <div className="w-24 shrink-0 hidden md:flex items-center text-slate-500 font-medium">
+                                        {lead.fields.Event_Date ? lead.fields.Event_Date : <span className="text-slate-300">—</span>}
+                                    </div>
+                                    <div className="w-24 shrink-0 hidden lg:flex items-center text-slate-500 pr-1">
+                                        {lead.fields.Location ? (
+                                            <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
+                                        ) : <span className="text-slate-300">—</span>}
+                                    </div>
+                                    <div className="w-28 shrink-0 flex items-center justify-end gap-1.5">
+                                        <button
+                                            onClick={() => setDetailLead(lead)}
+                                            className="text-slate-300 hover:text-blue-600 transition-colors p-1"
+                                            title="פרטים ועדכונים"
+                                        >
+                                            <FileText size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => onSelectLead(lead.id)}
+                                            className={clsx(
+                                                "flex items-center gap-1 text-[10px] font-bold transition-all px-2.5 py-1 rounded-md",
+                                                unreadStatus?.[lead.id]?.count > 0 
+                                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100" 
+                                                    : "bg-blue-50 text-blue-600 border border-blue-50 hover:bg-blue-100"
+                                            )}
+                                        >
+                                            צ'אט <ArrowRight size={11} />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
