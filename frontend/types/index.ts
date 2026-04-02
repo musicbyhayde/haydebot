@@ -16,6 +16,7 @@ export interface Lead {
         Lost_Reason?: string;
         Musician_Assigned?: string[];
         Bot_Mute_Until?: string;
+        Last_Read_At?: string;
     };
 }
 

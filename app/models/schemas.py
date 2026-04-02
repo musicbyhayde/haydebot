@@ -50,6 +50,7 @@ class LeadBase(BaseSchema):
     closing_amount: Optional[float] = Field(None, alias="Closing_Amount")
     lost_reason: Optional[str] = Field(None, alias="Lost_Reason")
     owner: Optional[str] = Field(None, alias="Owner")
+    last_read_at: Optional[datetime] = Field(None, alias="Last_Read_At")
 
 class LeadCreate(LeadBase):
     pass
@@ -69,6 +70,7 @@ class LeadUpdate(BaseSchema):
     closing_amount: Optional[float] = Field(None, alias="Closing_Amount")
     lost_reason: Optional[str] = Field(None, alias="Lost_Reason")
     owner: Optional[str] = Field(None, alias="Owner")
+    last_read_at: Optional[datetime] = Field(None, alias="Last_Read_At")
 
 class LeadResponse(LeadBase):
     id: str # Airtable Record ID

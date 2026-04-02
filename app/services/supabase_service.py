@@ -3,7 +3,7 @@ from app.core.config import get_settings
 from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate
 from typing import List, Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 settings = get_settings()
 
@@ -89,6 +89,54 @@ class SupabaseService:
         except Exception as e:
             print(f"Error fetching messages for lead {lead_id}: {e}")
             return []
+
+    def get_unread_status(self) -> dict:
+        """Get unread message counts and latest inbound preview for all leads."""
+        if not self.client: return {}
+        try:
+            # Get all leads with their Last_Read_At
+            leads_resp = self.client.table("leads").select("id, Last_Read_At").neq("Status", "Closed").neq("Status", "Lost").execute()
+            
+            # Use 30 days as a reasonable cutoff to not fetch the entire DB
+            cutoff = (datetime.now() - timedelta(days=30)).isoformat()
+            messages_resp = self.client.table("messages").select("Lead, Timestamp, Content").eq("Direction", "Inbound").gte("Timestamp", cutoff).order("Timestamp", desc=True).execute()
+
+            status = {}
+            for lead in leads_resp.data:
+                lead_id = lead["id"]
+                last_read_str = lead.get("Last_Read_At")
+                
+                # Default unread logic: count messages strictly newer than Last_Read_At
+                # If Last_Read_At is None, everything in last 30d is considered unread
+                count = 0
+                last_msg = None
+                
+                for msg in messages_resp.data:
+                    msg_leads = msg.get("Lead") or []
+                    if lead_id in msg_leads:
+                        msg_time = msg.get("Timestamp")
+                        
+                        # Save the newest message content (messages are ordered desc)
+                        if last_msg is None:
+                            last_msg = {
+                                "content": msg.get("Content"),
+                                "time": msg_time
+                            }
+                        
+                        if not last_read_str or msg_time > last_read_str:
+                            count += 1
+                
+                if count > 0 or last_msg is not None:
+                    status[lead_id] = {
+                        "count": count,
+                        "lastMessage": last_msg["content"] if last_msg else None,
+                        "lastTime": last_msg["time"] if last_msg else None
+                    }
+                    
+            return status
+        except Exception as e:
+            print(f"Error calculating unread status: {e}")
+            return {}
 
     # ─── Musicians ────────────────────────────────────────
 

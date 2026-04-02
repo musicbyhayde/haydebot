@@ -21,6 +21,7 @@ export default function Home() {
   const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks'>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [unreadStatus, setUnreadStatus] = useState<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>>({});
 
   // Load current user
   useEffect(() => {
@@ -77,12 +78,14 @@ export default function Home() {
 
   const fetchData = async () => {
     try {
-      const [leadsData, musiciansData] = await Promise.all([
+      const [leadsData, musiciansData, unreadData] = await Promise.all([
         api.getLeads(),
-        api.getMusicians()
+        api.getMusicians(),
+        api.getUnreadStatus()
       ]);
       setLeads(leadsData);
       setMusicians(musiciansData);
+      setUnreadStatus(unreadData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -106,9 +109,20 @@ export default function Home() {
     ? musicians.find(m => m.id === activeId)
     : leads.find(l => l.id === activeId);
 
-  const handleSelect = (id: string) => {
+  const handleSelect = async (id: string) => {
     setActiveId(id);
     if (view === 'dashboard') setView('inbox');
+
+    // Mark as read if it has unread messages
+    if (unreadStatus[id]?.count > 0) {
+      setUnreadStatus(prev => ({ ...prev, [id]: { ...prev[id], count: 0 } }));
+      try {
+        await api.markLeadAsRead(id);
+        fetchData();
+      } catch (e) {
+        console.error(e);
+      }
+    }
   };
 
   const handleSendMessage = async (text: string) => {
@@ -151,6 +165,7 @@ export default function Home() {
           onViewChange={(v) => { setView(v); setActiveId(null); }}
           currentUser={currentUser}
           onSignOut={handleSignOut}
+          unreadStatus={unreadStatus}
         />
       </div>
 
@@ -166,6 +181,7 @@ export default function Home() {
             currentUser={currentUser}
             onRefresh={fetchData}
             onNavigateToTasks={() => { setView('tasks'); setActiveId(null); }}
+            unreadStatus={unreadStatus}
           />
         ) : view === 'finance' ? (
           <FinancePage

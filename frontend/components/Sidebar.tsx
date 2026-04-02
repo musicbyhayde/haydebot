@@ -12,9 +12,10 @@ interface SidebarProps {
     onViewChange: (view: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks') => void;
     currentUser?: AppUser | null;
     onSignOut?: () => void;
+    unreadStatus?: Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>;
 }
 
-export default function Sidebar({ leads, musicians, activeId, onSelect, currentView, onViewChange, currentUser, onSignOut }: SidebarProps) {
+export default function Sidebar({ leads, musicians, activeId, onSelect, currentView, onViewChange, currentUser, onSignOut, unreadStatus = {} }: SidebarProps) {
 
     return (
         <div className="w-full md:w-80 border-r border-gray-200 h-full flex flex-col bg-slate-50">
@@ -105,37 +106,63 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                                 'Talking': 'bg-cyan-100 text-cyan-800',
                             };
                             const badgeClass = statusColors[lead.fields.Status] || 'bg-gray-100 text-gray-800';
+                            const unreadInfo = unreadStatus[lead.id];
+                            const hasUnread = unreadInfo && unreadInfo.count > 0;
 
                             return (
                                 <div
                                     key={lead.id}
                                     onClick={() => onSelect(lead.id)}
                                     className={clsx(
-                                        "p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors",
-                                        isActive && "bg-blue-50 border-l-4 border-l-blue-500"
+                                        "p-4 border-b border-gray-100 cursor-pointer transition-colors relative group",
+                                        isActive ? "bg-blue-50 border-l-4 border-l-blue-500" : "hover:bg-gray-50",
+                                        hasUnread && !isActive && "bg-emerald-50/30"
                                     )}
                                 >
                                     <div className="flex justify-between items-start mb-1">
-                                        <span className="font-semibold text-gray-900 truncate">{lead.fields.Name || lead.fields.Phone}</span>
-                                        <span className={clsx("text-xs px-2 py-0.5 rounded-full font-medium", badgeClass)}>
+                                        <div className="flex items-center gap-2 max-w-[70%]">
+                                            <span className={clsx(
+                                                "font-semibold truncate",
+                                                hasUnread && !isActive ? "text-emerald-900" : "text-gray-900"
+                                            )}>{lead.fields.Name || lead.fields.Phone}</span>
+                                            {hasUnread && !isActive && (
+                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white animate-in zoom-in spin-in-12 duration-300">
+                                                    {unreadInfo.count}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-bold", badgeClass)}>
                                             {lead.fields.Status}
                                         </span>
                                     </div>
-                                    <div className="text-sm text-gray-500 flex items-center gap-1 mb-1">
-                                        <Phone size={12} />
-                                        {lead.fields.Phone}
+                                    <div className="flex justify-between items-end">
+                                        <div className="flex flex-col gap-1">
+                                            {hasUnread && unreadInfo.lastMessage ? (
+                                                <div className="text-xs font-medium text-emerald-600 line-clamp-1 max-w-[180px] bg-emerald-100/50 px-1.5 py-0.5 rounded">
+                                                    {unreadInfo.lastMessage}
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="text-[11px] text-gray-500 flex items-center gap-1 font-medium">
+                                                        <Phone size={11} className="opacity-70" />
+                                                        {lead.fields.Phone}
+                                                    </div>
+                                                    {lead.fields.Service && (
+                                                        <div className="text-[11px] text-gray-400 flex items-center gap-1">
+                                                            <Music size={11} className="opacity-70" />
+                                                            {lead.fields.Service}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                        
+                                        {hasUnread && unreadInfo.lastTime && !isActive && (
+                                            <span className="text-[10px] font-bold text-emerald-500 bg-white px-1 rounded-sm">
+                                                {new Date(unreadInfo.lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
                                     </div>
-                                    {lead.fields.Service && (
-                                        <div className="text-xs text-gray-600 flex items-center gap-1">
-                                            <Music size={12} />
-                                            {lead.fields.Service}
-                                        </div>
-                                    )}
-                                    {lead.fields.Owner && (
-                                        <div className="text-xs text-slate-500 mt-1">
-                                            מוביל: {lead.fields.Owner}
-                                        </div>
-                                    )}
                                 </div>
                             );
                         })}

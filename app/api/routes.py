@@ -99,6 +99,18 @@ async def update_lead(lead_id: str, request: Request):
 
     return result
 
+@router.post("/leads/{lead_id}/read")
+async def mark_lead_as_read(lead_id: str):
+    """Mark all messages in a lead as read by updating Last_Read_At."""
+    now = datetime.now()
+    result = airtable_service.update_lead(lead_id, LeadUpdate(last_read_at=now))
+    return {"status": "success", "last_read_at": now.isoformat()}
+
+@router.get("/leads/unread-status")
+async def get_unread_status():
+    """Get unread message counts and latest message preview for all leads."""
+    return airtable_service.get_unread_status()
+
 # ─── Messages ─────────────────────────────────────────
 
 @router.get("/leads/{lead_id}/messages")

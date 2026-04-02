@@ -30,6 +30,20 @@ export const api = {
         return res.json();
     },
 
+    async markLeadAsRead(leadId: string): Promise<any> {
+        const res = await fetch(`${API_Base}/leads/${leadId}/read`, {
+            method: 'POST',
+        });
+        if (!res.ok) throw new Error('Failed to mark lead as read');
+        return res.json();
+    },
+
+    async getUnreadStatus(): Promise<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>> {
+        const res = await fetch(`${API_Base}/leads/unread-status`);
+        if (!res.ok) throw new Error('Failed to fetch unread status');
+        return res.json();
+    },
+
     // --- Messages ---
     async getMessages(leadId: string): Promise<Message[]> {
         const res = await fetch(`${API_Base}/leads/${leadId}/messages`);

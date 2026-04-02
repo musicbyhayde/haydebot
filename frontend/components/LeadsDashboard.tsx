@@ -16,6 +16,7 @@ interface LeadsDashboardProps {
     currentUser?: AppUser | null;
     onRefresh?: () => void;
     onNavigateToTasks?: () => void;
+    unreadStatus?: Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>;
 }
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
@@ -36,7 +37,7 @@ const OWNER_COLORS: Record<string, string> = {
     'קובי': 'bg-purple-100 text-purple-700',
 };
 
-export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh, onNavigateToTasks }: LeadsDashboardProps) {
+export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh, onNavigateToTasks, unreadStatus = {} }: LeadsDashboardProps) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showClosed, setShowClosed] = useState(false);
     const [showLost, setShowLost] = useState(false);
@@ -212,8 +213,15 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     return (
                                         <tr key={lead.id} className="hover:bg-slate-50 transition-colors group">
                                             <td className="px-4 md:px-6 py-3">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-sm text-slate-900">{lead.fields.Name || 'ללא שם'}</span>
+                                                <div className="flex flex-col relative">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-sm text-slate-900">{lead.fields.Name || 'ללא שם'}</span>
+                                                        {unreadStatus?.[lead.id]?.count > 0 && (
+                                                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white shadow-sm ring-1 ring-white">
+                                                                {unreadStatus[lead.id].count}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <span className="text-[11px] text-slate-500">{lead.fields.Phone}</span>
                                                 </div>
                                             </td>
@@ -263,7 +271,12 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                     </button>
                                                     <button
                                                         onClick={() => onSelectLead(lead.id)}
-                                                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-bold transition-all"
+                                                        className={clsx(
+                                                            "flex items-center gap-1 text-xs font-bold transition-all px-2.5 py-1.5 rounded-lg",
+                                                            unreadStatus?.[lead.id]?.count > 0 
+                                                                ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700" 
+                                                                : "bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                                                        )}
                                                     >
                                                         צ'אט <ArrowRight size={14} />
                                                     </button>
