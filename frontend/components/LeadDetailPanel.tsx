@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Lead, Note } from '@/types';
+import { Lead, Note, FinanceEntry } from '@/types';
 import clsx from 'clsx';
 
 interface LeadDetailPanelProps {
@@ -27,7 +27,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false, onClose, onStatusChange }: LeadDetailPanelProps) {
-    const [tab, setTab] = useState<'updates' | 'files' | 'info'>('updates');
+    const [tab, setTab] = useState<'updates' | 'files' | 'info' | 'finance'>('updates');
     const [notes, setNotes] = useState<Note[]>([]);
     const [noteText, setNoteText] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -37,6 +37,14 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [closingAmount, setClosingAmount] = useState('');
     const [editData, setEditData] = useState<Partial<Lead['fields']>>({});
     const [savingInfo, setSavingInfo] = useState(false);
+
+    // Finance Tab State
+    const [finances, setFinances] = useState<FinanceEntry[]>([]);
+    const [financeType, setFinanceType] = useState<'income' | 'expense'>('income');
+    const [financeAmount, setFinanceAmount] = useState('');
+    const [financeDesc, setFinanceDesc] = useState('');
+    const [financePaymentMethod, setFinancePaymentMethod] = useState<'חשבון' | 'מזומן'>('חשבון');
+    const [financeSubmitting, setFinanceSubmitting] = useState(false);
 
     useEffect(() => {
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
@@ -54,12 +62,25 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
     useEffect(() => {
         fetchNotes();
+        fetchFinances();
     }, [lead.id]);
 
     const fetchNotes = async () => {
         try {
             const data = await api.getNotes(lead.id);
             setNotes(data);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const fetchFinances = async () => {
+        try {
+            const allFinances = await api.getFinanceEntries();
+            const leadFinances = allFinances.filter(f => f.fields.Lead_ID === lead.id);
+            // Sort by Date descending
+            leadFinances.sort((a, b) => new Date(b.fields.Date || 0).getTime() - new Date(a.fields.Date || 0).getTime());
+            setFinances(leadFinances);
         } catch (e) {
             console.error(e);
         }
@@ -141,6 +162,32 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         onStatusChange(lead.id, newStatus);
     };
 
+    const handleAddFinance = async () => {
+        if (!financeAmount || !financeDesc) return;
+        setFinanceSubmitting(true);
+        try {
+            await api.createFinanceEntry({
+                Owner: currentUserName,
+                Type: financeType,
+                Date: new Date().toISOString().split('T')[0],
+                Description: financeDesc,
+                Event_Name: lead.fields.Service || '',
+                Amount: parseFloat(financeAmount),
+                Payment_Status: 'שולם',
+                Payment_Method: financePaymentMethod,
+                Lead_ID: lead.id
+            });
+            setFinanceAmount('');
+            setFinanceDesc('');
+            fetchFinances(); // Refresh the list
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בשמירת התנועה');
+        } finally {
+            setFinanceSubmitting(false);
+        }
+    };
+
     const handleUpdateInfo = async () => {
         setSavingInfo(true);
         try {
@@ -163,8 +210,14 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         } catch { return d; }
     };
 
+    const totalFinance = finances.reduce((sum, entry) => {
+        if (entry.fields.Type === 'income') return sum + (entry.fields.Amount || 0);
+        return sum - (entry.fields.Amount || 0);
+    }, 0);
+
     const tabs = [
         { key: 'updates' as const, label: 'עדכונים', count: notes.length },
+        { key: 'finance' as const, label: 'פיננסי', count: finances.length },
         { key: 'info' as const, label: 'פרטים' },
     ];
 
@@ -412,6 +465,101 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     </div>
                                 ))
                             )}
+                        </div>
+                    )}
+
+                    {tab === 'finance' && (
+                        <div className="p-5 space-y-4">
+                            {/* Summary */}
+                            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                                <span className="text-sm font-bold text-slate-600">סה״כ נשאר בקופה:</span>
+                                <span className={clsx(
+                                    "text-lg font-black",
+                                    totalFinance >= 0 ? "text-emerald-600" : "text-red-600"
+                                )} dir="ltr">{totalFinance.toLocaleString()} ₪</span>
+                            </div>
+
+                            {/* Add new entry form */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
+                                <h3 className="text-sm font-bold text-slate-700 mb-3">הוסף תנועה</h3>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <button
+                                        onClick={() => setFinanceType('income')}
+                                        className={clsx(
+                                            "flex-1 py-2 text-xs font-bold rounded-lg transition-colors border",
+                                            financeType === 'income' ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        + הכנסה
+                                    </button>
+                                    <button
+                                        onClick={() => setFinanceType('expense')}
+                                        className={clsx(
+                                            "flex-1 py-2 text-xs font-bold rounded-lg transition-colors border",
+                                            financeType === 'expense' ? "bg-red-100 text-red-800 border-red-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        - הוצאה
+                                    </button>
+                                </div>
+                                
+                                <div className="space-y-3">
+                                    <input
+                                        type="number"
+                                        placeholder="סכום (₪)"
+                                        value={financeAmount}
+                                        onChange={(e) => setFinanceAmount(e.target.value)}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        dir="ltr"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="תיאור (למשל: מקדמה, דלק...)"
+                                        value={financeDesc}
+                                        onChange={(e) => setFinanceDesc(e.target.value)}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                    <select
+                                        value={financePaymentMethod}
+                                        onChange={(e) => setFinancePaymentMethod(e.target.value as any)}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                                    >
+                                        <option value="חשבון">העברה / אשראי / ביט</option>
+                                        <option value="מזומן">מזומן</option>
+                                    </select>
+                                    <button
+                                        onClick={handleAddFinance}
+                                        disabled={financeSubmitting || !financeAmount || !financeDesc}
+                                        className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm"
+                                    >
+                                        {financeSubmitting ? 'שומר...' : 'הוסף תנועה'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* List */}
+                            <div className="space-y-2">
+                                {finances.length === 0 ? (
+                                    <p className="text-center text-slate-400 text-sm py-4">אין תנועות כספיות לליד זה</p>
+                                ) : (
+                                    finances.map((entry) => (
+                                        <div key={entry.id} className="bg-white border border-slate-100 rounded-lg p-3 shadow-sm flex items-center justify-between">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-sm font-bold text-slate-700">{entry.fields.Description}</span>
+                                                <span className="text-[11px] text-slate-400 font-medium">
+                                                    {new Date(entry.fields.Date).toLocaleDateString('he-IL')} · {entry.fields.Payment_Method}
+                                                </span>
+                                            </div>
+                                            <span className={clsx(
+                                                "text-sm font-bold px-2 py-1 rounded-md",
+                                                entry.fields.Type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                                            )} dir="ltr">
+                                                {entry.fields.Type === 'income' ? '+' : '-'}{entry.fields.Amount.toLocaleString()} ₪
+                                            </span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     )}
 
