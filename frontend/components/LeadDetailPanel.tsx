@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Lead, Note, FinanceEntry } from '@/types';
 import clsx from 'clsx';
@@ -45,6 +45,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [financeDesc, setFinanceDesc] = useState('');
     const [financePaymentMethod, setFinancePaymentMethod] = useState<'חשבון' | 'מזומן'>('חשבון');
     const [financeSubmitting, setFinanceSubmitting] = useState(false);
+    const [financeModalOpen, setFinanceModalOpen] = useState(false);
+    const [financeEditId, setFinanceEditId] = useState<string | null>(null);
 
     useEffect(() => {
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
@@ -162,23 +164,34 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         onStatusChange(lead.id, newStatus);
     };
 
-    const handleAddFinance = async () => {
+    const handleSaveFinance = async () => {
         if (!financeAmount || !financeDesc) return;
         setFinanceSubmitting(true);
         try {
-            await api.createFinanceEntry({
-                Owner: currentUserName,
-                Type: financeType,
-                Date: new Date().toISOString().split('T')[0],
-                Description: financeDesc,
-                Event_Name: lead.fields.Service || '',
-                Amount: parseFloat(financeAmount),
-                Payment_Status: 'שולם',
-                Payment_Method: financePaymentMethod,
-                Lead_ID: lead.id
-            });
+            if (financeEditId) {
+                await api.updateFinanceEntry(financeEditId, {
+                    Type: financeType,
+                    Description: financeDesc,
+                    Amount: parseFloat(financeAmount),
+                    Payment_Method: financePaymentMethod,
+                });
+            } else {
+                await api.createFinanceEntry({
+                    Owner: currentUserName,
+                    Type: financeType,
+                    Date: new Date().toISOString().split('T')[0],
+                    Description: financeDesc,
+                    Event_Name: lead.fields.Service || '',
+                    Amount: parseFloat(financeAmount),
+                    Payment_Status: 'שולם',
+                    Payment_Method: financePaymentMethod,
+                    Lead_ID: lead.id
+                });
+            }
             setFinanceAmount('');
             setFinanceDesc('');
+            setFinanceEditId(null);
+            setFinanceModalOpen(false);
             fetchFinances(); // Refresh the list
         } catch (e) {
             console.error(e);
@@ -186,6 +199,35 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         } finally {
             setFinanceSubmitting(false);
         }
+    };
+
+    const handleDeleteFinance = async (id: string) => {
+        if (!confirm('למחוק תנועה זו?')) return;
+        try {
+            await api.deleteFinanceEntry(id);
+            fetchFinances();
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה במחיקת התנועה');
+        }
+    };
+    
+    const openFinanceModal = (type: 'income' | 'expense') => {
+        setFinanceType(type);
+        setFinanceAmount('');
+        setFinanceDesc('');
+        setFinanceEditId(null);
+        setFinancePaymentMethod('חשבון');
+        setFinanceModalOpen(true);
+    };
+
+    const handleEditFinance = (entry: FinanceEntry) => {
+        setFinanceType(entry.fields.Type);
+        setFinanceAmount(entry.fields.Amount.toString());
+        setFinanceDesc(entry.fields.Description);
+        setFinancePaymentMethod(entry.fields.Payment_Method || 'חשבון');
+        setFinanceEditId(entry.id);
+        setFinanceModalOpen(true);
     };
 
     const handleUpdateInfo = async () => {
@@ -223,7 +265,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
     return (
         <div className="fixed inset-0 z-50 flex items-stretch md:items-center justify-end bg-black/30 backdrop-blur-sm" dir="rtl" onClick={onClose}>
-            <div className="w-full md:w-[560px] h-full md:h-[90vh] bg-white md:rounded-r-2xl shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full md:w-[560px] h-full md:h-[90vh] bg-white md:rounded-r-2xl shadow-2xl flex flex-col relative" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                     <div>
@@ -469,96 +511,69 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     )}
 
                     {tab === 'finance' && (
-                        <div className="p-5 space-y-4">
-                            {/* Summary */}
-                            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
-                                <span className="text-sm font-bold text-slate-600">סה״כ נשאר בקופה:</span>
-                                <span className={clsx(
-                                    "text-lg font-black",
-                                    totalFinance >= 0 ? "text-emerald-600" : "text-red-600"
-                                )} dir="ltr">{totalFinance.toLocaleString()} ₪</span>
-                            </div>
-
-                            {/* Add new entry form */}
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
-                                <h3 className="text-sm font-bold text-slate-700 mb-3">הוסף תנועה</h3>
-                                <div className="flex items-center gap-2 mb-3">
-                                    <button
-                                        onClick={() => setFinanceType('income')}
-                                        className={clsx(
-                                            "flex-1 py-2 text-xs font-bold rounded-lg transition-colors border",
-                                            financeType === 'income' ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-                                        )}
-                                    >
-                                        + הכנסה
-                                    </button>
-                                    <button
-                                        onClick={() => setFinanceType('expense')}
-                                        className={clsx(
-                                            "flex-1 py-2 text-xs font-bold rounded-lg transition-colors border",
-                                            financeType === 'expense' ? "bg-red-100 text-red-800 border-red-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-                                        )}
-                                    >
-                                        - הוצאה
-                                    </button>
-                                </div>
-                                
-                                <div className="space-y-3">
-                                    <input
-                                        type="number"
-                                        placeholder="סכום (₪)"
-                                        value={financeAmount}
-                                        onChange={(e) => setFinanceAmount(e.target.value)}
-                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        dir="ltr"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="תיאור (למשל: מקדמה, דלק...)"
-                                        value={financeDesc}
-                                        onChange={(e) => setFinanceDesc(e.target.value)}
-                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                    <select
-                                        value={financePaymentMethod}
-                                        onChange={(e) => setFinancePaymentMethod(e.target.value as any)}
-                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
-                                    >
-                                        <option value="חשבון">העברה / אשראי / ביט</option>
-                                        <option value="מזומן">מזומן</option>
-                                    </select>
-                                    <button
-                                        onClick={handleAddFinance}
-                                        disabled={financeSubmitting || !financeAmount || !financeDesc}
-                                        className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm"
-                                    >
-                                        {financeSubmitting ? 'שומר...' : 'הוסף תנועה'}
-                                    </button>
-                                </div>
+                        <div className="flex flex-col h-full bg-slate-50">
+                            {/* Actions */}
+                            <div className="p-3 bg-white border-b border-slate-200 flex gap-2">
+                                <button
+                                    onClick={() => openFinanceModal('income')}
+                                    className="flex-1 py-1.5 text-xs font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                                >
+                                    + הוסף הכנסה
+                                </button>
+                                <button
+                                    onClick={() => openFinanceModal('expense')}
+                                    className="flex-1 py-1.5 text-xs font-bold rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors"
+                                >
+                                    - הוסף הוצאה
+                                </button>
                             </div>
 
                             {/* List */}
-                            <div className="space-y-2">
+                            <div className="flex-1 overflow-y-auto">
                                 {finances.length === 0 ? (
-                                    <p className="text-center text-slate-400 text-sm py-4">אין תנועות כספיות לליד זה</p>
+                                    <p className="text-center text-slate-400 text-xs py-4">אין תנועות כספיות לליד זה</p>
                                 ) : (
-                                    finances.map((entry) => (
-                                        <div key={entry.id} className="bg-white border border-slate-100 rounded-lg p-3 shadow-sm flex items-center justify-between">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-sm font-bold text-slate-700">{entry.fields.Description}</span>
-                                                <span className="text-[11px] text-slate-400 font-medium">
-                                                    {new Date(entry.fields.Date).toLocaleDateString('he-IL')} · {entry.fields.Payment_Method}
-                                                </span>
-                                            </div>
-                                            <span className={clsx(
-                                                "text-sm font-bold px-2 py-1 rounded-md",
-                                                entry.fields.Type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
-                                            )} dir="ltr">
-                                                {entry.fields.Type === 'income' ? '+' : '-'}{entry.fields.Amount.toLocaleString()} ₪
-                                            </span>
+                                    <div className="flex flex-col">
+                                        {/* Header Row */}
+                                        <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-200 uppercase bg-slate-100/50">
+                                            <div className="w-16">תאריך</div>
+                                            <div className="flex-1">תיאור</div>
+                                            <div className="w-20 text-left">סכום</div>
+                                            <div className="w-12"></div>
                                         </div>
-                                    ))
+                                        {/* Rows */}
+                                        {finances.map((entry) => (
+                                            <div key={entry.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-100 hover:bg-white transition-colors bg-slate-50/30">
+                                                <div className="w-16 text-[10px] text-slate-500">{new Date(entry.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
+                                                <div className="flex-1 flex flex-col justify-center">
+                                                    <span className="font-semibold text-slate-700 truncate">{entry.fields.Description}</span>
+                                                    <span className="text-[9px] text-slate-400">{entry.fields.Payment_Method}</span>
+                                                </div>
+                                                <div className={clsx(
+                                                    "w-20 text-left font-bold font-mono tracking-tighter",
+                                                    entry.fields.Type === 'income' ? "text-emerald-600" : "text-red-600"
+                                                )} dir="ltr">
+                                                    {entry.fields.Type === 'income' ? '+' : '-'}{entry.fields.Amount.toLocaleString()} ₪
+                                                </div>
+                                                <div className="w-12 flex items-center justify-end gap-2 text-slate-400">
+                                                    <button onClick={() => handleEditFinance(entry)} className="hover:text-blue-500"><Pencil size={12} /></button>
+                                                    <button onClick={() => handleDeleteFinance(entry.id)} className="hover:text-red-500"><Trash2 size={12} /></button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
+                            </div>
+
+                            {/* Summary Footer */}
+                            <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold text-slate-600">סה״כ נשאר בקופה:</span>
+                                    <span className={clsx(
+                                        "text-xl font-black font-mono tracking-tighter",
+                                        totalFinance >= 0 ? "text-emerald-600" : "text-red-600"
+                                    )} dir="ltr">{totalFinance.toLocaleString()} ₪</span>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -651,6 +666,79 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         </div>
                     )}
                 </div>
+
+                {financeModalOpen && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm md:rounded-r-2xl">
+                        <div className="w-full max-w-sm bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                                <h3 className="text-sm font-bold text-slate-800">{financeEditId ? 'עריכת תנועה' : 'הוספת תנועה'}</h3>
+                                <button onClick={() => setFinanceModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <button
+                                        onClick={() => setFinanceType('income')}
+                                        className={clsx(
+                                            "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border",
+                                            financeType === 'income' ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        + הכנסה
+                                    </button>
+                                    <button
+                                        onClick={() => setFinanceType('expense')}
+                                        className={clsx(
+                                            "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border",
+                                            financeType === 'expense' ? "bg-red-100 text-red-800 border-red-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        - הוצאה
+                                    </button>
+                                </div>
+                                <input
+                                    type="number"
+                                    placeholder="סכום (₪)"
+                                    value={financeAmount}
+                                    onChange={(e) => setFinanceAmount(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    dir="ltr"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="תיאור (למשל: מקדמה, דלק...)"
+                                    value={financeDesc}
+                                    onChange={(e) => setFinanceDesc(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                />
+                                <select
+                                    value={financePaymentMethod}
+                                    onChange={(e) => setFinancePaymentMethod(e.target.value as any)}
+                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                                >
+                                    <option value="חשבון">העברה / אשראי / ביט</option>
+                                    <option value="מזומן">מזומן</option>
+                                </select>
+                            </div>
+                            <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                                <button
+                                    onClick={() => setFinanceModalOpen(false)}
+                                    className="px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700 transition-colors"
+                                >
+                                    ביטול
+                                </button>
+                                <button
+                                    onClick={handleSaveFinance}
+                                    disabled={financeSubmitting || !financeAmount || !financeDesc}
+                                    className="px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm"
+                                >
+                                    {financeSubmitting ? 'שומר...' : 'שמור'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
