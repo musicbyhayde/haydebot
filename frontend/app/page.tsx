@@ -22,6 +22,7 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [unreadStatus, setUnreadStatus] = useState<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>>({});
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Load current user
   useEffect(() => {
@@ -153,8 +154,9 @@ export default function Home() {
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
       <div className={clsx(
-        "h-full w-full md:w-80 flex-shrink-0 transition-all",
-        showSidebar ? "block" : "hidden md:block"
+        "h-full flex-shrink-0 transition-all duration-300 relative z-10",
+        showSidebar ? "block w-full" : "hidden md:block",
+        !showSidebar && sidebarCollapsed ? "md:w-20" : "md:w-80"
       )}>
         <Sidebar
           leads={leads}
@@ -166,6 +168,8 @@ export default function Home() {
           currentUser={currentUser}
           onSignOut={handleSignOut}
           unreadStatus={unreadStatus}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
       </div>
 
