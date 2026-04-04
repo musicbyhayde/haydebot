@@ -127,13 +127,13 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 {isOpen && (
                     <div className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden opacity-80">
                         <div className="overflow-x-auto">
-                            <div className="flex flex-col min-w-[500px]">
+                                <div className="flex flex-col min-w-full md:min-w-[500px]">
                                 {/* Header Row */}
                                 <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
                                     <div className="flex-1 min-w-[120px]">לקוח</div>
                                 <div className="w-32 hidden md:block">שירות</div>
                                 <div className="w-32 hidden md:block">סכום / סיבה</div>
-                                <div className="w-12 text-center">פרטים</div>
+                                <div className="w-12 text-center flex-shrink-0">פרטים</div>
                             </div>
                             {/* Rows */}
                             {items.map(lead => (
@@ -323,16 +323,16 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                         </span>
                     </div>
                     <div className="overflow-x-auto">
-                        <div className="flex flex-col min-w-[700px]">
+                        <div className="flex flex-col min-w-full md:min-w-[700px]">
                             {/* Header Row */}
                             <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
-                                <div className="flex-1 min-w-[120px]">לקוח</div>
-                            <div className="w-24 shrink-0">סטטוס</div>
+                                <div className="flex-1 min-w-[100px] md:min-w-[120px]">לקוח</div>
+                            <div className="w-20 md:w-24 shrink-0">סטטוס</div>
                             <div className="w-16 shrink-0 hidden md:block">מוביל</div>
                             <div className="w-28 shrink-0 hidden md:block">שירות</div>
                             <div className="w-24 shrink-0 hidden md:block">תאריך</div>
                             <div className="w-24 shrink-0 hidden lg:block">מיקום</div>
-                            <div className="w-28 shrink-0 flex justify-end">פעולות</div>
+                            <div className="w-20 md:w-28 shrink-0 flex justify-end">פעולות</div>
                         </div>
                         {/* Rows */}
                         {activeLeads.length === 0 && hasActiveFilters ? (
@@ -349,19 +349,19 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
                             return (
                                 <div key={lead.id} className="flex items-center px-4 md:px-6 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white group">
-                                    <div className="flex-1 min-w-[120px] flex flex-col justify-center">
+                                    <div className="flex-1 min-w-[100px] md:min-w-[120px] flex flex-col justify-center overflow-hidden pr-2">
                                         <div className="flex items-center gap-1.5 mb-0.5">
-                                            <span className="font-bold text-slate-800">{lead.fields.Name || 'ללא שם'}</span>
+                                            <span className="font-bold text-slate-800 truncate">{lead.fields.Name || 'ללא שם'}</span>
                                             {unreadStatus?.[lead.id]?.count > 0 && (
-                                                <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-bold text-white shadow-sm ring-1 ring-white">
+                                                <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-bold text-white shadow-sm ring-1 ring-white shrink-0">
                                                     {unreadStatus[lead.id].count}
                                                 </span>
                                             )}
                                         </div>
-                                        <span className="text-[10px] text-slate-400">{lead.fields.Phone}</span>
+                                        <span className="text-[10px] text-slate-400 truncate">{lead.fields.Phone}</span>
                                     </div>
-                                    <div className="w-24 shrink-0 flex items-center">
-                                        <span className={clsx("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", statusInfo.class)}>
+                                    <div className="w-20 md:w-24 shrink-0 flex items-center">
+                                        <span className={clsx("inline-flex items-center px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold border", statusInfo.class)}>
                                             {statusInfo.label}
                                         </span>
                                     </div>
@@ -388,10 +388,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
                                         ) : <span className="text-slate-300">—</span>}
                                     </div>
-                                    <div className="w-28 shrink-0 flex items-center justify-end gap-1.5">
+                                    <div className="w-20 md:w-28 shrink-0 flex items-center justify-end gap-1 md:gap-1.5">
                                         <button
                                             onClick={() => setDetailLead(lead)}
-                                            className="text-slate-300 hover:text-blue-600 transition-colors p-1"
+                                            className="text-slate-300 hover:text-blue-600 transition-colors p-1 hidden sm:block"
                                             title="פרטים ועדכונים"
                                         >
                                             <FileText size={14} />
@@ -399,13 +399,13 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         <button
                                             onClick={() => onSelectLead(lead.id)}
                                             className={clsx(
-                                                "flex items-center gap-1 text-[10px] font-bold transition-all px-2.5 py-1 rounded-md",
+                                                "flex items-center justify-center md:justify-start gap-1 text-[10px] font-bold transition-all px-2 md:px-2.5 py-1 rounded-md max-w-full",
                                                 unreadStatus?.[lead.id]?.count > 0 
                                                     ? "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100" 
                                                     : "bg-blue-50 text-blue-600 border border-blue-50 hover:bg-blue-100"
                                             )}
                                         >
-                                            צ'אט <ArrowRight size={11} />
+                                            <span className="hidden sm:inline">צ'אט</span> <ArrowRight size={11} />
                                         </button>
                                     </div>
                                 </div>
