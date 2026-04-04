@@ -314,10 +314,11 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                         <p className="text-sm">לחץ על &quot;הוסף נגן&quot; להתחיל</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm">
-                        {/* Header Row */}
-                        <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
-                            <div className="flex-1 min-w-[120px]">שם הנגן</div>
+                    <div className="flex flex-col border border-slate-200 rounded-xl bg-white overflow-x-auto shadow-sm">
+                        <div className="flex flex-col min-w-[600px]">
+                            {/* Header Row */}
+                            <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
+                                <div className="flex-1 min-w-[120px]">שם הנגן</div>
                             <div className="w-32 shrink-0 hidden md:flex">טלפון</div>
                             <div className="w-24 shrink-0 hidden md:flex text-center justify-center">סטטוס</div>
                             <div className="w-28 shrink-0 hidden md:flex">ציון</div>
@@ -470,6 +471,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                 </div>
                             );
                         })}
+                        </div>
                     </div>
                 )}
             </div>

@@ -79,10 +79,11 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 </button>
                 {isOpen && (
                     <div className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden opacity-80">
-                        <div className="flex flex-col">
-                            {/* Header Row */}
-                            <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
-                                <div className="flex-1 min-w-[120px]">לקוח</div>
+                        <div className="overflow-x-auto">
+                            <div className="flex flex-col min-w-[500px]">
+                                {/* Header Row */}
+                                <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
+                                    <div className="flex-1 min-w-[120px]">לקוח</div>
                                 <div className="w-32 hidden md:block">שירות</div>
                                 <div className="w-32 hidden md:block">סכום / סיבה</div>
                                 <div className="w-12 text-center">פרטים</div>
@@ -107,6 +108,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     </div>
                                 </div>
                             ))}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -180,10 +182,11 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             <Clock size={12} /> עדכון אחרון: {new Date().toLocaleTimeString()}
                         </span>
                     </div>
-                    <div className="flex flex-col">
-                        {/* Header Row */}
-                        <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
-                            <div className="flex-1 min-w-[120px]">לקוח</div>
+                    <div className="overflow-x-auto">
+                        <div className="flex flex-col min-w-[700px]">
+                            {/* Header Row */}
+                            <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
+                                <div className="flex-1 min-w-[120px]">לקוח</div>
                             <div className="w-24 shrink-0">סטטוס</div>
                             <div className="w-16 shrink-0 hidden md:block">מוביל</div>
                             <div className="w-28 shrink-0 hidden md:block">שירות</div>
@@ -260,6 +263,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 </div>
                             );
                         })}
+                        </div>
                     </div>
                 </div>
 

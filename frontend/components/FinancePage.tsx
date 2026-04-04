@@ -286,34 +286,34 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
 
         return (
             <div key={e.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-100 hover:bg-slate-50 transition-colors bg-white">
-                <div className="w-16 text-[10px] text-slate-500">{new Date(e.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
-                <div className="flex-1 flex flex-col justify-center">
+                <div className="w-16 shrink-0 text-[10px] text-slate-500">{new Date(e.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
+                <div className="flex-1 min-w-[120px] flex flex-col justify-center">
                     <div className="flex items-center gap-1">
                         <span className="font-semibold text-slate-700 truncate">{e.fields.Event_Name || e.fields.Description}</span>
                         {linkedLead && (
-                            <span className="text-[9px] text-blue-500 bg-blue-50 px-1 rounded-sm flex items-center gap-0.5">
-                                <Link size={8} /> {linkedLead}
+                            <span className="text-[9px] text-blue-500 bg-blue-50 px-1 rounded-sm flex items-center gap-0.5 whitespace-nowrap">
+                                <Link size={8} /> <span className="truncate max-w-[80px] sm:max-w-[120px]">{linkedLead}</span>
                             </span>
                         )}
                     </div>
                 </div>
-                <div className="w-20 text-[10px] text-slate-400">
+                <div className="w-20 shrink-0 text-[10px] text-slate-400 text-center">
                     {e.fields.Event_Name ? e.fields.Musician || '' : ''}
                 </div>
-                <div className="w-24 flex flex-col items-end px-2">
+                <div className="w-24 shrink-0 flex flex-col items-end px-2">
                     <span className={clsx(
                         "text-[9px] px-1.5 py-0.5 rounded-full font-bold mb-0.5",
                         e.fields.Payment_Status === 'תשלום' ? 'bg-green-100 text-green-700' : e.fields.Payment_Status === 'חלקי' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                     )}>{e.fields.Payment_Status}</span>
-                    <span className="text-[9px] text-slate-400">{e.fields.Payment_Method}</span>
+                    <span className="text-[9px] text-slate-400 text-center">{e.fields.Payment_Method}</span>
                 </div>
                 <div className={clsx(
-                    "w-24 text-left font-bold font-mono tracking-tighter",
+                    "w-24 shrink-0 text-left font-bold font-mono tracking-tighter",
                     type === 'income' ? "text-emerald-600" : "text-red-600"
                 )} dir="ltr">
                     {type === 'income' ? '+' : '-'}{e.fields.Amount.toLocaleString()} ₪
                 </div>
-                <div className="w-12 flex items-center justify-end gap-2 text-slate-400 pl-2">
+                <div className="w-12 shrink-0 flex items-center justify-end gap-2 text-slate-400 pl-2">
                     {editable && (
                         <>
                             <button onClick={() => handleEditFinance(e)} className="hover:text-blue-500"><Edit size={12} /></button>
@@ -373,22 +373,24 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4 shadow-sm flex flex-col">
-                    {/* Header Row */}
-                    <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-200 uppercase bg-slate-50">
-                        <div className="w-16">תאריך</div>
-                        <div className="flex-1">אירוע / פירוט</div>
-                        <div className="w-20">נגן</div>
-                        <div className="w-24 text-right px-2">אמצעי/סטטוס</div>
-                        <div className="w-24 text-left">סכום</div>
-                        <div className="w-12"></div>
+                <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto mb-4 shadow-sm flex flex-col">
+                    <div className="min-w-[500px] flex flex-col">
+                        {/* Header Row */}
+                        <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-200 uppercase bg-slate-50">
+                            <div className="w-16 shrink-0">תאריך</div>
+                            <div className="flex-1 min-w-[120px]">אירוע / פירוט</div>
+                            <div className="w-20 shrink-0">נגן</div>
+                            <div className="w-24 shrink-0 text-right px-2">אמצעי/סטטוס</div>
+                            <div className="w-24 shrink-0 text-left">סכום</div>
+                            <div className="w-12 shrink-0"></div>
+                        </div>
+                        {/* Rows */}
+                        {sortedEntries.length === 0 ? (
+                            <div className="text-center py-8 text-slate-400 text-sm">אין תנועות</div>
+                        ) : (
+                            sortedEntries.map(e => renderRow(e))
+                        )}
                     </div>
-                    {/* Rows */}
-                    {sortedEntries.length === 0 ? (
-                        <div className="text-center py-8 text-slate-400 text-sm">אין תנועות</div>
-                    ) : (
-                        sortedEntries.map(e => renderRow(e))
-                    )}
                 </div>
             </div>
         );
@@ -629,13 +631,13 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     {renderTable(activeTab)}
                 </div>
 
-                <div className="hidden md:flex gap-6">
-                    <div className="flex-1">
+                <div className="hidden xl:flex gap-6">
+                    <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-extrabold text-blue-700 mb-3">📊 אילן</h3>
                         {renderTable('אילן')}
                     </div>
-                    <div className="w-px bg-slate-200"></div>
-                    <div className="flex-1">
+                    <div className="w-px bg-slate-200 shrink-0"></div>
+                    <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-extrabold text-purple-700 mb-3">📊 קובי</h3>
                         {renderTable('קובי')}
                     </div>
