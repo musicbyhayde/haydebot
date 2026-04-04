@@ -1,5 +1,9 @@
 import asyncio
+import json
+import os
+from collections import OrderedDict
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 from app.services.supabase_service import airtable_service
 from app.services.whatsapp import whatsapp_service
@@ -11,10 +15,49 @@ from app.services.email import email_service
 
 settings = get_settings()
 
+class PersistentDict(dict):
+    """A dict that auto-saves to a JSON file on every mutation.
+    Survives process restarts so pending musician actions aren't lost."""
+    
+    def __init__(self, filepath: str):
+        super().__init__()
+        self._filepath = filepath
+        self._load()
+    
+    def _load(self):
+        try:
+            if os.path.exists(self._filepath):
+                with open(self._filepath, 'r') as f:
+                    data = json.load(f)
+                    self.update(data)
+                print(f"Loaded {len(data)} pending actions from {self._filepath}")
+        except Exception as e:
+            print(f"Warning: Could not load pending actions: {e}")
+    
+    def _save(self):
+        try:
+            Path(self._filepath).parent.mkdir(parents=True, exist_ok=True)
+            with open(self._filepath, 'w') as f:
+                json.dump(dict(self), f, ensure_ascii=False)
+        except Exception as e:
+            print(f"Warning: Could not save pending actions: {e}")
+    
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self._save()
+    
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self._save()
+
+
 class HaydeBotLogic:
+    MAX_PROCESSED_CACHE = 500
+    PENDING_ACTIONS_FILE = os.path.join(os.path.dirname(__file__), '..', '..', 'pending_musician_actions.json')
+
     def __init__(self):
-        self.processed_messages = set()
-        self.pending_musician_actions = {}
+        self.processed_messages = OrderedDict()
+        self.pending_musician_actions = PersistentDict(self.PENDING_ACTIONS_FILE)
 
     async def process_webhook(self, body: dict):
         """
@@ -81,14 +124,14 @@ class HaydeBotLogic:
                 return
             if airtable_service.is_message_processed(whatsapp_id):
                 print(f"DEBUG: Skipping already processed message (Airtable): {whatsapp_id}")
-                self.processed_messages.add(whatsapp_id)
+                self.processed_messages[whatsapp_id] = True
                 return
             
-            # Add to local cache
-            self.processed_messages.add(whatsapp_id)
-            # Max cache size 500 to prevent memory leak
-            if len(self.processed_messages) > 500:
-                self.processed_messages.pop()
+            # Add to local cache (OrderedDict keeps insertion order)
+            self.processed_messages[whatsapp_id] = True
+            # Evict oldest entries when cache exceeds limit
+            while len(self.processed_messages) > self.MAX_PROCESSED_CACHE:
+                self.processed_messages.popitem(last=False)  # Remove oldest (FIFO)
 
         # 1. Musician/Lead Detection Logic
         all_musicians = airtable_service.get_all_musicians()
@@ -854,7 +897,7 @@ class HaydeBotLogic:
 
         # Email Notification
         email_subject = "🔔 עדכון HaydeBot" if custom_msg else f"🔔 ליד חדש הגיע: {lead_fields.get('Name', 'לא צוין')} ({lead_fields.get('Service')})"
-        msg_html = msg.replace('\n', '<br>')
+        msg_html = custom_msg.replace('\n', '<br>') if custom_msg else ""
         email_body = f"<h2>עדכון ממערכת HaydeBot</h2><p>{msg_html}</p>" if custom_msg else f"""
         <h2>ליד חדש במערכת HaydeBot</h2>
         <p><strong>שם:</strong> {lead_fields.get('Name', 'לא צוין')}</p>
