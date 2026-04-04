@@ -140,7 +140,7 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
                     </div>
                 </div>
                 <div className="flex gap-3 text-slate-400">
-                    <button className="p-2 hover:bg-slate-100 rounded-full transition-colors"><Phone size={20} /></button>
+                    <a href={`tel:${phone}`} className="p-2 hover:bg-slate-100 rounded-full transition-colors inline-block" title="התקשר"><Phone size={20} /></a>
                     <button className="p-2 hover:bg-slate-100 rounded-full transition-colors"><MoreVertical size={20} /></button>
                 </div>
             </div>
@@ -190,7 +190,11 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
             {/* Input Area */}
             <div className="bg-white px-6 py-4 border-t border-slate-200">
                 <div className="bg-slate-50 border border-slate-200 rounded-3xl p-2 flex gap-3 items-end focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all shadow-inner">
-                    <button className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors flex-shrink-0" title="צרף קובץ">
+                    <button 
+                        onClick={() => alert("שליחת קבצים תיתמך בגרסה הבאה! 📎")}
+                        className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors flex-shrink-0" 
+                        title="צרף קובץ"
+                    >
                         <Paperclip size={20} />
                     </button>
 

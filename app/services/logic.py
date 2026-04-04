@@ -12,6 +12,7 @@ from app.core.scheduler import scheduler
 from app.core.config import get_settings
 from app.services.ai import ai_service
 from app.services.email import email_service
+from app.core.utils import calculate_commission
 
 settings = get_settings()
 
@@ -174,7 +175,7 @@ class HaydeBotLogic:
                             import re
                             amount_str = re.sub(r'[^\d.]', '', text)
                             amount = float(amount_str)
-                            commission = max(amount * 0.15, 400.0) # 15% or 400 ILS
+                            commission = calculate_commission(amount)
                             airtable_service.update_lead(p_lead_id, LeadUpdate(closing_amount=amount))
                             del self.pending_musician_actions[phone]
                             self._send_message(phone, f"נקלט בהצלחה ({amount} ₪). העמלה המחושבת היא ₪{commission:.0f} כולל מע״מ. תודה! 💸", musician_id=musician_id)
@@ -851,10 +852,9 @@ class HaydeBotLogic:
     def get_active_lead_robust(self, phone: str) -> Optional[dict]:
         """Find an active lead using robust phone matching."""
         # For efficiency, we only fetch leads that aren't closed/lost
-        active_leads = airtable_service.get_all_leads() # Already sorted by last interaction
+        active_leads = airtable_service.get_active_leads() # Already sorted by last interaction
         return next((l for l in active_leads 
-                    if l["fields"].get("Status") not in [LeadStatus.CLOSED.value, LeadStatus.LOST.value]
-                    and self._phones_match(l["fields"].get("Phone"), phone)), None)
+                    if self._phones_match(l["fields"].get("Phone"), phone)), None)
 
     async def handle_reset_command(self, phone: str, lead_id: str):
         """Reset lead state and show menu."""
@@ -987,7 +987,7 @@ class HaydeBotLogic:
                                       if amount:
                                           musician_stats[m_id]["closing_amount_sum"] += float(amount)
                                           # Commission: 15% or 400 NIS (includes VAT)
-                                          commission = max(float(amount) * 0.15, 400.0)
+                                          commission = calculate_commission(amount)
                                           musician_stats[m_id]["commission_sum"] += commission
         
         # Send Admin Summary

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Request, BackgroundTasks, HTTPException, Query, UploadFile, File as FastAPIFile
+from fastapi import APIRouter, Request, BackgroundTasks, HTTPException, Query, UploadFile, Depends, Security, File as FastAPIFile
+from fastapi.security.api_key import APIKeyHeader
 from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate
 from app.core.config import get_settings
 from app.services.logic import bot_logic
@@ -7,12 +8,21 @@ from typing import List, Optional
 from pydantic import BaseModel
 import uuid
 
-router = APIRouter()
 settings = get_settings()
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if api_key != settings.API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    return api_key
+
+public_router = APIRouter()
+protected_router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 # ─── WhatsApp Webhook ────────────────────────────────
 
-@router.get("/webhook")
+@public_router.get("/webhook")
 async def verify_webhook(request: Request):
     """
     Verification endpoint for WhatsApp Webhook setup.
@@ -29,7 +39,7 @@ async def verify_webhook(request: Request):
             raise HTTPException(status_code=403, detail="Verification failed")
     return {"status": "ok"}
 
-@router.post("/webhook")
+@public_router.post("/webhook")
 async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     Receive incoming events from WhatsApp.
@@ -46,11 +56,11 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
 
 from app.services.supabase_service import airtable_service
 
-@router.get("/leads")
+@protected_router.get("/leads")
 async def get_leads():
     return airtable_service.get_all_leads()
 
-@router.post("/leads")
+@protected_router.post("/leads")
 async def create_lead_manual(request: Request):
     """Create a lead manually from the dashboard."""
     body = await request.json()
@@ -67,7 +77,7 @@ async def create_lead_manual(request: Request):
     result = airtable_service.create_lead(lead)
     return result
 
-@router.patch("/leads/{lead_id}")
+@protected_router.patch("/leads/{lead_id}")
 async def update_lead(lead_id: str, request: Request):
     """Update a lead's fields (status, owner, etc.)."""
     body = await request.json()
@@ -99,28 +109,28 @@ async def update_lead(lead_id: str, request: Request):
 
     return result
 
-@router.post("/leads/{lead_id}/read")
+@protected_router.post("/leads/{lead_id}/read")
 async def mark_lead_as_read(lead_id: str):
     """Mark all messages in a lead as read by updating Last_Read_At."""
     now = datetime.now()
     result = airtable_service.update_lead(lead_id, LeadUpdate(last_read_at=now))
     return {"status": "success", "last_read_at": now.isoformat()}
 
-@router.get("/leads/unread-status")
+@protected_router.get("/leads/unread-status")
 async def get_unread_status():
     """Get unread message counts and latest message preview for all leads."""
     return airtable_service.get_unread_status()
 
 # ─── Messages ─────────────────────────────────────────
 
-@router.get("/leads/{lead_id}/messages")
+@protected_router.get("/leads/{lead_id}/messages")
 async def get_messages(lead_id: str):
     return airtable_service.get_messages_for_lead(lead_id)
 
 class SendMessageRequest(BaseModel):
     text: str
 
-@router.post("/leads/{lead_id}/messages")
+@protected_router.post("/leads/{lead_id}/messages")
 async def send_manual_message(lead_id: str, payload: SendMessageRequest):
     lead = airtable_service.leads_table.get(lead_id)
     if not lead:
@@ -137,11 +147,11 @@ async def send_manual_message(lead_id: str, payload: SendMessageRequest):
 
 # ─── Notes ────────────────────────────────────────────
 
-@router.get("/leads/{lead_id}/notes")
+@protected_router.get("/leads/{lead_id}/notes")
 async def get_notes(lead_id: str):
     return airtable_service.get_notes_for_lead(lead_id)
 
-@router.post("/leads/{lead_id}/notes")
+@protected_router.post("/leads/{lead_id}/notes")
 async def create_note(lead_id: str, request: Request):
     body = await request.json()
     note = NoteCreate(
@@ -155,7 +165,7 @@ async def create_note(lead_id: str, request: Request):
 
 # ─── File Upload ──────────────────────────────────────
 
-@router.post("/upload")
+@protected_router.post("/upload")
 async def upload_file(file: UploadFile = FastAPIFile(...)):
     """Upload a file to Supabase storage and return its public URL."""
     MAX_SIZE = 5 * 1024 * 1024  # 5MB
@@ -182,11 +192,11 @@ async def upload_file(file: UploadFile = FastAPIFile(...)):
 
 # ─── Musicians ────────────────────────────────────────
 
-@router.get("/musicians")
+@protected_router.get("/musicians")
 async def get_musicians():
     return airtable_service.get_all_musicians()
 
-@router.post("/musicians")
+@protected_router.post("/musicians")
 async def create_musician(request: Request):
     """Create a new musician from the dashboard."""
     body = await request.json()
@@ -199,7 +209,7 @@ async def create_musician(request: Request):
     )
     return airtable_service.create_musician(musician)
 
-@router.patch("/musicians/{musician_id}")
+@protected_router.patch("/musicians/{musician_id}")
 async def update_musician(musician_id: str, request: Request):
     """Update a musician's fields."""
     body = await request.json()
@@ -207,12 +217,12 @@ async def update_musician(musician_id: str, request: Request):
     data = MusicianUpdate(**{k: v for k, v in body.items() if v is not None})
     return airtable_service.update_musician(musician_id, data)
 
-@router.delete("/musicians/{musician_id}")
+@protected_router.delete("/musicians/{musician_id}")
 async def delete_musician(musician_id: str):
     airtable_service.delete_musician(musician_id)
     return {"status": "deleted"}
 
-@router.get("/musicians/{musician_id}/stats")
+@protected_router.get("/musicians/{musician_id}/stats")
 async def get_musician_stats(musician_id: str):
     """Compute performance statistics for a specific musician."""
     leads = airtable_service.get_all_leads()
@@ -232,11 +242,11 @@ async def get_musician_stats(musician_id: str):
                 stats["lost"] += 1
     return stats
 
-@router.get("/musicians/{musician_id}/messages")
+@protected_router.get("/musicians/{musician_id}/messages")
 async def get_musician_messages(musician_id: str):
     return airtable_service.get_messages_for_musician(musician_id)
 
-@router.post("/musicians/{musician_id}/messages")
+@protected_router.post("/musicians/{musician_id}/messages")
 async def send_musician_manual_message(musician_id: str, payload: SendMessageRequest):
     musician = airtable_service.musicians_table.get(musician_id)
     if not musician:
@@ -250,16 +260,16 @@ async def send_musician_manual_message(musician_id: str, payload: SendMessageReq
 
 # ─── Finance ─────────────────────────────────────────
 
-@router.get("/finance/summary")
+@protected_router.get("/finance/summary")
 async def get_finance_summary():
     """Get aggregated totals per partner."""
     return airtable_service.get_finance_summary()
 
-@router.get("/finance")
+@protected_router.get("/finance")
 async def get_finance_entries(owner: Optional[str] = Query(None)):
     return airtable_service.get_finance_entries(owner=owner)
 
-@router.post("/finance")
+@protected_router.post("/finance")
 async def create_finance_entry(request: Request):
     body = await request.json()
     entry = FinanceEntryCreate(
@@ -275,24 +285,24 @@ async def create_finance_entry(request: Request):
     )
     return airtable_service.create_finance_entry(entry)
 
-@router.patch("/finance/{entry_id}")
+@protected_router.patch("/finance/{entry_id}")
 async def update_finance_entry(entry_id: str, request: Request):
     body = await request.json()
     data = FinanceEntryUpdate(**{k: v for k, v in body.items() if v is not None})
     return airtable_service.update_finance_entry(entry_id, data)
 
-@router.delete("/finance/{entry_id}")
+@protected_router.delete("/finance/{entry_id}")
 async def delete_finance_entry(entry_id: str):
     airtable_service.delete_finance_entry(entry_id)
     return {"status": "deleted"}
 
 # ─── Tasks ───────────────────────────────────────────
 
-@router.get("/tasks")
+@protected_router.get("/tasks")
 async def get_tasks():
     return airtable_service.get_tasks()
 
-@router.post("/tasks")
+@protected_router.post("/tasks")
 async def create_task(request: Request):
     body = await request.json()
     from app.models.schemas import TaskCreate
@@ -305,21 +315,21 @@ async def create_task(request: Request):
     )
     return airtable_service.create_task(task)
 
-@router.patch("/tasks/{task_id}")
+@protected_router.patch("/tasks/{task_id}")
 async def update_task(task_id: str, request: Request):
     body = await request.json()
     from app.models.schemas import TaskUpdate
     data = TaskUpdate(**{k: v for k, v in body.items() if v is not None})
     return airtable_service.update_task(task_id, data)
 
-@router.delete("/tasks/{task_id}")
+@protected_router.delete("/tasks/{task_id}")
 async def delete_task(task_id: str):
     airtable_service.delete_task(task_id)
     return {"status": "deleted"}
 
 # ─── Analytics ───────────────────────────────────────
 
-@router.get("/analytics")
+@protected_router.get("/analytics")
 async def get_analytics():
     """Compute analytics from leads and musicians data."""
     leads = airtable_service.get_all_leads()

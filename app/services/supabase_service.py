@@ -74,6 +74,12 @@ class SupabaseService:
         response = self.client.table("leads").update(update_data).eq("id", record_id).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
 
+    def get_active_leads(self) -> List[dict]:
+        """Fetch leads that are not Closed or Lost."""
+        if not self.client: return []
+        response = self.client.table("leads").select("*").neq("Status", "Closed").neq("Status", "Lost").order("Last_Interaction", desc=True).execute()
+        return self._to_airtable_list(response.data)
+
     def get_all_leads(self) -> List[dict]:
         """Fetch all leads, sorted by Last Interaction."""
         if not self.client: return []

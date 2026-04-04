@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.core.config import get_settings
-from app.api.routes import router
+from app.api.routes import public_router, protected_router
 
 settings = get_settings()
 
@@ -35,7 +35,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router, prefix="/api/v1")
+app.include_router(public_router, prefix="/api/v1")
+app.include_router(protected_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

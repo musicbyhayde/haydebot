@@ -5,6 +5,7 @@ from typing import Optional
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "HaydeBot"
+    API_KEY: str = "hayde-security-key"
     
     # OpenAI / Gemini
     OPENAI_API_KEY: Optional[str] = None

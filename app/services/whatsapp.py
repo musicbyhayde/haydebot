@@ -8,7 +8,7 @@ class WhatsAppService:
     def __init__(self):
         self.token = settings.WHATSAPP_TOKEN
         self.phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
-        self.api_url = f"https://graph.facebook.com/v17.0/{self.phone_number_id}/messages"
+        self.api_url = f"https://graph.facebook.com/v20.0/{self.phone_number_id}/messages"
         self.headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json"
@@ -131,7 +131,7 @@ class WhatsAppService:
         """Download media from WhatsApp using its media ID. Returns bytes and mime_type."""
         try:
             # Step 1: Query API for the media URL
-            media_url_req = f"https://graph.facebook.com/v17.0/{media_id}"
+            media_url_req = f"https://graph.facebook.com/v20.0/{media_id}"
             res = requests.get(media_url_req, headers=self.headers)
             res.raise_for_status()
             media_info = res.json()
