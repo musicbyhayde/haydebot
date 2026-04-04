@@ -285,11 +285,11 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         const linkedLead = getLinkedLeadName(e.fields.Lead_ID);
 
         return (
-            <div key={e.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-100 hover:bg-slate-50 transition-colors bg-white">
-                <div className="w-16 shrink-0 text-[10px] text-slate-500">{new Date(e.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
+            <div key={e.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:bg-[#0b141a] transition-colors bg-white dark:bg-[#111b21]">
+                <div className="w-16 shrink-0 text-[10px] text-slate-500 dark:text-slate-400">{new Date(e.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
                 <div className="flex-1 min-w-[120px] flex flex-col justify-center">
                     <div className="flex items-center gap-1">
-                        <span className="font-semibold text-slate-700 truncate">{e.fields.Event_Name || e.fields.Description}</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">{e.fields.Event_Name || e.fields.Description}</span>
                         {linkedLead && (
                             <span className="text-[9px] text-blue-500 bg-blue-50 px-1 rounded-sm flex items-center gap-0.5 whitespace-nowrap">
                                 <Link size={8} /> <span className="truncate max-w-[80px] sm:max-w-[120px]">{linkedLead}</span>
@@ -342,27 +342,27 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                         <div className="text-lg font-extrabold text-red-700">{formatCurrency(ownerSummary.expenses)}</div>
                     </div>
                     <div className={clsx("border rounded-xl p-3 text-center shadow-sm", ownerSummary.balance >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200")}>
-                        <div className="text-[10px] font-bold text-slate-600 uppercase">יתרה</div>
+                        <div className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">יתרה</div>
                         <div className={clsx("text-lg font-extrabold", ownerSummary.balance >= 0 ? "text-blue-700" : "text-orange-700")}>{formatCurrency(ownerSummary.balance)}</div>
                         <div className="flex justify-center gap-2 mt-2">
-                            <span className="text-[10px] bg-white/80 px-2 py-0.5 rounded-md text-slate-700 border border-slate-200" title="יתרה בחשבון">🏦 {formatCurrency(ownerSummary.bank_balance || 0)}</span>
-                            <span className="text-[10px] bg-white/80 px-2 py-0.5 rounded-md text-slate-700 border border-slate-200" title="יתרה במזומן">💵 {formatCurrency(ownerSummary.cash_balance || 0)}</span>
+                            <span className="text-[10px] bg-white dark:bg-[#111b21]/80 px-2 py-0.5 rounded-md text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800" title="יתרה בחשבון">🏦 {formatCurrency(ownerSummary.bank_balance || 0)}</span>
+                            <span className="text-[10px] bg-white dark:bg-[#111b21]/80 px-2 py-0.5 rounded-md text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800" title="יתרה במזומן">💵 {formatCurrency(ownerSummary.cash_balance || 0)}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-between mb-4 bg-white p-2 border border-slate-200 rounded-xl gap-2 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-center justify-between mb-4 bg-white dark:bg-[#111b21] p-2 border border-slate-200 dark:border-slate-800 rounded-xl gap-2 shadow-sm">
                     <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <span className="text-xs font-bold text-slate-500 mr-2">מיון לפי:</span>
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-2">מיון לפי:</span>
                         <div className="flex gap-1 items-center">
-                            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'date' | 'type')} className="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-blue-500 min-w-[120px]">
+                            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'date' | 'type')} className="bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 text-sm rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-blue-500 min-w-[120px]">
                                 <option value="date">📅 תאריך</option>
                                 <option value="type">📈 עסקאות (הכנסה/הוצאה)</option>
                             </select>
                             {sortBy === 'date' && (
                                 <button
                                     onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-                                    className="flex items-center justify-center p-1.5 border border-slate-200 rounded-lg outline-none bg-slate-50 text-slate-600 hover:bg-slate-100 transition shadow-sm w-[72px]"
+                                    className="flex items-center justify-center p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg outline-none bg-slate-50 dark:bg-[#0b141a] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800 transition shadow-sm w-[72px]"
                                     title={sortOrder === 'desc' ? 'מהחדש לישן' : 'מהישן לחדש'}
                                 >
                                     {sortOrder === 'desc' ? <ArrowDown size={14} className="ml-1" /> : <ArrowUp size={14} className="ml-1" />}
@@ -373,10 +373,10 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto mb-4 shadow-sm flex flex-col">
+                <div className="bg-white dark:bg-[#111b21] border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto mb-4 shadow-sm flex flex-col">
                     <div className="min-w-[500px] flex flex-col">
                         {/* Header Row */}
-                        <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-200 uppercase bg-slate-50">
+                        <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase bg-slate-50 dark:bg-[#0b141a]">
                             <div className="w-16 shrink-0">תאריך</div>
                             <div className="flex-1 min-w-[120px]">אירוע / פירוט</div>
                             <div className="w-20 shrink-0">נגן</div>
@@ -423,18 +423,18 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         : '';
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50" dir="rtl">
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b141a]" dir="rtl">
             {/* Header */}
-            <div className="px-4 md:px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
+            <div className="px-4 md:px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111b21] flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     {onMenuClick && (
-                        <button onClick={onMenuClick} className="md:hidden p-2 hover:bg-slate-100 rounded-lg">
+                        <button onClick={onMenuClick} className="md:hidden p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-lg">
                             <Menu size={20} />
                         </button>
                     )}
                     <div>
-                        <h1 className="text-xl md:text-2xl font-extrabold text-slate-800">💰 ניהול כספים</h1>
-                        <p className="text-xs text-slate-500">קופה רושמת — הייד מיוזיק</p>
+                        <h1 className="text-xl md:text-2xl font-extrabold text-slate-800 dark:text-slate-200">💰 ניהול כספים</h1>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">קופה רושמת — הייד מיוזיק</p>
                     </div>
                 </div>
                 {(canAddForOwner('אילן') || canAddForOwner('קובי')) && (
@@ -458,9 +458,9 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
             {/* Modal */}
             {financeModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setFinanceModalOpen(false)}>
-                    <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                        <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="text-sm font-bold text-slate-800">{editingId ? 'עריכת תנועה' : 'הוספת תנועה'}</h3>
+                    <div className="w-full max-w-lg bg-white dark:bg-[#111b21] rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/60 flex justify-between items-center bg-slate-50 dark:bg-[#0b141a]">
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">{editingId ? 'עריכת תנועה' : 'הוספת תנועה'}</h3>
                             <button onClick={() => setFinanceModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={18} /></button>
                         </div>
                         <div className="px-5 py-4 overflow-y-auto">
@@ -468,20 +468,20 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     {/* Row 1: Type + Date + Amount */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">סוג תנועה *</label>
-                            <select value={form.Type} onChange={(e) => setForm({ ...form, Type: e.target.value, Musician: '' })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all">
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">סוג תנועה *</label>
+                            <select value={form.Type} onChange={(e) => setForm({ ...form, Type: e.target.value, Musician: '' })} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm bg-white dark:bg-[#111b21] focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all">
                                 <option value="income">💰 הכנסה</option>
                                 <option value="expense">💸 הוצאה</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">תאריך *</label>
-                            <input type="date" value={form.Date} onChange={(e) => setForm({ ...form, Date: e.target.value })} className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white transition-all", errors.Date && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200')} dir="ltr" />
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">תאריך *</label>
+                            <input type="date" value={form.Date} onChange={(e) => setForm({ ...form, Date: e.target.value })} className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white dark:bg-[#111b21] transition-all", errors.Date && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200 dark:border-slate-800')} dir="ltr" />
                             <FieldError error={errors.Date} />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">סכום (₪) *</label>
-                            <input type="number" value={form.Amount} onChange={(e) => setForm({ ...form, Amount: e.target.value })} placeholder="0" className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white transition-all", errors.Amount && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200')} dir="ltr" />
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">סכום (₪) *</label>
+                            <input type="number" value={form.Amount} onChange={(e) => setForm({ ...form, Amount: e.target.value })} placeholder="0" className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white dark:bg-[#111b21] transition-all", errors.Amount && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200 dark:border-slate-800')} dir="ltr" />
                             <FieldError error={errors.Amount} />
                         </div>
                     </div>
@@ -489,25 +489,25 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     {/* Row 2: Description + Lead link + Musician (income only) */}
                     <div className={clsx("grid gap-3 mb-3", isIncome ? "grid-cols-2 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2")}>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">{isIncome ? 'שם אירוע / פירוט' : 'פירוט ההוצאה'} *</label>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">{isIncome ? 'שם אירוע / פירוט' : 'פירוט ההוצאה'} *</label>
                             <input
                                 type="text"
                                 value={form.Description}
                                 onChange={(e) => setForm({ ...form, Description: e.target.value })}
                                 placeholder={isIncome ? 'למשל: חתונה כהן 15.3' : 'למשל: קנייה של ציוד'}
-                                className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white transition-all", errors.Description && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200')}
+                                className={clsx("w-full px-3 py-2 border rounded-xl text-sm bg-white dark:bg-[#111b21] transition-all", errors.Description && submitAttempted ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200 dark:border-slate-800')}
                             />
                             <FieldError error={errors.Description} />
                         </div>
                         <div className="relative" ref={leadDropdownRef}>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
                                 <Link size={9} className="inline ml-0.5" /> קישור לליד
                             </label>
                             <div
-                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white cursor-pointer flex items-center justify-between hover:border-slate-300 transition-colors"
+                                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm bg-white dark:bg-[#111b21] cursor-pointer flex items-center justify-between hover:border-slate-300 transition-colors"
                                 onClick={() => setShowLeadDropdown(!showLeadDropdown)}
                             >
-                                <span className={form.Lead_ID ? 'text-slate-800' : 'text-slate-400'}>
+                                <span className={form.Lead_ID ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400'}>
                                     {selectedLeadLabel || '— ללא קישור —'}
                                 </span>
                                 {form.Lead_ID && (
@@ -520,22 +520,22 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                                 )}
                             </div>
                             {showLeadDropdown && (
-                                <div className="absolute top-full right-0 left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-56 flex flex-col overflow-hidden">
-                                    <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100">
+                                <div className="absolute top-full right-0 left-0 mt-1 bg-white dark:bg-[#111b21] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 max-h-56 flex flex-col overflow-hidden">
+                                    <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800/60">
                                         <Search size={14} className="text-slate-400" />
                                         <input
                                             type="text"
                                             value={leadSearch}
                                             onChange={(e) => setLeadSearch(e.target.value)}
                                             placeholder="חפש לפי שם, טלפון או שירות..."
-                                            className="w-full text-sm focus:outline-none bg-transparent placeholder:text-slate-400"
+                                            className="w-full text-sm focus:outline-none bg-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                             autoFocus
                                         />
                                     </div>
                                     <div className="overflow-y-auto flex-1">
                                         <button
                                             onClick={() => { handleLeadSelect(''); setShowLeadDropdown(false); setLeadSearch(''); }}
-                                            className="w-full text-right px-3 py-2 text-sm text-slate-400 hover:bg-slate-50 transition-colors"
+                                            className="w-full text-right px-3 py-2 text-sm text-slate-400 hover:bg-slate-50 dark:bg-[#0b141a] transition-colors"
                                         >
                                             — ללא קישור —
                                         </button>
@@ -548,8 +548,8 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                                                     form.Lead_ID === l.id && 'bg-blue-50'
                                                 )}
                                             >
-                                                <span className="font-medium text-slate-800">{l.fields.Name || l.fields.Phone}</span>
-                                                <span className="text-[10px] text-slate-500">
+                                                <span className="font-medium text-slate-800 dark:text-slate-200">{l.fields.Name || l.fields.Phone}</span>
+                                                <span className="text-[10px] text-slate-500 dark:text-slate-400">
                                                     {l.fields.Service || ''}{l.fields.Event_Date ? ` · ${l.fields.Event_Date}` : ''}{l.fields.Status ? ` · ${l.fields.Status}` : ''}
                                                 </span>
                                             </button>
@@ -563,8 +563,8 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                         </div>
                         {isIncome && (
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-500 mb-1">נגן</label>
-                                <input type="text" value={form.Musician} onChange={(e) => setForm({ ...form, Musician: e.target.value })} placeholder="אופציונלי" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white" />
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">נגן</label>
+                                <input type="text" value={form.Musician} onChange={(e) => setForm({ ...form, Musician: e.target.value })} placeholder="אופציונלי" className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm bg-white dark:bg-[#111b21]" />
                             </div>
                         )}
                     </div>
@@ -572,23 +572,23 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     {/* Row 3: Payment status + Submit */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">סטטוס תשלום</label>
-                            <select value={form.Payment_Status} onChange={(e) => setForm({ ...form, Payment_Status: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white mb-2">
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">סטטוס תשלום</label>
+                            <select value={form.Payment_Status} onChange={(e) => setForm({ ...form, Payment_Status: e.target.value })} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm bg-white dark:bg-[#111b21] mb-2">
                                 {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1">אמצעי</label>
-                            <select value={form.Payment_Method} onChange={(e) => setForm({ ...form, Payment_Method: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">אמצעי</label>
+                            <select value={form.Payment_Method} onChange={(e) => setForm({ ...form, Payment_Method: e.target.value })} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm bg-white dark:bg-[#111b21]">
                                 <option value="חשבון">🏦 חשבון (בנק/אשראי/העברה)</option>
                                 <option value="מזומן">💵 מזומן</option>
                             </select>
                         </div>
                         {/* Admin Owner Selection Wrapper */}
                         {!getAddOwner() && (
-                            <div className="mt-3 bg-white p-3 border border-slate-200 rounded-xl">
-                                <label className="block text-[10px] font-bold text-slate-500 mb-2">למי לשייך? (פעולה למנהל)</label>
+                            <div className="mt-3 bg-white dark:bg-[#111b21] p-3 border border-slate-200 dark:border-slate-800 rounded-xl">
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-2">למי לשייך? (פעולה למנהל)</label>
                                 <div className="flex gap-2">
-                                    <button onClick={() => setForm({...form, Owner: 'אילן'})} className={`flex-1 py-1.5 text-xs font-bold rounded-lg ${form.Owner === 'אילן' ? 'bg-blue-100 text-blue-700 border-2 border-blue-400' : 'bg-slate-50 border border-slate-200'}`}>אילן</button>
-                                    <button onClick={() => setForm({...form, Owner: 'קובי'})} className={`flex-1 py-1.5 text-xs font-bold rounded-lg ${form.Owner === 'קובי' ? 'bg-purple-100 text-purple-700 border-2 border-purple-400' : 'bg-slate-50 border border-slate-200'}`}>קובי</button>
+                                    <button onClick={() => setForm({...form, Owner: 'אילן'})} className={`flex-1 py-1.5 text-xs font-bold rounded-lg ${form.Owner === 'אילן' ? 'bg-blue-100 text-blue-700 border-2 border-blue-400' : 'bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800'}`}>אילן</button>
+                                    <button onClick={() => setForm({...form, Owner: 'קובי'})} className={`flex-1 py-1.5 text-xs font-bold rounded-lg ${form.Owner === 'קובי' ? 'bg-purple-100 text-purple-700 border-2 border-purple-400' : 'bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800'}`}>קובי</button>
                                 </div>
                             </div>
                         )}
@@ -602,8 +602,8 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                         </div>
                     )}
                     
-                    <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
-                        <button onClick={() => setFinanceModalOpen(false)} className="px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700">ביטול</button>
+                    <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50 dark:bg-[#0b141a] flex gap-2 justify-end">
+                        <button onClick={() => setFinanceModalOpen(false)} className="px-4 py-2 text-slate-500 dark:text-slate-400 text-xs font-bold hover:text-slate-700 dark:text-slate-300">ביטול</button>
                         <button onClick={handleSaveFinance} className="px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md">שמור רשומה</button>
                     </div>
                 </div>
@@ -614,14 +614,14 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6">
-                <div className="md:hidden flex mb-4 bg-white rounded-xl border border-slate-200 p-1">
+                <div className="md:hidden flex mb-4 bg-white dark:bg-[#111b21] rounded-xl border border-slate-200 dark:border-slate-800 p-1">
                     {(['אילן', 'קובי'] as const).map(name => (
                         <button
                             key={name}
                             onClick={() => setActiveTab(name)}
                             className={clsx(
                                 "flex-1 py-2 text-sm font-bold rounded-lg transition-all",
-                                activeTab === name ? "bg-slate-900 text-white" : "text-slate-500"
+                                activeTab === name ? "bg-slate-900 text-white" : "text-slate-500 dark:text-slate-400"
                             )}
                         >{name}</button>
                     ))}

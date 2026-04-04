@@ -65,16 +65,16 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
         }
     };
 
-    const inputClass = "w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all";
+    const inputClass = "w-full px-3 py-2.5 bg-white dark:bg-[#111b21] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all";
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" dir="rtl">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto">
+            <div className="bg-white dark:bg-[#111b21] rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-                    <h2 className="text-lg font-bold text-slate-800">➕ ליד חדש</h2>
-                    <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-                        <X size={20} className="text-slate-500" />
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800/60">
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">➕ ליד חדש</h2>
+                    <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors">
+                        <X size={20} className="text-slate-500 dark:text-slate-400" />
                     </button>
                 </div>
 
@@ -86,50 +86,50 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-1">שם הלקוח</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">שם הלקוח</label>
                             <input type="text" className={inputClass} value={form.Name} onChange={(e) => setForm({ ...form, Name: e.target.value })} placeholder="שם מלא" />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-1">טלפון *</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">טלפון *</label>
                             <input type="tel" className={inputClass} value={form.Phone} onChange={(e) => setForm({ ...form, Phone: e.target.value })} placeholder="05X-XXXXXXX" dir="ltr" required />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-1">שירות</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">שירות</label>
                             <select className={inputClass} value={form.Service} onChange={(e) => setForm({ ...form, Service: e.target.value })}>
                                 <option value="">בחר שירות...</option>
                                 {SERVICE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-1">תאריך אירוע</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">תאריך אירוע</label>
                             <input type="date" className={inputClass} value={form.Event_Date} onChange={(e) => setForm({ ...form, Event_Date: e.target.value })} dir="ltr" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-1">מיקום</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">מיקום</label>
                             <input type="text" className={inputClass} value={form.Location} onChange={(e) => setForm({ ...form, Location: e.target.value })} placeholder="עיר / אולם" />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-1">מספר אורחים</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">מספר אורחים</label>
                             <input type="text" className={inputClass} value={form.Guests} onChange={(e) => setForm({ ...form, Guests: e.target.value })} placeholder="לדוגמה: 200" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-1">מוביל</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">מוביל</label>
                             <select className={inputClass} value={form.Owner} onChange={(e) => setForm({ ...form, Owner: e.target.value })}>
                                 <option value="אילן">אילן</option>
                                 <option value="קובי">קובי</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 mb-1">סטטוס</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">סטטוס</label>
                             <select className={inputClass} value={form.Status} onChange={(e) => setForm({ ...form, Status: e.target.value })}>
                                 {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select>

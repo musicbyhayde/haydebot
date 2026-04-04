@@ -3,6 +3,7 @@ import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut,
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ThemeToggle } from './theme-toggle';
 
 interface SidebarProps {
     leads: Lead[];
@@ -21,26 +22,26 @@ interface SidebarProps {
 export default function Sidebar({ leads, musicians, activeId, onSelect, currentView, onViewChange, currentUser, onSignOut, unreadStatus = {}, isCollapsed = false, onToggleCollapse }: SidebarProps) {
 
     return (
-        <div className="w-full h-full flex flex-col bg-slate-50 border-r border-gray-200 relative group transition-all duration-300">
+        <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-[#111b21] border-r border-gray-200 dark:border-slate-800 relative group transition-all duration-300">
             {/* Collapse Toggle */}
             <button
                 onClick={onToggleCollapse}
-                className="absolute -left-3 top-6 z-20 hidden md:flex items-center justify-center w-6 h-6 bg-white border border-slate-200 hover:border-blue-400 rounded-full text-slate-400 hover:text-blue-600 shadow-sm transition-all"
+                className="absolute -left-3 top-6 z-20 hidden md:flex items-center justify-center w-6 h-6 bg-white dark:bg-[#111b21] border border-slate-200 dark:border-slate-800 hover:border-blue-400 rounded-full text-slate-400 hover:text-blue-600 shadow-sm transition-all"
             >
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
 
             {/* User Info */}
             {currentUser && (
-                <div className="px-4 py-3 border-b border-gray-200 bg-white flex items-center justify-between">
+                <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-[#111b21] flex items-center justify-between">
                     <div className={clsx("flex items-center", isCollapsed ? "justify-center w-full" : "gap-2")}>
                         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-amber-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
                             {currentUser.displayName.substring(0, 1)}
                         </div>
                         {!isCollapsed && (
                             <>
-                                <span className="text-sm font-bold text-slate-700 truncate">{currentUser.displayName}</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium shrink-0">
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300 truncate">{currentUser.displayName}</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium shrink-0">
                                     {currentUser.role === 'admin' ? 'מנהל' : 'שותף'}
                                 </span>
                             </>
@@ -55,13 +56,13 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
             )}
 
             {/* Navigation */}
-            <div className="p-4 space-y-2 border-b border-gray-200 bg-white">
+            <div className="p-4 space-y-2 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-[#111b21]">
                 <button
                     onClick={() => onViewChange('dashboard')}
                     className={clsx(
                         "flex items-center rounded-xl text-sm font-bold transition-all",
                         isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
-                        currentView === 'dashboard' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-600 hover:bg-slate-50"
+                        currentView === 'dashboard' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-[#0b141a]"
                     )}
                     title={isCollapsed ? "דשבורד ניהול" : undefined}
                 >
@@ -72,7 +73,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                     className={clsx(
                         "flex items-center rounded-xl text-sm font-bold transition-all",
                         isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
-                        currentView === 'inbox' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "text-slate-600 hover:bg-slate-50"
+                        currentView === 'inbox' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-[#0b141a]"
                     )}
                     title={isCollapsed ? "לקוחות" : undefined}
                 >
@@ -83,7 +84,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                     className={clsx(
                         "flex items-center rounded-xl text-sm font-bold transition-all",
                         isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
-                        currentView === 'musicians' ? "bg-purple-600 text-white shadow-lg shadow-purple-100" : "text-slate-600 hover:bg-slate-50"
+                        currentView === 'musicians' ? "bg-purple-600 text-white shadow-lg shadow-purple-100" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-[#0b141a]"
                     )}
                     title={isCollapsed ? "נגנים" : undefined}
                 >
@@ -94,7 +95,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                     className={clsx(
                         "flex items-center rounded-xl text-sm font-bold transition-all",
                         isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
-                        currentView === 'finance' ? "bg-amber-500 text-white shadow-lg shadow-amber-100" : "text-slate-600 hover:bg-slate-50"
+                        currentView === 'finance' ? "bg-amber-500 text-white shadow-lg shadow-amber-100" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-[#0b141a]"
                     )}
                     title={isCollapsed ? "כספים" : undefined}
                 >
@@ -105,7 +106,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                     className={clsx(
                         "flex items-center rounded-xl text-sm font-bold transition-all",
                         isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
-                        currentView === 'tasks' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-100" : "text-slate-600 hover:bg-slate-50"
+                        currentView === 'tasks' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-100" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-[#0b141a]"
                     )}
                     title={isCollapsed ? "משימות" : undefined}
                 >
@@ -116,17 +117,20 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                     className={clsx(
                         "flex items-center rounded-xl text-sm font-bold transition-all",
                         isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
-                        currentView === 'analytics' ? "bg-cyan-500 text-white shadow-lg shadow-cyan-100" : "text-slate-600 hover:bg-slate-50"
+                        currentView === 'analytics' ? "bg-cyan-500 text-white shadow-lg shadow-cyan-100" : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-[#0b141a]"
                     )}
                     title={isCollapsed ? "אנליטיקות" : undefined}
                 >
                     <BarChart3 size={18} /> {!isCollapsed && "📊 אנליטיקות"}
                 </button>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                    <ThemeToggle isCollapsed={isCollapsed} />
+                </div>
             </div>
 
             {currentView !== 'finance' && currentView !== 'tasks' && currentView !== 'musicians' && currentView !== 'analytics' && !isCollapsed && (
                 <>
-                    <div className="p-4 border-b border-gray-200">
+                    <div className="p-4 border-b border-gray-200 dark:border-slate-800">
                         <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
                             {'לידים אחרונים (' + leads.length + ')'}
                         </h2>
@@ -143,7 +147,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                                 'Waiting_Payment': 'bg-orange-100 text-orange-800',
                                 'Talking': 'bg-cyan-100 text-cyan-800',
                             };
-                            const badgeClass = statusColors[lead.fields.Status] || 'bg-gray-100 text-gray-800';
+                            const badgeClass = statusColors[lead.fields.Status] || 'bg-gray-100 text-gray-800 dark:text-gray-200';
                             const unreadInfo = unreadStatus[lead.id];
                             const hasUnread = unreadInfo && unreadInfo.count > 0;
 
@@ -161,7 +165,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                                         <div className="flex items-center gap-2 max-w-[70%]">
                                             <span className={clsx(
                                                 "font-semibold truncate",
-                                                hasUnread && !isActive ? "text-emerald-900" : "text-gray-900"
+                                                hasUnread && !isActive ? "text-emerald-900" : "text-gray-900 dark:text-gray-100"
                                             )}>{lead.fields.Name || lead.fields.Phone}</span>
                                             {hasUnread && !isActive && (
                                                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white animate-in zoom-in spin-in-12 duration-300">
@@ -181,7 +185,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <div className="text-[11px] text-gray-500 flex items-center gap-1 font-medium">
+                                                    <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 font-medium">
                                                         <Phone size={11} className="opacity-70" />
                                                         {lead.fields.Phone}
                                                     </div>
@@ -196,7 +200,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                                         </div>
                                         
                                         {hasUnread && unreadInfo.lastTime && !isActive && (
-                                            <span className="text-[10px] font-bold text-emerald-500 bg-white px-1 rounded-sm">
+                                            <span className="text-[10px] font-bold text-emerald-500 bg-white dark:bg-[#111b21] px-1 rounded-sm">
                                                 {new Date(unreadInfo.lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         )}

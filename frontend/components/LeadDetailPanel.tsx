@@ -265,21 +265,21 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
     return (
         <div className="fixed inset-0 z-50 flex items-stretch md:items-center justify-end bg-black/30 backdrop-blur-sm" dir="rtl" onClick={onClose}>
-            <div className="w-full md:w-[560px] h-full md:h-[90vh] bg-white md:rounded-r-2xl shadow-2xl flex flex-col relative" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full md:w-[560px] h-full md:h-[90vh] bg-white dark:bg-[#111b21] md:rounded-r-2xl shadow-2xl flex flex-col relative" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800/60">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-800">{lead.fields.Name || lead.fields.Phone}</h2>
-                        <p className="text-xs text-slate-500">{lead.fields.Phone} · {lead.fields.Service || '—'}</p>
+                        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{lead.fields.Name || lead.fields.Phone}</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{lead.fields.Phone} · {lead.fields.Service || '—'}</p>
                     </div>
-                    <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
-                        <X size={20} className="text-slate-500" />
+                    <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:bg-slate-800 rounded-lg">
+                        <X size={20} className="text-slate-500 dark:text-slate-400" />
                     </button>
                 </div>
 
                 {/* Status Bar */}
-                <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-semibold text-slate-500">סטטוס:</span>
+                <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800/60 flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">סטטוס:</span>
                     {STATUS_OPTIONS.map(s => (
                         <button
                             key={s.value}
@@ -288,7 +288,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 "text-[11px] px-2.5 py-1 rounded-full font-bold transition-all",
                                 lead.fields.Status === s.value
                                     ? s.color + " ring-2 ring-offset-1 ring-slate-300"
-                                    : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+                                    : "bg-slate-50 dark:bg-[#0b141a] text-slate-400 hover:bg-slate-100 dark:bg-slate-800"
                             )}
                         >
                             {s.label}
@@ -298,10 +298,10 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
                 {/* Admin Flow Control */}
                 {isAdmin && (
-                    <div className="px-5 py-2.5 border-b border-slate-100 bg-slate-50">
+                    <div className="px-5 py-2.5 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50 dark:bg-[#0b141a]">
                         <div className="flex items-center gap-1.5 mb-2">
-                            <Wrench size={12} className="text-slate-500" />
-                            <span className="text-[10px] font-bold text-slate-500">שליטה בפלואו (מנהל)</span>
+                            <Wrench size={12} className="text-slate-500 dark:text-slate-400" />
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">שליטה בפלואו (מנהל)</span>
                         </div>
                         <div className="flex gap-2 flex-wrap">
                             <button
@@ -343,15 +343,15 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 )}
 
                 {/* Closing Amount / Quote */}
-                <div className="px-5 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2 bg-slate-50/50">
+                <div className="px-5 py-2.5 border-b border-slate-100 dark:border-slate-800/60 flex items-center justify-between gap-2 bg-slate-50 dark:bg-[#0b141a]/50">
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-500">הצעת מחיר / סכום:</span>
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">הצעת מחיר / סכום:</span>
                         <div className="relative">
                             <input
                                 type="number"
                                 value={closingAmount}
                                 onChange={(e) => setClosingAmount(e.target.value)}
-                                className="pl-6 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="pl-6 pr-2 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-sm w-32 focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="0"
                                 dir="ltr"
                             />
@@ -381,7 +381,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-slate-100">
+                <div className="flex border-b border-slate-100 dark:border-slate-800/60">
                     {tabs.map(t => (
                         <button
                             key={t.key}
@@ -390,7 +390,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 "flex-1 py-3 text-sm font-bold transition-all border-b-2",
                                 tab === t.key
                                     ? "border-blue-500 text-blue-600"
-                                    : "border-transparent text-slate-400 hover:text-slate-600"
+                                    : "border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-400"
                             )}
                         >
                             {t.label} {t.count !== undefined && <span className="text-xs opacity-60">({t.count})</span>}
@@ -403,11 +403,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     {tab === 'updates' && (
                         <div className="p-4 space-y-4">
                             {/* Note Input */}
-                            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
+                            <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-[#0b141a]">
                                 <textarea
                                     value={noteText}
                                     onChange={(e) => setNoteText(e.target.value)}
-                                    className="w-full bg-transparent text-sm resize-none h-20 focus:outline-none placeholder:text-slate-400"
+                                    className="w-full bg-transparent text-sm resize-none h-20 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                     placeholder="כתוב עדכון... (סיכום שיחה, הערה, הצעת מחיר...)"
                                 />
                                 {/* File preview */}
@@ -438,7 +438,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         />
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="text-slate-400 hover:text-blue-500 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                                            className="text-slate-400 hover:text-blue-500 p-1.5 rounded-lg hover:bg-slate-100 dark:bg-slate-800 transition-colors"
                                             title="צרף קובץ"
                                         >
                                             <Paperclip size={16} />
@@ -459,19 +459,19 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 <p className="text-center text-slate-400 text-sm py-8">אין עדכונים עדיין</p>
                             ) : (
                                 notes.map((note) => (
-                                    <div key={note.id} className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
+                                    <div key={note.id} className="bg-white dark:bg-[#111b21] border border-slate-100 dark:border-slate-800/60 rounded-xl p-4 shadow-sm">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-400 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold">
                                                     {note.fields.Author?.substring(0, 1)}
                                                 </div>
-                                                <span className="text-sm font-bold text-slate-700">{note.fields.Author}</span>
+                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{note.fields.Author}</span>
                                             </div>
                                             <span className="text-[10px] text-slate-400 flex items-center gap-1">
                                                 <Clock size={10} /> {formatDate(note.fields.Created_At)}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{note.fields.Content}</p>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{note.fields.Content}</p>
                                         {note.fields.File_URL && (() => {
                                             const url = note.fields.File_URL!;
                                             const name = note.fields.File_Name || 'קובץ מצורף';
@@ -485,15 +485,15 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                             <img
                                                                 src={url}
                                                                 alt={name}
-                                                                className="max-w-full max-h-48 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer object-contain"
+                                                                className="max-w-full max-h-48 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow cursor-pointer object-contain"
                                                             />
                                                         </a>
                                                     )}
                                                     {isPdf && (
-                                                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                                        <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
                                                             <iframe
                                                                 src={url}
-                                                                className="w-full h-48 bg-white"
+                                                                className="w-full h-48 bg-white dark:bg-[#111b21]"
                                                                 title={name}
                                                             />
                                                         </div>
@@ -511,9 +511,9 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     )}
 
                     {tab === 'finance' && (
-                        <div className="flex flex-col h-full bg-slate-50">
+                        <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0b141a]">
                             {/* Actions */}
-                            <div className="p-3 bg-white border-b border-slate-200 flex gap-2">
+                            <div className="p-3 bg-white dark:bg-[#111b21] border-b border-slate-200 dark:border-slate-800 flex gap-2">
                                 <button
                                     onClick={() => openFinanceModal('income')}
                                     className="flex-1 py-1.5 text-xs font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
@@ -535,7 +535,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 ) : (
                                     <div className="flex flex-col">
                                         {/* Header Row */}
-                                        <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-200 uppercase bg-slate-100/50">
+                                        <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase bg-slate-100 dark:bg-slate-800/50">
                                             <div className="w-16">תאריך</div>
                                             <div className="flex-1">תיאור</div>
                                             <div className="w-20 text-left">סכום</div>
@@ -543,10 +543,10 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         </div>
                                         {/* Rows */}
                                         {finances.map((entry) => (
-                                            <div key={entry.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-100 hover:bg-white transition-colors bg-slate-50/30">
-                                                <div className="w-16 text-[10px] text-slate-500">{new Date(entry.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
+                                            <div key={entry.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-100 dark:border-slate-800/60 hover:bg-white dark:bg-[#111b21] transition-colors bg-slate-50 dark:bg-[#0b141a]/30">
+                                                <div className="w-16 text-[10px] text-slate-500 dark:text-slate-400">{new Date(entry.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
                                                 <div className="flex-1 flex flex-col justify-center">
-                                                    <span className="font-semibold text-slate-700 truncate">{entry.fields.Description}</span>
+                                                    <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">{entry.fields.Description}</span>
                                                     <span className="text-[9px] text-slate-400">{entry.fields.Payment_Method}</span>
                                                 </div>
                                                 <div className={clsx(
@@ -566,9 +566,9 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             </div>
 
                             {/* Summary Footer */}
-                            <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+                            <div className="p-4 bg-white dark:bg-[#111b21] border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold text-slate-600">סה״כ נשאר בקופה:</span>
+                                    <span className="text-sm font-bold text-slate-600 dark:text-slate-400">סה״כ נשאר בקופה:</span>
                                     <span className={clsx(
                                         "text-xl font-black font-mono tracking-tighter",
                                         totalFinance >= 0 ? "text-emerald-600" : "text-red-600"
@@ -582,30 +582,30 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         <div className="p-5 space-y-4">
                             <div className="space-y-3">
                                 <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-slate-500 mr-1">שם הלקוח</label>
+                                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mr-1">שם הלקוח</label>
                                     <input
                                         type="text"
                                         value={editData.Name || ''}
                                         onChange={(e) => setEditData({ ...editData, Name: e.target.value })}
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-slate-500 mr-1">טלפון</label>
+                                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mr-1">טלפון</label>
                                     <input
                                         type="text"
                                         value={editData.Phone || ''}
                                         onChange={(e) => setEditData({ ...editData, Phone: e.target.value })}
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                         dir="ltr"
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-slate-500 mr-1">שירות</label>
+                                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mr-1">שירות</label>
                                     <select
                                         value={editData.Service || ''}
                                         onChange={(e) => setEditData({ ...editData, Service: e.target.value as any })}
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                                        className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
                                     >
                                         <option value="">בחר שירות...</option>
                                         <option value="Bouzouki">נגן בוזוקי 🎸</option>
@@ -617,41 +617,41 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     </select>
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-slate-500 mr-1">תאריך אירוע</label>
+                                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mr-1">תאריך אירוע</label>
                                     <input
                                         type="text"
                                         value={editData.Event_Date || ''}
                                         onChange={(e) => setEditData({ ...editData, Event_Date: e.target.value })}
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                         placeholder="למשל: 25.12.24"
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-slate-500 mr-1">מיקום</label>
+                                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mr-1">מיקום</label>
                                     <input
                                         type="text"
                                         value={editData.Location || ''}
                                         onChange={(e) => setEditData({ ...editData, Location: e.target.value })}
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                         placeholder="עיר או אולם"
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-slate-500 mr-1">כמות אורחים</label>
+                                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mr-1">כמות אורחים</label>
                                     <input
                                         type="text"
                                         value={editData.Guests || ''}
                                         onChange={(e) => setEditData({ ...editData, Guests: e.target.value })}
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-slate-500 mr-1">מוביל (בעלים)</label>
+                                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mr-1">מוביל (בעלים)</label>
                                     <input
                                         type="text"
                                         value={editData.Owner || ''}
                                         onChange={(e) => setEditData({ ...editData, Owner: e.target.value })}
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                     />
                                 </div>
                             </div>
@@ -669,10 +669,10 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
                 {financeModalOpen && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm md:rounded-r-2xl">
-                        <div className="w-full max-w-sm bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
-                            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                                <h3 className="text-sm font-bold text-slate-800">{financeEditId ? 'עריכת תנועה' : 'הוספת תנועה'}</h3>
-                                <button onClick={() => setFinanceModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                        <div className="w-full max-w-sm bg-white dark:bg-[#111b21] rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">{financeEditId ? 'עריכת תנועה' : 'הוספת תנועה'}</h3>
+                                <button onClick={() => setFinanceModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:text-slate-400">
                                     <X size={16} />
                                 </button>
                             </div>
@@ -682,7 +682,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         onClick={() => setFinanceType('income')}
                                         className={clsx(
                                             "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border",
-                                            financeType === 'income' ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                            financeType === 'income' ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-white dark:bg-[#111b21] text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-[#0b141a]"
                                         )}
                                     >
                                         + הכנסה
@@ -691,7 +691,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         onClick={() => setFinanceType('expense')}
                                         className={clsx(
                                             "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border",
-                                            financeType === 'expense' ? "bg-red-100 text-red-800 border-red-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                            financeType === 'expense' ? "bg-red-100 text-red-800 border-red-200" : "bg-white dark:bg-[#111b21] text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-[#0b141a]"
                                         )}
                                     >
                                         - הוצאה
@@ -702,7 +702,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     placeholder="סכום (₪)"
                                     value={financeAmount}
                                     onChange={(e) => setFinanceAmount(e.target.value)}
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                     dir="ltr"
                                 />
                                 <input
@@ -710,21 +710,21 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     placeholder="תיאור (למשל: מקדמה, דלק...)"
                                     value={financeDesc}
                                     onChange={(e) => setFinanceDesc(e.target.value)}
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                                 <select
                                     value={financePaymentMethod}
                                     onChange={(e) => setFinancePaymentMethod(e.target.value as any)}
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
                                 >
                                     <option value="חשבון">העברה / אשראי / ביט</option>
                                     <option value="מזומן">מזומן</option>
                                 </select>
                             </div>
-                            <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                            <div className="p-3 bg-slate-50 dark:bg-[#0b141a] border-t border-slate-100 dark:border-slate-800/60 flex justify-end gap-2">
                                 <button
                                     onClick={() => setFinanceModalOpen(false)}
-                                    className="px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700 transition-colors"
+                                    className="px-4 py-2 text-slate-500 dark:text-slate-400 text-xs font-bold hover:text-slate-700 dark:text-slate-300 transition-colors"
                                 >
                                     ביטול
                                 </button>

@@ -234,18 +234,18 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
     }
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50" dir="rtl">
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-[#0b141a]" dir="rtl">
             {/* Header */}
-            <div className="px-4 md:px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
+            <div className="px-4 md:px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111b21] flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     {onMenuClick && (
-                        <button onClick={onMenuClick} className="md:hidden p-2 hover:bg-slate-100 rounded-lg">
+                        <button onClick={onMenuClick} className="md:hidden p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-lg">
                             <Menu size={20} />
                         </button>
                     )}
                     <div>
-                        <h1 className="text-xl md:text-2xl font-extrabold text-slate-800">🎸 ניהול נגנים</h1>
-                        <p className="text-xs text-slate-500">
+                        <h1 className="text-xl md:text-2xl font-extrabold text-slate-800 dark:text-slate-200">🎸 ניהול נגנים</h1>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
                             {activeCount} פעילים · {inactiveCount} לא פעילים
                         </p>
                     </div>
@@ -261,44 +261,44 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
             {/* Add Form Modal */}
             {showAddForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowAddForm(false)}>
-                    <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                        <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="font-extrabold text-slate-800 flex items-center gap-2">
+                    <div className="w-full max-w-lg bg-white dark:bg-[#111b21] rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/60 flex justify-between items-center bg-slate-50 dark:bg-[#0b141a]">
+                            <h3 className="font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                                 <Plus size={16} className="text-purple-600" /> הוסף מנהל מסע / נגן
                             </h3>
-                            <button onClick={() => setShowAddForm(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
+                            <button onClick={() => setShowAddForm(false)} className="text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 p-1.5 rounded-lg transition-colors"><X size={18} /></button>
                         </div>
                         <div className="px-5 py-4 overflow-y-auto">
                             <form id="add-musician-form" onSubmit={handleAdd} className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">שם הנגן *</label>
-                                        <input type="text" value={form.Name} onChange={(e) => setForm({ ...form, Name: e.target.value })} placeholder="למשל: יוסי כהן" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" required />
+                                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">שם הנגן *</label>
+                                        <input type="text" value={form.Name} onChange={(e) => setForm({ ...form, Name: e.target.value })} placeholder="למשל: יוסי כהן" className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-[#111b21] focus:ring-2 focus:ring-purple-300 outline-none" required />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">טלפון *</label>
-                                        <input type="text" value={form.Phone} onChange={(e) => setForm({ ...form, Phone: e.target.value })} placeholder="972501234567" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" dir="ltr" required />
+                                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">טלפון *</label>
+                                        <input type="text" value={form.Phone} onChange={(e) => setForm({ ...form, Phone: e.target.value })} placeholder="972501234567" className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-[#111b21] focus:ring-2 focus:ring-purple-300 outline-none" dir="ltr" required />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">ציון (1-10)</label>
+                                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">ציון (1-10)</label>
                                         <div className="flex items-center gap-2 h-9">
                                             <input type="range" min="1" max="10" value={form.Score} onChange={(e) => setForm({ ...form, Score: parseInt(e.target.value) })} className="flex-1 accent-purple-600" />
                                             <span className="text-xs font-bold text-purple-700 w-6 text-center">{form.Score}</span>
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">סטטוס</label>
-                                        <button type="button" onClick={() => setForm({ ...form, Is_Active: !form.Is_Active })} className={clsx("w-full px-3 py-2 rounded-lg text-xs font-bold transition-all border", form.Is_Active ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-500 border-slate-200")}>
+                                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">סטטוס</label>
+                                        <button type="button" onClick={() => setForm({ ...form, Is_Active: !form.Is_Active })} className={clsx("w-full px-3 py-2 rounded-lg text-xs font-bold transition-all border", form.Is_Active ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 dark:bg-[#0b141a] text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800")}>
                                             {form.Is_Active ? '✅ פעיל' : '⏸️ לא פעיל'}
                                         </button>
                                     </div>
                                 </div>
                             </form>
                         </div>
-                        <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
-                            <button onClick={() => setShowAddForm(false)} className="px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700">ביטול</button>
+                        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50 dark:bg-[#0b141a] flex gap-2 justify-end">
+                            <button onClick={() => setShowAddForm(false)} className="px-4 py-2 text-slate-500 dark:text-slate-400 text-xs font-bold hover:text-slate-700 dark:text-slate-300">ביטול</button>
                             <button type="submit" form="add-musician-form" className="px-6 py-2 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700 transition-all shadow-md">צור נגן</button>
                         </div>
                     </div>
@@ -314,10 +314,10 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                         <p className="text-sm">לחץ על &quot;הוסף נגן&quot; להתחיל</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col border border-slate-200 rounded-xl bg-white overflow-x-auto shadow-sm">
+                    <div className="flex flex-col border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-[#111b21] overflow-x-auto shadow-sm">
                         <div className="flex flex-col min-w-[600px]">
                             {/* Header Row */}
-                            <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
+                            <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-slate-800/60 uppercase bg-slate-50 dark:bg-[#0b141a]">
                                 <div className="flex-1 min-w-[120px]">שם הנגן</div>
                             <div className="w-32 shrink-0 hidden md:flex">טלפון</div>
                             <div className="w-24 shrink-0 hidden md:flex text-center justify-center">סטטוס</div>
@@ -333,7 +333,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                 <div
                                     key={m.id}
                                     className={clsx(
-                                        "flex flex-col border-b border-slate-100 transition-all group bg-white",
+                                        "flex flex-col border-b border-slate-100 dark:border-slate-800/60 transition-all group bg-white dark:bg-[#111b21]",
                                         isExpanded && "bg-purple-50/30",
                                         !isActive && "opacity-60"
                                     )}
@@ -342,13 +342,13 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                     {isEditing ? (
                                         <div className="flex items-center px-4 md:px-6 py-2 bg-amber-50 gap-3 text-xs w-full">
                                             <div className="flex-1 min-w-[120px]">
-                                                <input type="text" value={editForm.Name} onChange={(e) => setEditForm({ ...editForm, Name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" placeholder="שם" />
+                                                <input type="text" value={editForm.Name} onChange={(e) => setEditForm({ ...editForm, Name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 dark:border-slate-800 rounded text-xs bg-white dark:bg-[#111b21]" placeholder="שם" />
                                             </div>
                                             <div className="w-32 hidden md:block">
-                                                <input type="text" value={editForm.Phone} onChange={(e) => setEditForm({ ...editForm, Phone: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="טלפון" />
+                                                <input type="text" value={editForm.Phone} onChange={(e) => setEditForm({ ...editForm, Phone: e.target.value })} className="w-full px-2 py-1 border border-slate-200 dark:border-slate-800 rounded text-xs bg-white dark:bg-[#111b21]" dir="ltr" placeholder="טלפון" />
                                             </div>
                                             <div className="w-24 hidden md:flex items-center justify-center">
-                                                <button type="button" onClick={() => setEditForm({ ...editForm, Is_Active: !editForm.Is_Active })} className={clsx("px-2 py-0.5 rounded text-[10px] font-bold w-full border", editForm.Is_Active ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-500 border-slate-200")}>
+                                                <button type="button" onClick={() => setEditForm({ ...editForm, Is_Active: !editForm.Is_Active })} className={clsx("px-2 py-0.5 rounded text-[10px] font-bold w-full border", editForm.Is_Active ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 dark:bg-[#0b141a] text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800")}>
                                                     {editForm.Is_Active ? 'פעיל' : 'לא פעיל'}
                                                 </button>
                                             </div>
@@ -357,22 +357,22 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                             </div>
                                             <div className="w-32 flex items-center justify-end gap-1">
                                                 <button onClick={() => saveEdit(m.id)} className="p-1.5 text-green-600 hover:bg-green-100 rounded"><Check size={14} /></button>
-                                                <button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 hover:bg-slate-200 rounded"><X size={14} /></button>
+                                                <button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"><X size={14} /></button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center px-4 md:px-6 py-2 text-xs hover:bg-slate-50 transition-colors w-full cursor-pointer" onClick={() => toggleExpand(m.id)}>
+                                        <div className="flex items-center px-4 md:px-6 py-2 text-xs hover:bg-slate-50 dark:bg-[#0b141a] transition-colors w-full cursor-pointer" onClick={() => toggleExpand(m.id)}>
                                             <div className="flex-1 min-w-[120px] flex flex-col justify-center gap-0.5">
-                                                <span className="font-bold text-slate-800">{m.fields.Name}</span>
+                                                <span className="font-bold text-slate-800 dark:text-slate-200">{m.fields.Name}</span>
                                                 <span className="text-[10px] text-slate-400 md:hidden">{m.fields.Phone}</span>
                                             </div>
                                             
-                                            <div className="w-32 shrink-0 hidden md:flex text-slate-500 font-mono text-[11px]">
+                                            <div className="w-32 shrink-0 hidden md:flex text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                                                 {m.fields.Phone}
                                             </div>
                                             
                                             <div className="w-24 shrink-0 hidden md:flex justify-center">
-                                                <span className={clsx("px-2 py-0.5 rounded-full text-[9px] font-bold", isActive ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-slate-100 text-slate-400')}>
+                                                <span className={clsx("px-2 py-0.5 rounded-full text-[9px] font-bold", isActive ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-slate-100 dark:bg-slate-800 text-slate-400')}>
                                                     {isActive ? 'פעיל' : 'לא פעיל'}
                                                 </span>
                                             </div>
@@ -398,21 +398,21 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
 
                                     {/* Expanded Panel */}
                                     {isExpanded && !isEditing && (
-                                        <div className="border-t border-slate-100">
+                                        <div className="border-t border-slate-100 dark:border-slate-800/60">
                                             {/* Stats */}
                                             {renderStatsCards(m.id)}
 
                                             {/* Chat Button / Chat Panel */}
                                             <div className="px-4 pb-4">
                                                 {chatMusicianId === m.id ? (
-                                                    <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                                                        <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
-                                                            <span className="text-xs font-bold text-slate-600 flex items-center gap-1">
+                                                    <div className="bg-slate-50 dark:bg-[#0b141a] rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                                                        <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                                            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
                                                                 <MessageSquare size={12} /> היסטוריית צ&apos;אט
                                                             </span>
                                                             <button
                                                                 onClick={() => setChatMusicianId(null)}
-                                                                className="text-slate-400 hover:text-slate-600"
+                                                                className="text-slate-400 hover:text-slate-600 dark:text-slate-400"
                                                             >
                                                                 <X size={14} />
                                                             </button>
@@ -428,7 +428,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                                                             "max-w-[80%] px-3 py-2 rounded-xl text-sm",
                                                                             msg.fields.Direction === 'Outbound'
                                                                                 ? "bg-purple-100 text-purple-900 mr-auto"
-                                                                                : "bg-white border border-slate-200 text-slate-800 ml-auto"
+                                                                                : "bg-white dark:bg-[#111b21] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 ml-auto"
                                                                         )}
                                                                     >
                                                                         {msg.fields.Content}
@@ -439,14 +439,14 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                                                 ))
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2 p-3 border-t border-slate-200">
+                                                        <div className="flex items-center gap-2 p-3 border-t border-slate-200 dark:border-slate-800">
                                                             <input
                                                                 type="text"
                                                                 value={chatInput}
                                                                 onChange={(e) => setChatInput(e.target.value)}
                                                                 onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
                                                                 placeholder="הקלד הודעה..."
-                                                                className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-300 outline-none"
+                                                                className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm bg-white dark:bg-[#111b21] focus:ring-2 focus:ring-purple-300 outline-none"
                                                             />
                                                             <button
                                                                 onClick={handleSendChat}
@@ -460,7 +460,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                                 ) : (
                                                     <button
                                                         onClick={() => openChat(m.id)}
-                                                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                                     >
                                                         <MessageSquare size={14} /> פתח צ&apos;אט
                                                     </button>

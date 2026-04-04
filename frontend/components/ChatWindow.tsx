@@ -43,11 +43,11 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
 
     if (!item) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center bg-slate-50/50 text-slate-400">
-                <div className="bg-white p-12 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col items-center">
+            <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0b141a]/50 text-slate-400">
+                <div className="bg-white dark:bg-[#111b21] p-12 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col items-center">
                     <Bot size={80} className="mb-6 opacity-20 text-blue-600" />
-                    <h2 className="text-2xl font-bold text-slate-700 mb-2">Hayde InBox</h2>
-                    <p className="font-medium text-slate-500">בחר נגן או ליד מהרשימה כדי להתחיל בצ׳אט</p>
+                    <h2 className="text-2xl font-bold text-slate-700 dark:text-slate-300 mb-2">Hayde InBox</h2>
+                    <p className="font-medium text-slate-500 dark:text-slate-400">בחר נגן או ליד מהרשימה כדי להתחיל בצ׳אט</p>
                 </div>
             </div>
         );
@@ -116,10 +116,10 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
     return (
         <div className="flex-1 flex flex-col h-full bg-[#EBEAE5] relative" dir="rtl">
             {/* Header (Premium Chatwoot/Intercom feel) */}
-            <div className="bg-white/80 backdrop-blur-xl px-4 md:px-6 py-4 border-b border-slate-200 flex justify-between items-center z-10 sticky top-0">
+            <div className="bg-white dark:bg-[#111b21]/80 backdrop-blur-xl px-4 md:px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center z-10 sticky top-0">
                 <div className="flex items-center gap-2 md:gap-4">
                     {onBack && (
-                        <button onClick={onBack} className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0">
+                        <button onClick={onBack} className="md:hidden p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800 rounded-full transition-colors flex-shrink-0">
                             <ArrowRight size={22} />
                         </button>
                     )}
@@ -127,7 +127,7 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
                         {name.substring(0, 1)}
                     </div>
                     <div>
-                        <h3 className="font-extrabold text-lg text-slate-800 tracking-tight leading-tight">{name}</h3>
+                        <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-200 tracking-tight leading-tight">{name}</h3>
                         <div className="flex items-center gap-2 mt-0.5">
                             <span className={clsx(
                                 "text-xs font-bold px-2 py-0.5 rounded-full inline-block",
@@ -135,13 +135,13 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
                             )}>
                                 {subtext}
                             </span>
-                            <span className="text-xs text-slate-500 font-medium">{phone}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{phone}</span>
                         </div>
                     </div>
                 </div>
                 <div className="flex gap-3 text-slate-400">
-                    <a href={`tel:${phone}`} className="p-2 hover:bg-slate-100 rounded-full transition-colors inline-block" title="התקשר"><Phone size={20} /></a>
-                    <button className="p-2 hover:bg-slate-100 rounded-full transition-colors"><MoreVertical size={20} /></button>
+                    <a href={`tel:${phone}`} className="p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-full transition-colors inline-block" title="התקשר"><Phone size={20} /></a>
+                    <button className="p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-full transition-colors"><MoreVertical size={20} /></button>
                 </div>
             </div>
 
@@ -150,7 +150,7 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
                 {Object.keys(groupedMessages).map((date) => (
                     <div key={date}>
                         <div className="flex justify-center mb-6">
-                            <span className="bg-white/60 backdrop-blur-sm text-slate-500 text-[11px] font-bold px-4 py-1.5 rounded-full shadow-sm">
+                            <span className="bg-white dark:bg-[#111b21]/60 backdrop-blur-sm text-slate-500 dark:text-slate-400 text-[11px] font-bold px-4 py-1.5 rounded-full shadow-sm">
                                 {date}
                             </span>
                         </div>
@@ -161,7 +161,7 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
                                     <div key={msg.id} className={clsx("flex", isOut ? "justify-start" : "justify-end")}>
                                         <div className={clsx(
                                             "max-w-[75%] rounded-2xl p-3 shadow-md relative text-[15px] group",
-                                            isOut ? "bg-white text-slate-800 rounded-tr-sm border border-slate-100"
+                                            isOut ? "bg-white dark:bg-[#111b21] text-slate-800 dark:text-slate-200 rounded-tr-sm border border-slate-100 dark:border-slate-800/60"
                                                 : "bg-[#0b141a] text-white rounded-tl-sm"
                                         )}>
                                             {renderMedia(msg)}
@@ -172,7 +172,7 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
 
                                             <div className={clsx(
                                                 "flex justify-end items-center gap-1 mt-1 opacity-70 text-[10px]",
-                                                isOut ? "text-slate-500" : "text-slate-300"
+                                                isOut ? "text-slate-500 dark:text-slate-400" : "text-slate-300"
                                             )}>
                                                 <span>{format(new Date(msg.fields.Timestamp), 'HH:mm')}</span>
                                                 {isOut && <CheckCheck size={14} className={clsx(msg.fields.Status === 'Read' ? "text-blue-500" : "text-slate-400")} />}
@@ -188,18 +188,18 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
             </div>
 
             {/* Input Area */}
-            <div className="bg-white px-6 py-4 border-t border-slate-200">
-                <div className="bg-slate-50 border border-slate-200 rounded-3xl p-2 flex gap-3 items-end focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all shadow-inner">
+            <div className="bg-white dark:bg-[#111b21] px-6 py-4 border-t border-slate-200 dark:border-slate-800">
+                <div className="bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-3xl p-2 flex gap-3 items-end focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all shadow-inner">
                     <button 
                         onClick={() => alert("שליחת קבצים תיתמך בגרסה הבאה! 📎")}
-                        className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors flex-shrink-0" 
+                        className="p-3 text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors flex-shrink-0" 
                         title="צרף קובץ"
                     >
                         <Paperclip size={20} />
                     </button>
 
                     <textarea
-                        className="flex-1 max-h-32 min-h-[44px] py-3 bg-transparent border-none focus:outline-none focus:ring-0 resize-none text-[15px] font-medium placeholder:text-slate-400"
+                        className="flex-1 max-h-32 min-h-[44px] py-3 bg-transparent border-none focus:outline-none focus:ring-0 resize-none text-[15px] font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500"
                         rows={1}
                         placeholder="הקלד תגובה או הודעה חדשה..."
                         value={inputText}
