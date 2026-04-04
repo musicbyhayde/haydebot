@@ -1,10 +1,14 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.jobstores.memory import MemoryJobStore
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+import os
 
-# Using MemoryJobStore for now. 
-# For persistence across restarts in production, we should use SQLAlchemyJobStore with SQLite/Postgres.
+# Persistent SQLite job store — scheduled jobs survive server restarts/deploys.
+# The DB file lives next to the application root.
+db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'scheduler_jobs.sqlite')
+db_url = f'sqlite:///{os.path.abspath(db_path)}'
+
 jobstores = {
-    'default': MemoryJobStore()
+    'default': SQLAlchemyJobStore(url=db_url)
 }
 
 executors = {
@@ -12,8 +16,9 @@ executors = {
 }
 
 job_defaults = {
-    'coalesce': False,
-    'max_instances': 3
+    'coalesce': True,       # If multiple missed runs, run only once
+    'max_instances': 3,
+    'misfire_grace_time': 3600  # Allow jobs delayed up to 1 hour to still run
 }
 
 scheduler = AsyncIOScheduler(jobstores=jobstores, executors=executors, job_defaults=job_defaults, timezone="Asia/Jerusalem")

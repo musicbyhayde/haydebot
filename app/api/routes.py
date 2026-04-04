@@ -316,3 +316,110 @@ async def update_task(task_id: str, request: Request):
 async def delete_task(task_id: str):
     airtable_service.delete_task(task_id)
     return {"status": "deleted"}
+
+# ─── Analytics ───────────────────────────────────────
+
+@router.get("/analytics")
+async def get_analytics():
+    """Compute analytics from leads and musicians data."""
+    leads = airtable_service.get_all_leads()
+    musicians = airtable_service.get_all_musicians()
+
+    now = datetime.now()
+
+    # ─── Conversion Funnel ────────────────────────────
+    total_leads = len(leads)
+    completed_bot = sum(1 for l in leads if l["fields"].get("Conversation_State") == "COMPLETED")
+    assigned = sum(1 for l in leads if l["fields"].get("Status") in ["Assigned", "Closed", "Lost", "Waiting_Payment"])
+    closed = sum(1 for l in leads if l["fields"].get("Status") == "Closed")
+    lost = sum(1 for l in leads if l["fields"].get("Status") == "Lost")
+
+    funnel = {
+        "total": total_leads,
+        "completedBot": completed_bot,
+        "assigned": assigned,
+        "closed": closed,
+        "lost": lost,
+    }
+
+    # ─── Monthly Trends (last 6 months) ──────────────
+    monthly = {}
+    for i in range(6):
+        month_date = now - timedelta(days=30 * i)
+        key = month_date.strftime("%Y-%m")
+        monthly[key] = {"new": 0, "closed": 0, "lost": 0, "revenue": 0}
+
+    for l in leads:
+        li = l["fields"].get("Last_Interaction")
+        if not li:
+            continue
+        try:
+            ts = li.replace('Z', '+00:00') if isinstance(li, str) else li
+            lead_month = datetime.fromisoformat(ts).strftime("%Y-%m") if isinstance(ts, str) else ts.strftime("%Y-%m")
+        except Exception:
+            continue
+        if lead_month in monthly:
+            monthly[lead_month]["new"] += 1
+            status = l["fields"].get("Status")
+            if status == "Closed":
+                monthly[lead_month]["closed"] += 1
+                monthly[lead_month]["revenue"] += float(l["fields"].get("Closing_Amount") or 0)
+            elif status == "Lost":
+                monthly[lead_month]["lost"] += 1
+
+    # ─── Service Breakdown ────────────────────────────
+    services = {}
+    for l in leads:
+        svc = l["fields"].get("Service") or "לא צוין"
+        if svc not in services:
+            services[svc] = {"count": 0, "closed": 0, "revenue": 0}
+        services[svc]["count"] += 1
+        if l["fields"].get("Status") == "Closed":
+            services[svc]["closed"] += 1
+            services[svc]["revenue"] += float(l["fields"].get("Closing_Amount") or 0)
+
+    # ─── Musician Performance ─────────────────────────
+    musician_perf = []
+    musician_map = {m["id"]: m["fields"].get("Name", "ללא שם") for m in musicians}
+    musician_stats_map = {}
+
+    for l in leads:
+        assigned_list = l["fields"].get("Musician_Assigned") or []
+        if assigned_list and isinstance(assigned_list, list):
+            m_id = assigned_list[0]
+            if m_id not in musician_stats_map:
+                musician_stats_map[m_id] = {"name": musician_map.get(m_id, "לא ידוע"), "received": 0, "closed": 0, "lost": 0, "revenue": 0}
+            musician_stats_map[m_id]["received"] += 1
+            status = l["fields"].get("Status")
+            if status == "Closed":
+                musician_stats_map[m_id]["closed"] += 1
+                musician_stats_map[m_id]["revenue"] += float(l["fields"].get("Closing_Amount") or 0)
+            elif status == "Lost":
+                musician_stats_map[m_id]["lost"] += 1
+
+    musician_perf = sorted(musician_stats_map.values(), key=lambda x: x["closed"], reverse=True)
+
+    # ─── Revenue Summary ──────────────────────────────
+    total_revenue = sum(float(l["fields"].get("Closing_Amount") or 0) for l in leads if l["fields"].get("Status") == "Closed")
+    total_commission = sum(
+        max(float(l["fields"].get("Closing_Amount") or 0) * 0.15, 400.0)
+        for l in leads
+        if l["fields"].get("Status") == "Closed" and l["fields"].get("Closing_Amount")
+    )
+
+    # ─── Lost Reasons ────────────────────────────────
+    lost_reasons = {}
+    for l in leads:
+        if l["fields"].get("Status") == "Lost":
+            reason = l["fields"].get("Lost_Reason") or "לא צוין"
+            lost_reasons[reason] = lost_reasons.get(reason, 0) + 1
+
+    return {
+        "funnel": funnel,
+        "monthly": monthly,
+        "services": services,
+        "musicianPerformance": musician_perf,
+        "revenue": {"total": total_revenue, "commission": total_commission},
+        "lostReasons": lost_reasons,
+        "conversionRate": round((closed / total_leads * 100), 1) if total_leads > 0 else 0,
+    }

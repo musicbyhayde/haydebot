@@ -1,5 +1,5 @@
 import { Lead, Musician } from '@/types';
-import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo } from 'lucide-react';
+import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo, BarChart3 } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
@@ -9,8 +9,8 @@ interface SidebarProps {
     musicians: Musician[];
     activeId: string | null;
     onSelect: (id: string) => void;
-    currentView: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks';
-    onViewChange: (view: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks') => void;
+    currentView: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'analytics';
+    onViewChange: (view: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'analytics') => void;
     currentUser?: AppUser | null;
     onSignOut?: () => void;
     unreadStatus?: Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>;
@@ -111,9 +111,20 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <ListTodo size={18} /> {!isCollapsed && "📋 משימות"}
                 </button>
+                <button
+                    onClick={() => onViewChange('analytics')}
+                    className={clsx(
+                        "flex items-center rounded-xl text-sm font-bold transition-all",
+                        isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
+                        currentView === 'analytics' ? "bg-cyan-500 text-white shadow-lg shadow-cyan-100" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                    title={isCollapsed ? "אנליטיקות" : undefined}
+                >
+                    <BarChart3 size={18} /> {!isCollapsed && "📊 אנליטיקות"}
+                </button>
             </div>
 
-            {currentView !== 'finance' && currentView !== 'tasks' && currentView !== 'musicians' && !isCollapsed && (
+            {currentView !== 'finance' && currentView !== 'tasks' && currentView !== 'musicians' && currentView !== 'analytics' && !isCollapsed && (
                 <>
                     <div className="p-4 border-b border-gray-200">
                         <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">

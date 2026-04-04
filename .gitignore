@@ -11,3 +11,4 @@ venv/
 .DS_Store
 tempFiles/*
 pending_musician_actions.json
+scheduler_jobs.sqlite

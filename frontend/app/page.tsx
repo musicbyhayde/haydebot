@@ -7,6 +7,7 @@ import LeadsDashboard from "@/components/LeadsDashboard";
 import FinancePage from "@/components/FinancePage";
 import TasksSection from "@/components/TasksSection";
 import MusiciansPage from "@/components/MusiciansPage";
+import AnalyticsPage from "@/components/AnalyticsPage";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
 import { getCurrentUser, signOut, AppUser, createSupabaseClient } from "@/lib/auth";
@@ -18,7 +19,7 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks'>('dashboard');
+  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'analytics'>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [unreadStatus, setUnreadStatus] = useState<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>>({});
@@ -149,7 +150,7 @@ export default function Home() {
     return <div className="h-screen w-screen flex items-center justify-center font-bold text-slate-400 italic">Hayde is Warming Up... 🎸</div>;
   }
 
-  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && activeId === null);
+  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && activeId === null);
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
@@ -194,6 +195,11 @@ export default function Home() {
           />
         ) : view === 'musicians' ? (
           <MusiciansPage
+            currentUser={currentUser}
+            onMenuClick={() => setMobileMenuOpen(true)}
+          />
+        ) : view === 'analytics' ? (
+          <AnalyticsPage
             currentUser={currentUser}
             onMenuClick={() => setMobileMenuOpen(true)}
           />

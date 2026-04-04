@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Lead, Task } from '@/types';
-import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown } from 'lucide-react';
+import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, Search, X, Filter } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import AddLeadModal from './AddLeadModal';
 import LeadDetailPanel from './LeadDetailPanel';
@@ -45,11 +45,58 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [detailLead, setDetailLead] = useState<Lead | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
 
+    // ─── Search & Filter State ──────────────────────────
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterService, setFilterService] = useState<string>('');
+    const [filterOwner, setFilterOwner] = useState<string>('');
+    const [filterStatus, setFilterStatus] = useState<string>('');
+    const [showFilters, setShowFilters] = useState(false);
+
     useEffect(() => {
         api.getTasks().then(setTasks).catch(console.error);
     }, []);
 
     const activeTasks = tasks.filter(t => !t.fields.Is_Completed);
+
+    // ─── Derived unique values for filter dropdowns ─────
+    const uniqueServices = useMemo(() => {
+        const services = new Set(leads.map(l => l.fields.Service).filter(Boolean));
+        return Array.from(services) as string[];
+    }, [leads]);
+
+    const uniqueOwners = useMemo(() => {
+        const owners = new Set(leads.map(l => l.fields.Owner).filter(Boolean));
+        return Array.from(owners) as string[];
+    }, [leads]);
+
+    // ─── Filtering Logic ───────────────────────────────
+    const filteredLeads = useMemo(() => {
+        return leads.filter(l => {
+            // Text search (name or phone)
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                const name = (l.fields.Name || '').toLowerCase();
+                const phone = (l.fields.Phone || '').toLowerCase();
+                if (!name.includes(q) && !phone.includes(q)) return false;
+            }
+            // Service filter
+            if (filterService && l.fields.Service !== filterService) return false;
+            // Owner filter
+            if (filterOwner && l.fields.Owner !== filterOwner) return false;
+            // Status filter
+            if (filterStatus && l.fields.Status !== filterStatus) return false;
+            return true;
+        });
+    }, [leads, searchQuery, filterService, filterOwner, filterStatus]);
+
+    const hasActiveFilters = searchQuery || filterService || filterOwner || filterStatus;
+
+    const clearAllFilters = () => {
+        setSearchQuery('');
+        setFilterService('');
+        setFilterOwner('');
+        setFilterStatus('');
+    };
 
     const stats = {
         total: leads.length,
@@ -58,10 +105,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         assigned: leads.filter(l => ['Assigned', 'Closed', 'Waiting_Payment'].includes(l.fields.Status)).length,
     };
 
-    const activeLeads = leads.filter(l => !['Closed', 'Lost', 'Waiting_Payment'].includes(l.fields.Status));
-    const closedLeads = leads.filter(l => l.fields.Status === 'Closed');
-    const lostLeads = leads.filter(l => l.fields.Status === 'Lost');
-    const waitingPaymentLeads = leads.filter(l => l.fields.Status === 'Waiting_Payment');
+    const activeLeads = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment'].includes(l.fields.Status));
+    const closedLeads = filteredLeads.filter(l => l.fields.Status === 'Closed');
+    const lostLeads = filteredLeads.filter(l => l.fields.Status === 'Lost');
+    const waitingPaymentLeads = filteredLeads.filter(l => l.fields.Status === 'Waiting_Payment');
 
     const renderArchiveTable = (items: Lead[], isOpen: boolean, toggle: () => void, title: string, emoji: string, badgeColor: string) => {
         if (items.length === 0) return null;
@@ -174,10 +221,103 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                     </div>
                 )}
 
+                {/* ─── Search & Filters Bar ─────────────────────── */}
+                <div className="mb-4 space-y-3">
+                    <div className="flex gap-2">
+                        {/* Search Input */}
+                        <div className="flex-1 relative">
+                            <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="חיפוש לפי שם או טלפון..."
+                                className="w-full pr-10 pl-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all shadow-sm"
+                            />
+                            {searchQuery && (
+                                <button onClick={() => setSearchQuery('')} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Filter Toggle */}
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={clsx(
+                                "flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border shadow-sm",
+                                hasActiveFilters
+                                    ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            )}
+                        >
+                            <Filter size={14} />
+                            <span className="hidden md:inline">סינון</span>
+                            {hasActiveFilters && (
+                                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Filter Dropdowns */}
+                    {showFilters && (
+                        <div className="flex flex-wrap gap-2 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm animate-in slide-in-from-top-2 duration-200">
+                            <select
+                                value={filterService}
+                                onChange={e => setFilterService(e.target.value)}
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="">כל השירותים</option>
+                                {uniqueServices.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+
+                            <select
+                                value={filterOwner}
+                                onChange={e => setFilterOwner(e.target.value)}
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="">כל המובילים</option>
+                                {uniqueOwners.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+
+                            <select
+                                value={filterStatus}
+                                onChange={e => setFilterStatus(e.target.value)}
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="">כל הסטטוסים</option>
+                                {Object.entries(STATUS_MAP).map(([key, val]) => (
+                                    <option key={key} value={key}>{val.label}</option>
+                                ))}
+                            </select>
+
+                            {hasActiveFilters && (
+                                <button
+                                    onClick={clearAllFilters}
+                                    className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                                >
+                                    <X size={12} /> נקה הכל
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Active filter summary */}
+                    {hasActiveFilters && !showFilters && (
+                        <div className="flex items-center gap-2 text-xs text-slate-500 px-1">
+                            <span>מציג {filteredLeads.length} מתוך {leads.length} לידים</span>
+                            <button onClick={clearAllFilters} className="text-blue-600 hover:text-blue-800 font-bold">נקה סינון</button>
+                        </div>
+                    )}
+                </div>
+
                 {/* Leads Table */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                        <h2 className="font-bold text-base md:text-lg text-slate-800">לידים פעילים ({activeLeads.length})</h2>
+                        <h2 className="font-bold text-base md:text-lg text-slate-800">
+                            לידים פעילים ({activeLeads.length})
+                            {hasActiveFilters && <span className="text-xs text-slate-400 font-medium mr-2">מסונן</span>}
+                        </h2>
                         <span className="text-xs text-slate-400 flex items-center gap-1">
                             <Clock size={12} /> עדכון אחרון: {new Date().toLocaleTimeString()}
                         </span>
@@ -195,7 +335,15 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             <div className="w-28 shrink-0 flex justify-end">פעולות</div>
                         </div>
                         {/* Rows */}
-                        {activeLeads.map((lead) => {
+                        {activeLeads.length === 0 && hasActiveFilters ? (
+                            <div className="px-6 py-12 text-center text-slate-400">
+                                <Search size={32} className="mx-auto mb-3 opacity-30" />
+                                <p className="font-bold text-sm">לא נמצאו תוצאות</p>
+                                <p className="text-xs mt-1">נסה לשנות את החיפוש או הסינון</p>
+                                <button onClick={clearAllFilters} className="mt-3 text-xs font-bold text-blue-600 hover:text-blue-800">נקה סינון</button>
+                            </div>
+                        ) : (
+                        activeLeads.map((lead) => {
                             const statusInfo = STATUS_MAP[lead.fields.Status] || { label: lead.fields.Status, class: 'bg-gray-50 text-gray-700 border-gray-200' };
                             const ownerColor = OWNER_COLORS[lead.fields.Owner || ''] || 'bg-slate-100 text-slate-600';
 
@@ -262,7 +410,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     </div>
                                 </div>
                             );
-                        })}
+                        })
+                        )}
                         </div>
                     </div>
                 </div>

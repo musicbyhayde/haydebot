@@ -202,4 +202,12 @@ export const api = {
         const res = await fetch(`${API_Base}/tasks/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete task');
     },
+
+    // ── Analytics ─────────────────────────────────────
+
+    async getAnalytics(): Promise<any> {
+        const res = await fetch(`${API_Base}/analytics`);
+        if (!res.ok) throw new Error('Failed to fetch analytics');
+        return res.json();
+    },
 };
