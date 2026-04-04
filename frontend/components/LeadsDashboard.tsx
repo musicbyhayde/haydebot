@@ -332,7 +332,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             <div className="w-28 shrink-0 hidden md:block">שירות</div>
                             <div className="w-24 shrink-0 hidden md:block">תאריך</div>
                             <div className="w-24 shrink-0 hidden lg:block">מיקום</div>
-                            <div className="w-20 md:w-28 shrink-0 flex justify-end">פעולות</div>
+                            <div className="w-24 md:w-28 shrink-0 flex justify-end">פעולות</div>
                         </div>
                         {/* Rows */}
                         {activeLeads.length === 0 && hasActiveFilters ? (
@@ -388,10 +388,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
                                         ) : <span className="text-slate-300">—</span>}
                                     </div>
-                                    <div className="w-20 md:w-28 shrink-0 flex items-center justify-end gap-1 md:gap-1.5">
+                                    <div className="w-24 md:w-28 shrink-0 flex items-center justify-end gap-1 md:gap-1.5">
                                         <button
                                             onClick={() => setDetailLead(lead)}
-                                            className="text-slate-300 hover:text-blue-600 transition-colors p-1 hidden sm:block"
+                                            className="text-slate-400 hover:text-blue-600 transition-colors p-1"
                                             title="פרטים ועדכונים"
                                         >
                                             <FileText size={14} />
