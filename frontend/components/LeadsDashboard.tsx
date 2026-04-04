@@ -116,20 +116,20 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             <div className="mt-4">
                 <button
                     onClick={toggle}
-                    className="w-full flex items-center justify-between px-5 py-3 bg-white dark:bg-[#111b21] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:bg-slate-50 dark:bg-[#0b141a] transition-colors"
+                    className="w-full flex items-center justify-between px-5 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
                 >
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-600 dark:text-slate-400">{emoji} {title}</span>
+                        <span className="text-sm font-bold text-slate-600">{emoji} {title}</span>
                         <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-bold", badgeColor)}>{items.length}</span>
                     </div>
                     <ChevronDown size={18} className={clsx("text-slate-400 transition-transform", isOpen && "rotate-180")} />
                 </button>
                 {isOpen && (
-                    <div className="mt-2 bg-white dark:bg-[#111b21] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden opacity-80">
+                    <div className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden opacity-80">
                         <div className="overflow-x-auto">
                                 <div className="flex flex-col min-w-full md:min-w-[500px]">
                                 {/* Header Row */}
-                                <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-slate-800/60 uppercase bg-slate-50 dark:bg-[#0b141a]">
+                                <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
                                     <div className="flex-1 min-w-[120px]">לקוח</div>
                                 <div className="w-32 hidden md:block">שירות</div>
                                 <div className="w-32 hidden md:block">סכום / סיבה</div>
@@ -137,15 +137,15 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             </div>
                             {/* Rows */}
                             {items.map(lead => (
-                                <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 dark:border-slate-800/40 hover:bg-slate-50 dark:bg-[#0b141a] transition-colors bg-white dark:bg-[#111b21]">
+                                <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
                                     <div className="flex-1 min-w-[120px] flex flex-col justify-center">
-                                        <span className="font-bold text-slate-600 dark:text-slate-400">{lead.fields.Name || 'ללא שם'}</span>
+                                        <span className="font-bold text-slate-600">{lead.fields.Name || 'ללא שם'}</span>
                                         <span className="text-[10px] text-slate-400">{lead.fields.Phone}</span>
                                     </div>
-                                    <div className="w-32 hidden md:flex items-center text-slate-500 dark:text-slate-400">
+                                    <div className="w-32 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Service || '—'}
                                     </div>
-                                    <div className="w-32 hidden md:flex items-center text-slate-500 dark:text-slate-400">
+                                    <div className="w-32 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Closing_Amount ? `₪${lead.fields.Closing_Amount.toLocaleString()}` : (lead.fields.Lost_Reason || '—')}
                                     </div>
                                     <div className="w-12 flex justify-center">
@@ -164,19 +164,19 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     };
 
     return (
-        <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-[#0b141a] p-4 md:p-8" dir="rtl">
+        <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" dir="rtl">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <header className="mb-6 md:mb-8 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         {onMenuClick && (
-                            <button onClick={onMenuClick} className="md:hidden p-2 bg-white dark:bg-[#111b21] rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-[#0b141a] transition-colors">
+                            <button onClick={onMenuClick} className="md:hidden p-2 bg-white rounded-lg shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
                                 <Menu size={24} />
                             </button>
                         )}
                         <div>
-                            <h1 className="text-xl md:text-3xl font-extrabold text-slate-900 dark:text-slate-100 mb-0.5 md:mb-2">Hayde Dashboard 🎸</h1>
-                            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">ניהול לידים ומעקב אירועים בזמן אמת</p>
+                            <h1 className="text-xl md:text-3xl font-extrabold text-slate-900 mb-0.5 md:mb-2">Hayde Dashboard 🎸</h1>
+                            <p className="text-xs md:text-sm text-slate-500">ניהול לידים ומעקב אירועים בזמן אמת</p>
                         </div>
                     </div>
                     <button
@@ -190,12 +190,12 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 {/* Stats Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
                     {[
-                        { label: 'סה"כ לידים', value: stats.total, color: 'bg-white dark:bg-[#111b21]', text: 'text-slate-900 dark:text-slate-100' },
+                        { label: 'סה"כ לידים', value: stats.total, color: 'bg-white', text: 'text-slate-900' },
                         { label: 'חדשים', value: stats.new, color: 'bg-blue-500', text: 'text-white' },
-                        { label: 'בטיפול', value: stats.processing, color: 'bg-yellow-400', text: 'text-slate-900 dark:text-slate-100' },
+                        { label: 'בטיפול', value: stats.processing, color: 'bg-yellow-400', text: 'text-slate-900' },
                         { label: 'סגורים/שויכו', value: stats.assigned, color: 'bg-green-500', text: 'text-white' },
                     ].map((stat, i) => (
-                        <div key={i} className={clsx("p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-all hover:shadow-md", stat.color)}>
+                        <div key={i} className={clsx("p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 transition-all hover:shadow-md", stat.color)}>
                             <p className={clsx("text-xs md:text-sm font-medium mb-1 opacity-80", stat.text)}>{stat.label}</p>
                             <p className={clsx("text-2xl md:text-3xl font-bold", stat.text)}>{stat.value}</p>
                         </div>
@@ -232,10 +232,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                                 placeholder="חיפוש לפי שם או טלפון..."
-                                className="w-full pr-10 pl-4 py-2.5 bg-white dark:bg-[#111b21] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all shadow-sm"
+                                className="w-full pr-10 pl-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all shadow-sm"
                             />
                             {searchQuery && (
-                                <button onClick={() => setSearchQuery('')} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-400">
+                                <button onClick={() => setSearchQuery('')} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                                     <X size={14} />
                                 </button>
                             )}
@@ -248,7 +248,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 "flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border shadow-sm",
                                 hasActiveFilters
                                     ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                                    : "bg-white dark:bg-[#111b21] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:bg-[#0b141a]"
+                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                             )}
                         >
                             <Filter size={14} />
@@ -261,11 +261,11 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
                     {/* Filter Dropdowns */}
                     {showFilters && (
-                        <div className="flex flex-wrap gap-2 p-4 bg-white dark:bg-[#111b21] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm animate-in slide-in-from-top-2 duration-200">
+                        <div className="flex flex-wrap gap-2 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm animate-in slide-in-from-top-2 duration-200">
                             <select
                                 value={filterService}
                                 onChange={e => setFilterService(e.target.value)}
-                                className="px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
                             >
                                 <option value="">כל השירותים</option>
                                 {uniqueServices.map(s => <option key={s} value={s}>{s}</option>)}
@@ -274,7 +274,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             <select
                                 value={filterOwner}
                                 onChange={e => setFilterOwner(e.target.value)}
-                                className="px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
                             >
                                 <option value="">כל המובילים</option>
                                 {uniqueOwners.map(o => <option key={o} value={o}>{o}</option>)}
@@ -283,7 +283,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             <select
                                 value={filterStatus}
                                 onChange={e => setFilterStatus(e.target.value)}
-                                className="px-3 py-2 bg-slate-50 dark:bg-[#0b141a] border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
                             >
                                 <option value="">כל הסטטוסים</option>
                                 {Object.entries(STATUS_MAP).map(([key, val]) => (
@@ -304,7 +304,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
                     {/* Active filter summary */}
                     {hasActiveFilters && !showFilters && (
-                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-1">
+                        <div className="flex items-center gap-2 text-xs text-slate-500 px-1">
                             <span>מציג {filteredLeads.length} מתוך {leads.length} לידים</span>
                             <button onClick={clearAllFilters} className="text-blue-600 hover:text-blue-800 font-bold">נקה סינון</button>
                         </div>
@@ -312,9 +312,9 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 </div>
 
                 {/* Leads Table */}
-                <div className="bg-white dark:bg-[#111b21] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="px-4 md:px-6 py-4 border-b border-slate-100 dark:border-slate-800/60 flex justify-between items-center">
-                        <h2 className="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <h2 className="font-bold text-base md:text-lg text-slate-800">
                             לידים פעילים ({activeLeads.length})
                             {hasActiveFilters && <span className="text-xs text-slate-400 font-medium mr-2">מסונן</span>}
                         </h2>
@@ -325,7 +325,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                     <div className="overflow-x-auto">
                         <div className="flex flex-col min-w-full md:min-w-[700px]">
                             {/* Header Row */}
-                            <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-slate-800/60 uppercase bg-slate-50 dark:bg-[#0b141a]">
+                            <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
                                 <div className="flex-1 min-w-[100px] md:min-w-[120px]">לקוח</div>
                             <div className="w-20 md:w-24 shrink-0">סטטוס</div>
                             <div className="w-16 shrink-0 hidden md:block">מוביל</div>
@@ -344,14 +344,14 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             </div>
                         ) : (
                         activeLeads.map((lead) => {
-                            const statusInfo = STATUS_MAP[lead.fields.Status] || { label: lead.fields.Status, class: 'bg-gray-50 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-800' };
-                            const ownerColor = OWNER_COLORS[lead.fields.Owner || ''] || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
+                            const statusInfo = STATUS_MAP[lead.fields.Status] || { label: lead.fields.Status, class: 'bg-gray-50 text-gray-700 border-gray-200' };
+                            const ownerColor = OWNER_COLORS[lead.fields.Owner || ''] || 'bg-slate-100 text-slate-600';
 
                             return (
-                                <div key={lead.id} className="flex items-center px-4 md:px-6 py-2 text-xs border-b border-slate-50 dark:border-slate-800/40 hover:bg-slate-50 dark:bg-[#0b141a] transition-colors bg-white dark:bg-[#111b21] group">
+                                <div key={lead.id} className="flex items-center px-4 md:px-6 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white group">
                                     <div className="flex-1 min-w-[100px] md:min-w-[120px] flex flex-col justify-center overflow-hidden pr-2">
                                         <div className="flex items-center gap-1.5 mb-0.5">
-                                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{lead.fields.Name || 'ללא שם'}</span>
+                                            <span className="font-bold text-slate-800 truncate">{lead.fields.Name || 'ללא שם'}</span>
                                             {unreadStatus?.[lead.id]?.count > 0 && (
                                                 <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-bold text-white shadow-sm ring-1 ring-white shrink-0">
                                                     {unreadStatus[lead.id].count}
@@ -372,7 +372,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             </span>
                                         ) : <span className="text-slate-300">—</span>}
                                     </div>
-                                    <div className="w-28 shrink-0 hidden md:flex items-center text-slate-500 dark:text-slate-400">
+                                    <div className="w-28 shrink-0 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Service ? (
                                             <>
                                                 <Music size={11} className="ml-1 text-slate-400" />
@@ -380,10 +380,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             </>
                                         ) : <span className="text-slate-300">—</span>}
                                     </div>
-                                    <div className="w-24 shrink-0 hidden md:flex items-center text-slate-500 dark:text-slate-400 font-medium">
+                                    <div className="w-24 shrink-0 hidden md:flex items-center text-slate-500 font-medium">
                                         {lead.fields.Event_Date ? lead.fields.Event_Date : <span className="text-slate-300">—</span>}
                                     </div>
-                                    <div className="w-24 shrink-0 hidden lg:flex items-center text-slate-500 dark:text-slate-400 pr-1">
+                                    <div className="w-24 shrink-0 hidden lg:flex items-center text-slate-500 pr-1">
                                         {lead.fields.Location ? (
                                             <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
                                         ) : <span className="text-slate-300">—</span>}

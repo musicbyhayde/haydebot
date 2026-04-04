@@ -263,7 +263,7 @@ export default function Home() {
                 </button>
                 <h1 className="text-xl md:text-3xl font-extrabold text-slate-900">לוח משימות 📋</h1>
               </div>
-              <TasksSection currentUser={currentUser} />
+              <TasksSection currentUser={currentUser} leads={leads} />
             </div>
           </div>
         ) : (
