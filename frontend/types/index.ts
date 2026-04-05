@@ -84,3 +84,14 @@ export interface Task {
         Created_At?: string;
     };
 }
+
+export interface Activity {
+    id: string;
+    fields: {
+        actor: string;
+        action_type: string;
+        description: string;
+        lead_id?: string;
+        created_at: string;
+    };
+}

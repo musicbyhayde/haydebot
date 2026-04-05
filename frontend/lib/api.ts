@@ -1,4 +1,4 @@
-import { Lead, Message, Note, FinanceEntry, Task } from '@/types';
+import { Lead, Message, Note, FinanceEntry, Task, Activity } from '@/types';
 
 const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'hayde-security-key';
@@ -210,6 +210,13 @@ export const api = {
     async deleteTask(id: string): Promise<void> {
         const res = await fetchWithAuth(`${API_Base}/tasks/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete task');
+    },
+    // ── Activities ────────────────────────────────────
+
+    async getActivities(): Promise<Activity[]> {
+        const res = await fetchWithAuth(`${API_Base}/activities`);
+        if (!res.ok) throw new Error('Failed to fetch activities');
+        return res.json();
     },
 
     // ── Analytics ─────────────────────────────────────

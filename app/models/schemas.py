@@ -154,3 +154,9 @@ class TaskUpdate(BaseSchema):
     due_date: Optional[str] = Field(None, alias="Due_Date")
     is_completed: Optional[bool] = Field(None, alias="Is_Completed")
     lead_id: Optional[str] = Field(None, alias="Lead_ID")
+
+class ActivityCreate(BaseModel):
+    actor: str
+    action_type: str
+    description: str
+    lead_id: Optional[str] = None

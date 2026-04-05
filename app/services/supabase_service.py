@@ -1,6 +1,6 @@
 from supabase import create_client, Client
 from app.core.config import get_settings
-from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate
+from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate
 from typing import List, Optional
 import uuid
 from datetime import datetime, timedelta
@@ -325,6 +325,30 @@ class SupabaseService:
         """Delete a task."""
         if not self.client: return
         self.client.table("tasks").delete().eq("id", task_id).execute()
+
+    # ─── Activities CRUD ─────────────────────────────────────
+
+    def get_activities(self) -> List[dict]:
+        """Fetch all activities."""
+        if not self.client: return []
+        response = self.client.table("activities").select("*").order("created_at", desc=True).limit(100).execute()
+        # Include created_at in fields for the frontend
+        results = []
+        for r in response.data:
+            item = {"id": r.get("id"), "fields": {}}
+            for key, value in r.items():
+                if key != "id":
+                    item["fields"][key] = value
+            results.append(item)
+        return results
+
+    def create_activity(self, activity: ActivityCreate) -> dict:
+        """Create a new activity log."""
+        if not self.client: return {}
+        data = activity.model_dump(exclude_none=True, mode='json')
+        # Let Supabase auto-generate the UUID id
+        response = self.client.table("activities").insert(data).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
 
     # ─── Compatibility (MockTable) ────────────────────────
 

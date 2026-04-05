@@ -9,8 +9,8 @@ interface SidebarProps {
     musicians: Musician[];
     activeId: string | null;
     onSelect: (id: string) => void;
-    currentView: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'analytics';
-    onViewChange: (view: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'analytics') => void;
+    currentView: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics';
+    onViewChange: (view: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics') => void;
     currentUser?: AppUser | null;
     onSignOut?: () => void;
     unreadStatus?: Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>;
@@ -112,6 +112,17 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                     <ListTodo size={18} /> {!isCollapsed && "📋 משימות"}
                 </button>
                 <button
+                    onClick={() => onViewChange('history')}
+                    className={clsx(
+                        "flex items-center rounded-xl text-sm font-bold transition-all",
+                        isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
+                        currentView === 'history' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-100" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                    title={isCollapsed ? "היסטוריה" : undefined}
+                >
+                    <Star size={18} /> {!isCollapsed && "⏱️ היסטוריה"}
+                </button>
+                <button
                     onClick={() => onViewChange('analytics')}
                     className={clsx(
                         "flex items-center rounded-xl text-sm font-bold transition-all",
@@ -124,7 +135,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 </button>
             </div>
 
-            {currentView !== 'finance' && currentView !== 'tasks' && currentView !== 'musicians' && currentView !== 'analytics' && !isCollapsed && (
+            {currentView !== 'finance' && currentView !== 'tasks' && currentView !== 'history' && currentView !== 'musicians' && currentView !== 'analytics' && !isCollapsed && (
                 <>
                     <div className="p-4 border-b border-gray-200">
                         <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">

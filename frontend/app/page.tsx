@@ -8,6 +8,7 @@ import FinancePage from "@/components/FinancePage";
 import TasksSection from "@/components/TasksSection";
 import MusiciansPage from "@/components/MusiciansPage";
 import AnalyticsPage from "@/components/AnalyticsPage";
+import HistoryPage from "@/components/HistoryPage";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
 import { getCurrentUser, signOut, AppUser, createSupabaseClient } from "@/lib/auth";
@@ -19,7 +20,7 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'analytics'>('dashboard');
+  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics'>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [unreadStatus, setUnreadStatus] = useState<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>>({});
@@ -265,6 +266,18 @@ export default function Home() {
               </div>
               <TasksSection currentUser={currentUser} leads={leads} />
             </div>
+          </div>
+        ) : view === 'history' ? (
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" dir="rtl">
+            <div className="max-w-4xl mx-auto">
+              {/* Header with Mobile Button */}
+              <div className="mb-6 flex items-center gap-3">
+                <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 bg-white rounded-lg shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></svg>
+                </button>
+              </div>
+            </div>
+            <HistoryPage />
           </div>
         ) : (
           <ChatWindow

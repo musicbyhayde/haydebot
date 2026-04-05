@@ -55,6 +55,22 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
 # ─── Leads ────────────────────────────────────────────
 
 from app.services.supabase_service import airtable_service
+from app.models.schemas import ActivityCreate
+
+@protected_router.get("/activities")
+async def get_activities():
+    return airtable_service.get_activities()
+
+@protected_router.post("/activities")
+async def create_activity_log(request: Request):
+    body = await request.json()
+    activity = ActivityCreate(
+        actor=body.get("actor", "מערכת"),
+        action_type=body.get("action_type", "כללי"),
+        description=body.get("description", ""),
+        lead_id=body.get("lead_id")
+    )
+    return airtable_service.create_activity(activity)
 
 @protected_router.get("/leads")
 async def get_leads():
@@ -75,6 +91,14 @@ async def create_lead_manual(request: Request):
         owner=body.get("Owner"),
     )
     result = airtable_service.create_lead(lead)
+    
+    airtable_service.create_activity(ActivityCreate(
+        actor=lead.owner or "מערכת",
+        action_type="יצירת ליד",
+        description=f"יצר/ה ליד חדש טלפון: {lead.phone} ({lead.name or 'ללא שם'})",
+        lead_id=result.get("id") if result else None
+    ))
+    
     return result
 
 @protected_router.patch("/leads/{lead_id}")
@@ -83,6 +107,14 @@ async def update_lead(lead_id: str, request: Request):
     body = await request.json()
     data = LeadUpdate(**{k: v for k, v in body.items() if v is not None})
     result = airtable_service.update_lead(lead_id, data)
+
+    if body.get("Status"):
+        airtable_service.create_activity(ActivityCreate(
+            actor="מערכת",
+            action_type="שינוי סטטוס",
+            description=f"הסטטוס שונה ל-{body.get('Status')}",
+            lead_id=lead_id
+        ))
 
     # Trigger Bouzouki protocol check if needed
     from app.services.logic import bot_logic
@@ -161,7 +193,16 @@ async def create_note(lead_id: str, request: Request):
         file_url=body.get("file_url"),
         file_name=body.get("file_name"),
     )
-    return airtable_service.create_note(note)
+    result = airtable_service.create_note(note)
+    
+    airtable_service.create_activity(ActivityCreate(
+        actor=note.author or "מערכת",
+        action_type="הוספת עדכון",
+        description=f"הוסיף/ה עדכון: {(note.content or '')[:30]}...",
+        lead_id=lead_id
+    ))
+    
+    return result
 
 # ─── File Upload ──────────────────────────────────────
 
@@ -281,9 +322,18 @@ async def create_finance_entry(request: Request):
         musician=body.get("Musician"),
         amount=float(body.get("Amount", 0)),
         payment_status=body.get("Payment_Status", "לא שולם"),
+        payment_method=body.get("Payment_Method", "חשבון"),
         lead_id=body.get("Lead_ID"),
     )
-    return airtable_service.create_finance_entry(entry)
+    result = airtable_service.create_finance_entry(entry)
+    
+    airtable_service.create_activity(ActivityCreate(
+        actor=entry.owner or "מערכת",
+        action_type="הכנסה/הוצאה" if entry.entry_type == "income" else "הוצאה",
+        description=f"הזין/ה {entry.amount} ₪ ({entry.description})",
+        lead_id=entry.lead_id
+    ))
+    return result
 
 @protected_router.patch("/finance/{entry_id}")
 async def update_finance_entry(entry_id: str, request: Request):
@@ -313,7 +363,15 @@ async def create_task(request: Request):
         is_completed=body.get("Is_Completed", False),
         lead_id=body.get("Lead_ID")
     )
-    return airtable_service.create_task(task)
+    result = airtable_service.create_task(task)
+    
+    airtable_service.create_activity(ActivityCreate(
+        actor=task.assignee or "מערכת",
+        action_type="משימה חדשה",
+        description=f"יצר/ה משימה: {task.title}",
+        lead_id=task.lead_id
+    ))
+    return result
 
 @protected_router.patch("/tasks/{task_id}")
 async def update_task(task_id: str, request: Request):
