@@ -385,17 +385,19 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             <span className="text-[10px] font-bold text-slate-500">שליטה בפלואו (מנהל)</span>
                         </div>
                         <div className="flex gap-2 flex-wrap">
-                            <button
-                                onClick={() => {
-                                    if (confirm('להחזיר את הליד להפצה לכל הנגנים?')) {
-                                        api.updateLead(lead.id, { Status: 'New', Musician_Assigned: [] });
-                                        onStatusChange(lead.id, 'New');
-                                    }
-                                }}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 text-indigo-700 text-[11px] font-bold rounded-lg hover:bg-indigo-100 transition-all"
-                            >
-                                <RefreshCw size={12} /> החזר להפצה
-                            </button>
+                            {lead.fields.Service === 'Bouzouki' && (
+                                <button
+                                    onClick={() => {
+                                        if (confirm('להחזיר את הליד להפצה לכל הנגנים?')) {
+                                            api.updateLead(lead.id, { Status: 'New', Musician_Assigned: [] });
+                                            onStatusChange(lead.id, 'New');
+                                        }
+                                    }}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 text-indigo-700 text-[11px] font-bold rounded-lg hover:bg-indigo-100 transition-all"
+                                >
+                                    <RefreshCw size={12} /> החזר להפצה
+                                </button>
+                            )}
                             <button
                                 onClick={() => {
                                     if (confirm('לאפס את הליד לסטטוס "חדש"? זה ינקה את שיוך הנגן.')) {
