@@ -57,6 +57,16 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         api.getTasks().then(setTasks).catch(console.error);
     }, []);
 
+    // Sync detailLead with updated data from props when leads list changes
+    useEffect(() => {
+        if (detailLead) {
+            const updatedLead = leads.find(l => l.id === detailLead.id);
+            if (updatedLead) {
+                setDetailLead(updatedLead);
+            }
+        }
+    }, [leads, detailLead?.id]);
+
     const activeTasks = tasks.filter(t => !t.fields.Is_Completed);
 
     // ─── Derived unique values for filter dropdowns ─────
@@ -471,7 +481,11 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                     currentUserName={currentUser?.displayName || ''}
                     isAdmin={currentUser?.role === 'admin' || currentUser?.role === 'partner'}
                     onClose={() => setDetailLead(null)}
-                    onStatusChange={() => { setDetailLead(null); onRefresh?.(); }}
+                    onStatusChange={() => { 
+                        // Instead of closing, we just refresh. 
+                        // The useEffect above will update detailLead state when prop updates.
+                        onRefresh?.(); 
+                    }}
                 />
             )}
         </div>

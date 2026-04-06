@@ -512,41 +512,72 @@ async def send_daily_reminders(request: Request):
     tasks = supabase_service.get_tasks()
     leads = supabase_service.get_all_leads()
     
+    # Create a lookup for lead names and dates
+    lead_lookup = {l.get("id"): l.get("fields", {}) for l in leads}
+    
     open_tasks = [t for t in tasks if not t.get("fields", {}).get("Is_Completed")]
     open_leads = [l for l in leads if l.get("fields", {}).get("Status") not in ["Closed", "Lost"]]
     
-    users = ["אילן", "קובי", "כולם"]
-    summary_lines = []
-    
-    for u in users:
-        u_tasks = [t for t in open_tasks if u in (t.get("fields", {}).get("Starred_By") or [])]
-        u_leads = [l for l in open_leads if u in (l.get("fields", {}).get("Starred_By") or [])]
-        
-        if u_tasks or u_leads:
-            parts = []
-            if u_tasks:
-                parts.append(f"{len(u_tasks)} משימות")
-            if u_leads:
-                parts.append(f"{len(u_leads)} לידים")
-            summary_lines.append(f"⭐ {u}: {' ו-'.join(parts)}")
-            
-    if not summary_lines:
-        return {"status": "No starred items to remind about"}
-        
-    final_text = "תזכורת בוקר: יש פריטים במועדפים שדורשים התייחסות - " + " | ".join(summary_lines)
+    # Mapping numbers to names as defined in auth.ts
+    admin_map = {
+        "972544500529": "אילן",
+        "972506794611": "קובי"
+    }
     
     numbers = settings.NOTIFICATION_NUMBERS.split(",") if settings.NOTIFICATION_NUMBERS else []
     send_results = []
+    
     for number in numbers:
         phone = number.strip()
-        if phone:
-            # The template admin_system_alert expects 2 parameters (Subject and Message)
-            res = whatsapp_service.send_template(phone, "admin_system_alert", "en", ["תזכורת פריטים מסומנים", final_text])
-            send_results.append({"phone": phone, "result": res})
+        if not phone:
+            continue
+            
+        user_name = admin_map.get(phone)
+        if not user_name:
+            continue
+            
+        # Filter items for this specific user or "כולם"
+        u_tasks = [t for t in open_tasks if user_name in (t.get("fields", {}).get("Starred_By") or []) or "כולם" in (t.get("fields", {}).get("Starred_By") or [])]
+        u_leads = [l for l in open_leads if user_name in (l.get("fields", {}).get("Starred_By") or []) or "כולם" in (l.get("fields", {}).get("Starred_By") or [])]
+        
+        if not u_tasks and not u_leads:
+            send_results.append({"phone": phone, "status": "No items for this user"})
+            continue
+            
+        # Build detailed message
+        message_parts = []
+        if u_leads:
+            message_parts.append("📌 *לידים בטיפול:*")
+            for l in u_leads:
+                name = l.get("fields", {}).get("Name", "ללא שם")
+                date = l.get("fields", {}).get("Event_Date", "ללא תאריך")
+                message_parts.append(f"👤 {name} - {date}")
+                
+        if u_tasks:
+            if message_parts: message_parts.append("") # Spacer
+            message_parts.append("✅ *משימות לביצוע:*")
+            for t in u_tasks:
+                title = t.get("fields", {}).get("Title", "משימה ללא תיאור")
+                lead_links = t.get("fields", {}).get("Lead_Link") or []
+                lead_info = ""
+                if lead_links:
+                    lead_id = lead_links[0]
+                    lead = lead_lookup.get(lead_id, {})
+                    lead_name = lead.get("Name", "ליד לא ידוע")
+                    lead_date = lead.get("Event_Date", "")
+                    lead_info = f" (לקוח: {lead_name}{' | ' + lead_date if lead_date else ''})"
+                message_parts.append(f"🔹 {title}{lead_info}")
+        
+        final_text = "\n".join(message_parts)
+        # Limit text length if too long for WhatsApp template
+        if len(final_text) > 1000:
+            final_text = final_text[:997] + "..."
+            
+        res = whatsapp_service.send_template(phone, "admin_system_alert", "en", ["תזכורת פריטים מסומנים", final_text])
+        send_results.append({"phone": phone, "user": user_name, "result": res})
             
     return {
-        "status": "Reminders sent successfully", 
-        "message": final_text,
+        "status": "Reminders processing complete", 
         "whatsapp_results": send_results,
         "raw_numbers_env": settings.NOTIFICATION_NUMBERS
     }

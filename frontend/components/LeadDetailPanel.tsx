@@ -370,9 +370,12 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-50 uppercase tracking-wider">סמן במועדפים עבור:</div>
                                         {['אילן', 'קובי', 'כולם'].map(assignee => {
                                             const isStarred = (lead.fields.Starred_By || []).includes(assignee);
+                                            const isDisabled = currentUserName === 'קובי' && assignee === 'אילן';
+                                            
                                             return (
                                                 <button
                                                     key={assignee}
+                                                    disabled={isDisabled}
                                                     onClick={() => {
                                                         const currentStars = lead.fields.Starred_By || [];
                                                         const newStars = isStarred 
@@ -384,9 +387,15 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                         });
                                                         setIsStarMenuOpen(false);
                                                     }}
-                                                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors"
+                                                    className={clsx(
+                                                        "w-full text-right px-4 py-2 text-sm flex items-center justify-between transition-colors",
+                                                        isDisabled ? "text-slate-300 cursor-not-allowed bg-slate-50/50" : "text-slate-700 hover:bg-slate-50"
+                                                    )}
                                                 >
-                                                    {assignee}
+                                                    <span className="flex items-center gap-2">
+                                                        {assignee}
+                                                        {isDisabled && <span className="text-[9px] text-slate-400 font-normal">(רק אילן יכול)</span>}
+                                                    </span>
                                                     {isStarred && <Star size={14} className="text-amber-400 fill-amber-400" />}
                                                 </button>
                                             );

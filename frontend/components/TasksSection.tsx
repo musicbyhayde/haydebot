@@ -288,9 +288,12 @@ function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar }: {
                         <div className="absolute left-6 top-6 w-36 bg-white border border-slate-100 rounded-xl shadow-xl z-[70] py-1 overflow-hidden" dir="rtl">
                             {['אילן', 'קובי', 'כולם'].map(assignee => {
                                 const isStarred = (task.fields.Starred_By || []).includes(assignee);
+                                const isDisabled = currentUserName === 'קובי' && assignee === 'אילן';
+                                
                                 return (
                                     <button
                                         key={assignee}
+                                        disabled={isDisabled}
                                         onClick={() => {
                                             const currentStars = task.fields.Starred_By || [];
                                             const newStars = isStarred 
@@ -299,10 +302,16 @@ function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar }: {
                                             onStar(newStars);
                                             setIsStarMenuOpen(false);
                                         }}
-                                        className="w-full text-right px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center justify-between"
+                                        className={clsx(
+                                            "w-full text-right px-3 py-1.5 text-[10px] flex items-center justify-between transition-colors",
+                                            isDisabled ? "text-slate-300 cursor-not-allowed bg-slate-50/50" : "text-slate-700 hover:bg-slate-50"
+                                        )}
                                     >
-                                        {assignee}
-                                        {isStarred && <Star size={12} className="text-amber-400 fill-amber-400" />}
+                                        <span className="flex items-center gap-1">
+                                            {assignee}
+                                            {isDisabled && <span className="text-[8px] text-slate-400 font-normal">(רק אילן)</span>}
+                                        </span>
+                                        {isStarred && <Star size={10} className="text-amber-400 fill-amber-400" />}
                                     </button>
                                 );
                             })}
