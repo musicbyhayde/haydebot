@@ -533,12 +533,19 @@ async def send_daily_reminders(request: Request):
     if not summary_lines:
         return {"status": "No starred items to remind about"}
         
-    final_text = "תזכורת מערכת HaydeBot:\n\nיש פריטים במועדפים שדורשים התייחסות:\n\n" + "\n".join(summary_lines)
+    final_text = "תזכורת בוקר: יש פריטים במועדפים שדורשים התייחסות - " + " | ".join(summary_lines)
     
     numbers = settings.NOTIFICATION_NUMBERS.split(",") if settings.NOTIFICATION_NUMBERS else []
+    send_results = []
     for number in numbers:
         phone = number.strip()
         if phone:
-            whatsapp_service.send_template(phone, "admin_system_alert", "he", [final_text])
+            res = whatsapp_service.send_template(phone, "admin_system_alert", "he", [final_text])
+            send_results.append({"phone": phone, "result": res})
             
-    return {"status": "Reminders sent successfully", "message": final_text}
+    return {
+        "status": "Reminders sent successfully", 
+        "message": final_text,
+        "whatsapp_results": send_results,
+        "raw_numbers_env": settings.NOTIFICATION_NUMBERS
+    }
