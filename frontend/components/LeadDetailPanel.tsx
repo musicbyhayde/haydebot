@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task } from '@/types';
 import clsx from 'clsx';
@@ -329,8 +329,16 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-800">{lead.fields.Name || lead.fields.Phone}</h2>
-                        <p className="text-xs text-slate-500">{lead.fields.Phone} · {lead.fields.Service || '—'}</p>
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                            <h2 className="text-lg font-bold text-slate-800">{lead.fields.Name || lead.fields.Phone}</h2>
+                            {lead.fields.Event_Date && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-700 text-sm font-bold rounded-lg">
+                                    <Calendar size={14} className="text-blue-500" />
+                                    {lead.fields.Event_Date}
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{lead.fields.Phone} · {lead.fields.Service || '—'}</p>
                     </div>
                     <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
                         <X size={20} className="text-slate-500" />
@@ -552,14 +560,14 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     {isPdf && (
                                                         <div className="border border-slate-200 rounded-lg overflow-hidden">
                                                             <iframe
-                                                                src={url}
+                                                                src={`https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`}
                                                                 className="w-full h-48 bg-white"
                                                                 title={name}
                                                             />
                                                         </div>
                                                     )}
-                                                    <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-blue-500 hover:underline">
-                                                        <FileText size={12} /> {name}
+                                                    <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors">
+                                                        <ExternalLink size={12} /> {isPdf ? 'פתח PDF' : name}
                                                     </a>
                                                 </div>
                                             );

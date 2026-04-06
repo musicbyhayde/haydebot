@@ -201,7 +201,7 @@ export default function Home() {
     return <div className="h-screen w-screen flex items-center justify-center font-bold text-slate-400 italic">Hayde is Warming Up... 🎸</div>;
   }
 
-  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && activeId === null);
+  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && view !== 'history' && activeId === null);
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
