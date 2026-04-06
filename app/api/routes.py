@@ -540,7 +540,7 @@ async def send_daily_reminders(request: Request):
     for number in numbers:
         phone = number.strip()
         if phone:
-            res = whatsapp_service.send_template(phone, "admin_system_alert", "he", [final_text])
+            res = whatsapp_service.send_template(phone, "admin_system_alert", "en", [final_text])
             send_results.append({"phone": phone, "result": res})
             
     return {
