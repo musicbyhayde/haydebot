@@ -14,10 +14,11 @@ interface AddLeadModalProps {
 
 const STATUS_OPTIONS = [
     { value: 'New', label: 'חדש' },
-    { value: 'Talking', label: 'רק דיבורים' },
-    { value: 'Quote_Sent', label: 'נשלחה הצעת מחיר' },
+    { value: 'Manual', label: 'בטיפול ידני' },
+    { value: 'Processing', label: 'בטיפול בוט' },
+    { value: 'Talking', label: 'בשיחה' },
+    { value: 'Quote_Sent', label: 'נשלחה הצ"מ' },
     { value: 'Waiting_Payment', label: 'מחכה לתשלום' },
-    { value: 'Processing', label: 'בטיפול' },
 ];
 
 const SERVICE_OPTIONS = [
@@ -98,7 +99,15 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1">שירות</label>
-                            <select className={inputClass} value={form.Service} onChange={(e) => setForm({ ...form, Service: e.target.value })}>
+                            <select 
+                                className={inputClass} 
+                                value={form.Service} 
+                                onChange={(e) => {
+                                    const nextService = e.target.value;
+                                    const nextStatus = (nextService !== 'Bouzouki' && form.Status === 'New') ? 'Manual' : form.Status;
+                                    setForm({ ...form, Service: nextService, Status: nextStatus });
+                                }}
+                            >
                                 <option value="">בחר שירות...</option>
                                 {SERVICE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select>

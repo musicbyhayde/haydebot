@@ -21,13 +21,13 @@ interface LeadsDashboardProps {
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
     'New': { label: 'חדש', class: 'bg-blue-50 text-blue-700 border-blue-200' },
-    'Talking': { label: 'רק דיבורים', class: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-    'Processing': { label: 'בטיפול', class: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+    'Processing': { label: 'בטיפול בוט', class: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+    'Manual': { label: 'בטיפול ידני', class: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    'Talking': { label: 'בשיחה', class: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
     'Quote_Sent': { label: 'נשלחה הצ"מ', class: 'bg-amber-50 text-amber-700 border-amber-200' },
     'Waiting_Payment': { label: 'מחכה לתשלום', class: 'bg-orange-50 text-orange-700 border-orange-200' },
     'Distributed': { label: 'הופץ', class: 'bg-purple-50 text-purple-700 border-purple-200' },
     'Assigned': { label: 'שובץ', class: 'bg-green-50 text-green-700 border-green-200' },
-    'Manual': { label: 'ידני', class: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
     'Closed': { label: 'נסגר', class: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     'Lost': { label: 'אבוד', class: 'bg-red-50 text-red-700 border-red-200' },
 };
@@ -101,7 +101,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const stats = {
         total: leads.length,
         new: leads.filter(l => l.fields.Status === 'New').length,
-        processing: leads.filter(l => ['Processing', 'Talking', 'Quote_Sent'].includes(l.fields.Status)).length,
+        processing: leads.filter(l => ['Processing', 'Manual', 'Talking', 'Quote_Sent'].includes(l.fields.Status)).length,
         assigned: leads.filter(l => ['Assigned', 'Closed', 'Waiting_Payment'].includes(l.fields.Status)).length,
     };
 

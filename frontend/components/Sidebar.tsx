@@ -18,6 +18,19 @@ interface SidebarProps {
     onToggleCollapse?: () => void;
 }
 
+const STATUS_MAP: Record<string, { label: string; class: string }> = {
+    'New': { label: 'חדש', class: 'bg-blue-100 text-blue-800' },
+    'Processing': { label: 'בטיפול בוט', class: 'bg-yellow-100 text-yellow-800' },
+    'Manual': { label: 'בטיפול ידני', class: 'bg-indigo-100 text-indigo-800' },
+    'Talking': { label: 'בשיחה', class: 'bg-cyan-100 text-cyan-800' },
+    'Quote_Sent': { label: 'נשלחה הצ"מ', class: 'bg-amber-100 text-amber-800' },
+    'Waiting_Payment': { label: 'מחכה לתשלום', class: 'bg-orange-100 text-orange-800' },
+    'Distributed': { label: 'הופץ', class: 'bg-purple-100 text-purple-800' },
+    'Assigned': { label: 'שובץ', class: 'bg-green-100 text-green-800' },
+    'Closed': { label: 'נסגר', class: 'bg-emerald-100 text-emerald-800' },
+    'Lost': { label: 'אבוד', class: 'bg-red-100 text-red-800' },
+};
+
 export default function Sidebar({ leads, musicians, activeId, onSelect, currentView, onViewChange, currentUser, onSignOut, unreadStatus = {}, isCollapsed = false, onToggleCollapse }: SidebarProps) {
 
     return (
@@ -122,6 +135,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <Star size={18} /> {!isCollapsed && "⏱️ היסטוריה"}
                 </button>
+                {/* Analytics button hidden for now
                 <button
                     onClick={() => onViewChange('analytics')}
                     className={clsx(
@@ -133,6 +147,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <BarChart3 size={18} /> {!isCollapsed && "📊 אנליטיקות"}
                 </button>
+                */}
             </div>
 
             {currentView !== 'finance' && currentView !== 'tasks' && currentView !== 'history' && currentView !== 'musicians' && currentView !== 'analytics' && !isCollapsed && (
@@ -145,16 +160,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                     <div className="flex-1 overflow-y-auto">
                         {leads.map((lead) => {
                             const isActive = lead.id === activeId;
-                            const statusColors: Record<string, string> = {
-                                'New': 'bg-blue-100 text-blue-800',
-                                'Processing': 'bg-yellow-100 text-yellow-800',
-                                'Closed': 'bg-green-100 text-green-800',
-                                'Lost': 'bg-red-100 text-red-800',
-                                'Quote_Sent': 'bg-amber-100 text-amber-800',
-                                'Waiting_Payment': 'bg-orange-100 text-orange-800',
-                                'Talking': 'bg-cyan-100 text-cyan-800',
-                            };
-                            const badgeClass = statusColors[lead.fields.Status] || 'bg-gray-100 text-gray-800';
+                            const statusInfo = STATUS_MAP[lead.fields.Status] || { label: lead.fields.Status, class: 'bg-gray-100 text-gray-800' };
                             const unreadInfo = unreadStatus[lead.id];
                             const hasUnread = unreadInfo && unreadInfo.count > 0;
 
@@ -180,8 +186,8 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                                                 </span>
                                             )}
                                         </div>
-                                        <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-bold", badgeClass)}>
-                                            {lead.fields.Status}
+                                        <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-bold", statusInfo.class)}>
+                                            {statusInfo.label}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-end">

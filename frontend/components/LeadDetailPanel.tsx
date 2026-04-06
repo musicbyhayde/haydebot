@@ -14,14 +14,21 @@ interface LeadDetailPanelProps {
     onStatusChange: (leadId: string, status: string) => void;
 }
 
-const STATUS_OPTIONS = [
+const BOUZOUKI_STATUSES = [
     { value: 'New', label: 'חדש', color: 'bg-blue-100 text-blue-800' },
-    { value: 'Talking', label: 'רק דיבורים', color: 'bg-cyan-100 text-cyan-800' },
-    { value: 'Processing', label: 'בטיפול', color: 'bg-yellow-100 text-yellow-800' },
+    { value: 'Processing', label: 'בטיפול בוט', color: 'bg-yellow-100 text-yellow-800' },
     { value: 'Distributed', label: 'בהפצה', color: 'bg-purple-100 text-purple-800' },
-    { value: 'Quote_Sent', label: 'נשלחה הצעת מחיר', color: 'bg-amber-100 text-amber-800' },
-    { value: 'Waiting_Payment', label: 'מחכה לתשלום', color: 'bg-orange-100 text-orange-800' },
     { value: 'Assigned', label: 'שובץ נגן', color: 'bg-indigo-100 text-indigo-800' },
+    { value: 'Closed', label: 'נסגר', color: 'bg-green-100 text-green-800' },
+    { value: 'Lost', label: 'אבוד', color: 'bg-red-100 text-red-800' },
+];
+
+const MANUAL_STATUSES = [
+    { value: 'New', label: 'חדש', color: 'bg-blue-100 text-blue-800' },
+    { value: 'Manual', label: 'בטיפול ידני', color: 'bg-indigo-100 text-indigo-800' },
+    { value: 'Talking', label: 'בשיחה', color: 'bg-cyan-100 text-cyan-800' },
+    { value: 'Quote_Sent', label: 'נשלחה הצ"מ', color: 'bg-amber-100 text-amber-800' },
+    { value: 'Waiting_Payment', label: 'מחכה לתשלום', color: 'bg-orange-100 text-orange-800' },
     { value: 'Closed', label: 'נסגר', color: 'bg-green-100 text-green-800' },
     { value: 'Lost', label: 'אבוד', color: 'bg-red-100 text-red-800' },
 ];
@@ -345,23 +352,29 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     </button>
                 </div>
 
-                {/* Status Bar */}
-                <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-semibold text-slate-500">סטטוס:</span>
-                    {STATUS_OPTIONS.map(s => (
-                        <button
-                            key={s.value}
-                            onClick={() => handleStatusChange(s.value)}
-                            className={clsx(
-                                "text-[11px] px-2.5 py-1 rounded-full font-bold transition-all",
-                                lead.fields.Status === s.value
-                                    ? s.color + " ring-2 ring-offset-1 ring-slate-300"
-                                    : "bg-slate-50 text-slate-400 hover:bg-slate-100"
-                            )}
-                        >
-                            {s.label}
-                        </button>
-                    ))}
+                {/* Status Pipeline */}
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                    <span className="block text-xs font-bold text-slate-500 mb-2.5">שלב נוכחי: בתהליך</span>
+                    <div className="flex items-center flex-wrap gap-y-2">
+                        {(lead.fields.Service === 'Bouzouki' ? BOUZOUKI_STATUSES : MANUAL_STATUSES).map((s, idx, arr) => (
+                            <div key={s.value} className="flex items-center">
+                                <button
+                                    onClick={() => handleStatusChange(s.value)}
+                                    className={clsx(
+                                        "text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all border shadow-sm",
+                                        lead.fields.Status === s.value
+                                            ? s.color + " border-transparent ring-2 ring-offset-1 ring-slate-300 scale-105"
+                                            : "bg-white text-slate-500 border-slate-200 hover:bg-slate-100 hover:text-slate-800 hover:-translate-y-0.5"
+                                    )}
+                                >
+                                    {s.label}
+                                </button>
+                                {idx < arr.length - 1 && (
+                                    <div className="w-3 md:w-5 border-t-2 border-dashed border-slate-300 mx-0.5 shrink-0" />
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Admin Flow Control */}
