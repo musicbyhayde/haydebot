@@ -17,6 +17,7 @@ export interface Lead {
         Musician_Assigned?: string[];
         Bot_Mute_Until?: string;
         Last_Read_At?: string;
+        Starred_By?: string[];
     };
 }
 
@@ -82,6 +83,7 @@ export interface Task {
         Is_Completed: boolean;
         Lead_ID?: string;
         Created_At?: string;
+        Starred_By?: string[];
     };
 }
 

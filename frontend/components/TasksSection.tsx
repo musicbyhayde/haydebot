@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Task, Lead } from '@/types';
 import { api } from '@/lib/api';
-import { CheckCircle2, Circle, Calendar, User, Plus, Trash2, ListTodo, Briefcase } from 'lucide-react';
+import { CheckCircle2, Circle, Calendar, User, Plus, Trash2, ListTodo, Briefcase, Star } from 'lucide-react';
 import clsx from 'clsx';
 import { AppUser } from '@/lib/auth';
 
@@ -20,6 +20,7 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
     const [newTaskDueDate, setNewTaskDueDate] = useState('');
     const [newTaskLeadId, setNewTaskLeadId] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [filterStarred, setFilterStarred] = useState(false);
 
     useEffect(() => {
         fetchTasks();
@@ -83,8 +84,14 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
         }
     };
 
-    const activeTasks = tasks.filter(t => !t.fields.Is_Completed);
-    const completedTasks = tasks.filter(t => t.fields.Is_Completed);
+    const matchesStarFilter = (t: Task) => {
+        if (!filterStarred) return true;
+        const stars = t.fields.Starred_By || [];
+        return stars.includes(currentUser?.displayName || '') || stars.includes('כולם');
+    };
+
+    const activeTasks = tasks.filter(t => !t.fields.Is_Completed && matchesStarFilter(t));
+    const completedTasks = tasks.filter(t => t.fields.Is_Completed && matchesStarFilter(t));
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6 md:mt-8">
@@ -93,8 +100,22 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                     <ListTodo className="text-blue-600" size={20} />
                     <h2 className="font-bold text-base md:text-lg text-slate-800">משימות לביצוע</h2>
                 </div>
-                <div className="text-xs font-bold px-2.5 py-1 bg-slate-200 text-slate-600 rounded-full">
-                    {activeTasks.length} פתוחות
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setFilterStarred(!filterStarred)}
+                        className={clsx(
+                            "flex items-center justify-center p-1.5 rounded-lg text-sm font-bold transition-all border",
+                            filterStarred
+                                ? "bg-amber-50 text-amber-600 border-amber-200"
+                                : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
+                        )}
+                        title="סונן לפי מועדפים שלי"
+                    >
+                        <Star size={16} className={clsx(filterStarred && "fill-amber-400 text-amber-500")} />
+                    </button>
+                    <div className="text-xs font-bold px-2.5 py-1 bg-slate-200 text-slate-600 rounded-full">
+                        {activeTasks.length} פתוחות
+                    </div>
                 </div>
             </div>
 
@@ -169,8 +190,13 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                                 key={task.id}
                                 task={task}
                                 leads={leads}
+                                currentUserName={currentUser?.displayName}
                                 onToggle={() => handleToggleComplete(task)}
                                 onDelete={() => handleDeleteTask(task.id)}
+                                onStar={(newStars) => {
+                                    api.updateTask(task.id, { Starred_By: newStars });
+                                    setTasks(tasks.map(t => t.id === task.id ? { ...t, fields: { ...t.fields, Starred_By: newStars } } : t));
+                                }}
                             />
                         ))}
                         {completedTasks.length > 0 && (
@@ -181,8 +207,13 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                                 key={task.id}
                                 task={task}
                                 leads={leads}
+                                currentUserName={currentUser?.displayName}
                                 onToggle={() => handleToggleComplete(task)}
                                 onDelete={() => handleDeleteTask(task.id)}
+                                onStar={(newStars) => {
+                                    api.updateTask(task.id, { Starred_By: newStars });
+                                    setTasks(tasks.map(t => t.id === task.id ? { ...t, fields: { ...t.fields, Starred_By: newStars } } : t));
+                                }}
                             />
                         ))}
                     </>
@@ -192,9 +223,10 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
     );
 }
 
-function TaskRow({ task, leads, onToggle, onDelete }: { task: Task; leads?: Lead[]; onToggle: () => void; onDelete: () => void }) {
+function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar }: { task: Task; leads?: Lead[]; currentUserName?: string; onToggle: () => void; onDelete: () => void; onStar: (stars: string[]) => void }) {
     const isCompleted = task.fields.Is_Completed;
     const linkedLead = task.fields.Lead_ID && leads ? leads.find(l => l.id === task.fields.Lead_ID) : null;
+    const [isStarMenuOpen, setIsStarMenuOpen] = useState(false);
 
     return (
         <div className={clsx(
@@ -211,6 +243,11 @@ function TaskRow({ task, leads, onToggle, onDelete }: { task: Task; leads?: Lead
                 <span className={clsx("font-bold truncate", isCompleted ? "line-through text-slate-400 font-medium" : "text-slate-700")}>
                     {task.fields.Title}
                 </span>
+                {!(task.fields.Starred_By || []).includes(currentUserName || '') && (task.fields.Starred_By || []).length > 0 && (
+                    <span title="מסומן למישהו אחר" className="flex items-center shrink-0">
+                        <Star size={12} className="text-amber-400 fill-amber-400 opacity-50" />
+                    </span>
+                )}
                 {linkedLead && (
                     <span className="hidden md:inline-flex items-center gap-1 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium truncate max-w-[150px]">
                         <Briefcase size={10} />
@@ -237,7 +274,42 @@ function TaskRow({ task, leads, onToggle, onDelete }: { task: Task; leads?: Lead
                 ) : <span className="text-slate-300">—</span>}
             </div>
             
-            <div className="w-12 shrink-0 flex items-center justify-end">
+            <div className="w-16 shrink-0 flex items-center justify-end gap-1 relative">
+                <button 
+                    onClick={() => setIsStarMenuOpen(!isStarMenuOpen)} 
+                    className="text-slate-300 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-all p-1 rounded hover:bg-amber-50 focus:opacity-100" 
+                    title="כוכב"
+                >
+                    <Star size={14} className={(task.fields.Starred_By || []).includes(currentUserName || '') ? 'text-amber-400 fill-amber-400 opacity-100' : ''} />
+                </button>
+                {isStarMenuOpen && (
+                    <>
+                        <div className="fixed inset-0 z-[60]" onClick={() => setIsStarMenuOpen(false)}></div>
+                        <div className="absolute left-6 top-6 w-36 bg-white border border-slate-100 rounded-xl shadow-xl z-[70] py-1 overflow-hidden" dir="rtl">
+                            {['אילן', 'קובי', 'כולם'].map(assignee => {
+                                const isStarred = (task.fields.Starred_By || []).includes(assignee);
+                                return (
+                                    <button
+                                        key={assignee}
+                                        onClick={() => {
+                                            const currentStars = task.fields.Starred_By || [];
+                                            const newStars = isStarred 
+                                                ? currentStars.filter(n => n !== assignee)
+                                                : [...currentStars, assignee];
+                                            onStar(newStars);
+                                            setIsStarMenuOpen(false);
+                                        }}
+                                        className="w-full text-right px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center justify-between"
+                                    >
+                                        {assignee}
+                                        {isStarred && <Star size={12} className="text-amber-400 fill-amber-400" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+
                 <button onClick={onDelete} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1 rounded hover:bg-red-50 focus:opacity-100" title="מחק">
                     <Trash2 size={14} />
                 </button>

@@ -7,6 +7,7 @@ from app.services.logic import bot_logic
 from typing import List, Optional
 from pydantic import BaseModel
 import uuid
+import os
 
 settings = get_settings()
 
@@ -491,3 +492,53 @@ async def get_analytics():
         "lostReasons": lost_reasons,
         "conversionRate": round((closed / total_leads * 100), 1) if total_leads > 0 else 0,
     }
+
+# ─── Daily Reminders Cron Job ───────────────────────
+
+@public_router.get("/cron/reminders")
+async def send_daily_reminders(request: Request):
+    """
+    Called daily (e.g. at 9:00 AM) by an external cron service (like cron-job.org).
+    Sends a summary of all starred items to the ADMIN_PHONES via WhatsApp.
+    """
+    auth = request.headers.get("Authorization")
+    secret = os.getenv("CRON_SECRET", "haydebot_cron_secret")
+    if not auth or auth != f"Bearer {secret}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from app.services.supabase_service import supabase_service
+    from app.services.whatsapp import whatsapp_service
+    
+    tasks = supabase_service.get_tasks()
+    leads = supabase_service.get_all_leads()
+    
+    open_tasks = [t for t in tasks if not t.get("fields", {}).get("Is_Completed")]
+    open_leads = [l for l in leads if l.get("fields", {}).get("Status") not in ["Closed", "Lost"]]
+    
+    users = ["אילן", "קובי", "כולם"]
+    summary_lines = []
+    
+    for u in users:
+        u_tasks = [t for t in open_tasks if u in (t.get("fields", {}).get("Starred_By") or [])]
+        u_leads = [l for l in open_leads if u in (l.get("fields", {}).get("Starred_By") or [])]
+        
+        if u_tasks or u_leads:
+            parts = []
+            if u_tasks:
+                parts.append(f"{len(u_tasks)} משימות")
+            if u_leads:
+                parts.append(f"{len(u_leads)} לידים")
+            summary_lines.append(f"⭐ {u}: {' ו-'.join(parts)}")
+            
+    if not summary_lines:
+        return {"status": "No starred items to remind about"}
+        
+    final_text = "תזכורת מערכת HaydeBot:\n\nיש פריטים במועדפים שדורשים התייחסות:\n\n" + "\n".join(summary_lines)
+    
+    numbers = settings.NOTIFICATION_NUMBERS.split(",") if settings.NOTIFICATION_NUMBERS else []
+    for number in numbers:
+        phone = number.strip()
+        if phone:
+            whatsapp_service.send_template(phone, "admin_system_alert", "he", [final_text])
+            
+    return {"status": "Reminders sent successfully", "message": final_text}

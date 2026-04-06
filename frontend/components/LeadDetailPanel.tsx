@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Star } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task } from '@/types';
 import clsx from 'clsx';
@@ -44,6 +44,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [closingAmount, setClosingAmount] = useState('');
     const [editData, setEditData] = useState<Partial<Lead['fields']>>({});
     const [savingInfo, setSavingInfo] = useState(false);
+    const [isStarMenuOpen, setIsStarMenuOpen] = useState(false);
 
     // Tasks Tab State
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -337,7 +338,12 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                     <div>
                         <div className="flex items-center gap-2.5 flex-wrap">
-                            <h2 className="text-lg font-bold text-slate-800">{lead.fields.Name || lead.fields.Phone}</h2>
+                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                {lead.fields.Name || lead.fields.Phone}
+                                {(lead.fields.Starred_By || []).length > 0 && (
+                                    <Star size={18} className="text-amber-400 fill-amber-400 drop-shadow-sm" />
+                                )}
+                            </h2>
                             {lead.fields.Event_Date && (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-700 text-sm font-bold rounded-lg">
                                     <Calendar size={14} className="text-blue-500" />
@@ -347,9 +353,53 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">{lead.fields.Phone} · {lead.fields.Service || '—'}</p>
                     </div>
-                    <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
-                        <X size={20} className="text-slate-500" />
-                    </button>
+                    <div className="flex items-center gap-2 relative">
+                        {/* Star Menu Toggle */}
+                        <div className="relative">
+                            <button 
+                                onClick={() => setIsStarMenuOpen(!isStarMenuOpen)} 
+                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 text-slate-600 font-medium text-sm"
+                            >
+                                <Star size={20} className={(lead.fields.Starred_By || []).includes(currentUserName) ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
+                            </button>
+
+                            {isStarMenuOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-[60]" onClick={() => setIsStarMenuOpen(false)}></div>
+                                    <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-100 rounded-xl shadow-xl z-[70] py-1 overflow-hidden" dir="rtl">
+                                        <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-50 uppercase tracking-wider">סמן במועדפים עבור:</div>
+                                        {['אילן', 'קובי', 'כולם'].map(assignee => {
+                                            const isStarred = (lead.fields.Starred_By || []).includes(assignee);
+                                            return (
+                                                <button
+                                                    key={assignee}
+                                                    onClick={() => {
+                                                        const currentStars = lead.fields.Starred_By || [];
+                                                        const newStars = isStarred 
+                                                            ? currentStars.filter(n => n !== assignee)
+                                                            : [...currentStars, assignee];
+                                                        
+                                                        api.updateLead(lead.id, { Starred_By: newStars }).then(() => {
+                                                            onStatusChange(lead.id, lead.fields.Status);
+                                                        });
+                                                        setIsStarMenuOpen(false);
+                                                    }}
+                                                    className="w-full text-right px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center justify-between transition-colors"
+                                                >
+                                                    {assignee}
+                                                    {isStarred && <Star size={14} className="text-amber-400 fill-amber-400" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
+                            <X size={20} className="text-slate-500" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Status Pipeline */}

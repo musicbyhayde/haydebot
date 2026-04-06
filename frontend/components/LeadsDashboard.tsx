@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Lead, Task } from '@/types';
-import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, Search, X, Filter } from 'lucide-react';
+import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, Search, X, Filter, Star } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import AddLeadModal from './AddLeadModal';
 import LeadDetailPanel from './LeadDetailPanel';
@@ -50,6 +50,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [filterService, setFilterService] = useState<string>('');
     const [filterOwner, setFilterOwner] = useState<string>('');
     const [filterStatus, setFilterStatus] = useState<string>('');
+    const [filterStarred, setFilterStarred] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
@@ -85,17 +86,23 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             if (filterOwner && l.fields.Owner !== filterOwner) return false;
             // Status filter
             if (filterStatus && l.fields.Status !== filterStatus) return false;
+            // Starred filter
+            if (filterStarred) {
+                const stars = l.fields.Starred_By || [];
+                if (!stars.includes(currentUser?.displayName || '') && !stars.includes('כולם')) return false;
+            }
             return true;
         });
-    }, [leads, searchQuery, filterService, filterOwner, filterStatus]);
+    }, [leads, searchQuery, filterService, filterOwner, filterStatus, filterStarred, currentUser]);
 
-    const hasActiveFilters = searchQuery || filterService || filterOwner || filterStatus;
+    const hasActiveFilters = searchQuery || filterService || filterOwner || filterStatus || filterStarred;
 
     const clearAllFilters = () => {
         setSearchQuery('');
         setFilterService('');
         setFilterOwner('');
         setFilterStatus('');
+        setFilterStarred(false);
     };
 
     const stats = {
@@ -240,6 +247,21 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 </button>
                             )}
                         </div>
+
+                        {/* Starred Filter Fast Toggle */}
+                        <button
+                            onClick={() => setFilterStarred(!filterStarred)}
+                            className={clsx(
+                                "flex items-center justify-center w-10 md:w-auto md:px-4 py-2.5 rounded-xl text-sm font-bold transition-all border shadow-sm",
+                                filterStarred
+                                    ? "bg-amber-50 text-amber-600 border-amber-200"
+                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            )}
+                            title="סונן לפי מועדפים שלי"
+                        >
+                            <Star size={16} className={clsx(filterStarred && "fill-amber-400 text-amber-500")} />
+                            <span className="hidden md:block ml-2">מועדפים שלי</span>
+                        </button>
 
                         {/* Filter Toggle */}
                         <button
