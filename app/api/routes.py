@@ -544,34 +544,41 @@ async def send_daily_reminders(request: Request):
             send_results.append({"phone": phone, "status": "No items for this user"})
             continue
             
-        # Build detailed message
-        message_parts = []
+        # Build detailed message (Single line, as Meta rejects newlines in template variables)
+        lead_summary = ""
         if u_leads:
-            message_parts.append("📌 *לידים בטיפול:*")
+            parts = []
             for l in u_leads:
                 name = l.get("fields", {}).get("Name", "ללא שם")
                 date = l.get("fields", {}).get("Event_Date", "ללא תאריך")
-                message_parts.append(f"👤 {name} - {date}")
+                parts.append(f"👤 {name} ({date})")
+            lead_summary = " | ".join(parts)
                 
+        task_summary = ""
         if u_tasks:
-            if message_parts: message_parts.append("") # Spacer
-            message_parts.append("✅ *משימות לביצוע:*")
+            parts = []
             for t in u_tasks:
-                title = t.get("fields", {}).get("Title", "משימה ללא תיאור")
+                title = t.get("fields", {}).get("Title", "משימה")
                 lead_links = t.get("fields", {}).get("Lead_Link") or []
                 lead_info = ""
                 if lead_links:
                     lead_id = lead_links[0]
                     lead = lead_lookup.get(lead_id, {})
-                    lead_name = lead.get("Name", "ליד לא ידוע")
+                    lead_name = lead.get("Name", "ליד")
                     lead_date = lead.get("Event_Date", "")
-                    lead_info = f" (לקוח: {lead_name}{' | ' + lead_date if lead_date else ''})"
-                message_parts.append(f"🔹 {title}{lead_info}")
+                    lead_info = f" ({lead_name}{' ' + lead_date if lead_date else ''})"
+                parts.append(f"✅ {title}{lead_info}")
+            task_summary = " | ".join(parts)
         
-        final_text = "\n".join(message_parts)
-        # Limit text length if too long for WhatsApp template
-        if len(final_text) > 1000:
-            final_text = final_text[:997] + "..."
+        final_text = ""
+        if lead_summary: final_text += f"לידים: {lead_summary}"
+        if task_summary: 
+            if final_text: final_text += " • "
+            final_text += f"משימות: {task_summary}"
+            
+        # Limit text length as Meta has limits
+        if len(final_text) > 500:
+            final_text = final_text[:497] + "..."
             
         res = whatsapp_service.send_template(phone, "admin_system_alert", "en", ["תזכורת פריטים מסומנים", final_text])
         send_results.append({"phone": phone, "user": user_name, "result": res})
