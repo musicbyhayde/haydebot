@@ -368,9 +368,15 @@ class SupabaseService:
         if not self.client: 
             raise Exception("Supabase client not initialized")
         try:
-            data = video.model_dump(exclude_none=True, by_alias=True, mode='json')
-            data["id"] = self._generate_id()
-            data["created_at"] = datetime.now().isoformat()
+            # Standardize field names to match common SQL patterns
+            data = {
+                "Label": video.label,
+                "URL": video.url,
+                "Category": video.category,
+                "Is_Active": video.is_active,
+                "id": self._generate_id(),
+                "created_at": datetime.now().isoformat()
+            }
             
             response = self.client.table("videos").insert(data).execute()
             # If execute() didn't raise, check if we have data
