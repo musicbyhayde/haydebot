@@ -368,32 +368,37 @@ class SupabaseService:
         if not self.client: 
             raise Exception("Supabase client not initialized")
         try:
-            # Standardize field names to match common SQL patterns
+            # Use lowercase field names for database compatibility
             data = {
-                "Label": video.label,
-                "URL": video.url,
-                "Category": video.category,
-                "Is_Active": video.is_active,
+                "label": video.label,
+                "url": video.url,
+                "category": video.category,
+                "is_active": video.is_active,
                 "id": self._generate_id(),
                 "created_at": datetime.now().isoformat()
             }
             
             response = self.client.table("videos").insert(data).execute()
-            # If execute() didn't raise, check if we have data
             if not response.data:
                 raise Exception("No data returned from insert operation")
                 
             return self._to_airtable_format(response.data[0])
         except Exception as e:
             print(f"Critical Error creating video: {e}")
-            raise e # Raise to be caught by the route handler
+            raise e
 
     def update_video(self, video_id: str, data: VideoUpdate) -> dict:
         """Update a video entry."""
         if not self.client: 
             raise Exception("Supabase client not initialized")
         try:
-            update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+            # Map update data to lowercase keys for DB compatibility
+            update_data = {}
+            if data.label is not None: update_data["label"] = data.label
+            if data.url is not None: update_data["url"] = data.url
+            if data.category is not None: update_data["category"] = data.category
+            if data.is_active is not None: update_data["is_active"] = data.is_active
+
             response = self.client.table("videos").update(update_data).eq("id", video_id).execute()
             
             if not response.data:

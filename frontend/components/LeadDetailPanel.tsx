@@ -1066,20 +1066,20 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                             videoOptions.map(video => (
                                                 <label key={video.id} className={clsx(
                                                     "flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all",
-                                                    selectedVideos.includes(video.fields.URL) 
+                                                    selectedVideos.includes(video.fields.url) 
                                                         ? "bg-green-50 border-green-200" 
                                                         : "bg-white border-slate-100 hover:border-slate-300 shadow-sm"
                                                 )}>
                                                     <input 
                                                         type="checkbox"
                                                         className="w-4 h-4 rounded text-green-600 focus:ring-green-500 border-slate-300"
-                                                        checked={selectedVideos.includes(video.fields.URL)}
+                                                        checked={selectedVideos.includes(video.fields.url)}
                                                         onChange={(e) => {
-                                                            if (e.target.checked) setSelectedVideos([...selectedVideos, video.fields.URL]);
-                                                            else setSelectedVideos(selectedVideos.filter(u => u !== video.fields.URL));
+                                                            if (e.target.checked) setSelectedVideos([...selectedVideos, video.fields.url]);
+                                                            else setSelectedVideos(selectedVideos.filter(u => u !== video.fields.url));
                                                         }}
                                                     />
-                                                    <span className="text-xs font-bold text-slate-700">{video.fields.Label}</span>
+                                                    <span className="text-xs font-bold text-slate-700">{video.fields.label}</span>
                                                 </label>
                                             ))
                                         )}

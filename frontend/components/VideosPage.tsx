@@ -8,10 +8,10 @@ import clsx from 'clsx';
 interface VideoEntry {
     id: string;
     fields: {
-        Label: string;
-        URL: string;
-        Category?: string;
-        Is_Active: boolean;
+        label: string;
+        url: string;
+        category?: string;
+        is_active: boolean;
     };
 }
 
@@ -73,8 +73,8 @@ export default function VideosPage({ currentUser, onMenuClick }: { currentUser: 
 
     const handleToggleActive = async (video: VideoEntry) => {
         try {
-            await api.updateVideo(video.id, { Is_Active: !video.fields.Is_Active });
-            setVideos(videos.map(v => v.id === video.id ? { ...v, fields: { ...v.fields, Is_Active: !v.fields.Is_Active } } : v));
+            await api.updateVideo(video.id, { Is_Active: !video.fields.is_active });
+            setVideos(videos.map(v => v.id === video.id ? { ...v, fields: { ...v.fields, is_active: !v.fields.is_active } } : v));
         } catch (e) {
             console.error(e);
         }
@@ -112,7 +112,7 @@ export default function VideosPage({ currentUser, onMenuClick }: { currentUser: 
                         {videos.map(video => (
                             <div key={video.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
                                 <div className="flex justify-between items-start mb-3">
-                                    <h3 className="font-bold text-slate-800 text-lg">{video.fields.Label}</h3>
+                                    <h3 className="font-bold text-slate-800 text-lg">{video.fields.label}</h3>
                                     <div className="flex items-center gap-1">
                                         <button 
                                             onClick={() => handleDeleteVideo(video.id)}
@@ -122,10 +122,10 @@ export default function VideosPage({ currentUser, onMenuClick }: { currentUser: 
                                         </button>
                                     </div>
                                 </div>
-                                <p className="text-xs text-slate-400 truncate mb-4 select-all" dir="ltr">{video.fields.URL}</p>
+                                <p className="text-xs text-slate-400 truncate mb-4 select-all" dir="ltr">{video.fields.url}</p>
                                 <div className="flex items-center justify-between">
                                     <a 
-                                        href={video.fields.URL} 
+                                        href={video.fields.url} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
                                         className="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:underline"
@@ -137,12 +137,12 @@ export default function VideosPage({ currentUser, onMenuClick }: { currentUser: 
                                         onClick={() => handleToggleActive(video)}
                                         className={clsx(
                                             "text-[10px] font-bold px-2.5 py-1 rounded-full transition-all",
-                                            video.fields.Is_Active 
+                                            video.fields.is_active 
                                                 ? "bg-green-100 text-green-700 hover:bg-green-200" 
                                                 : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                                         )}
                                     >
-                                        {video.fields.Is_Active ? 'פעיל' : 'לא פעיל'}
+                                        {video.fields.is_active ? 'פעיל' : 'לא פעיל'}
                                     </button>
                                 </div>
                             </div>
