@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException, Query, UploadFile, Depends, Security, File as FastAPIFile
 from fastapi.security.api_key import APIKeyHeader
-from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate
+from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate, VideoCreate, VideoUpdate
 from app.core.config import get_settings
 from app.services.logic import bot_logic
 from typing import List, Optional
@@ -163,6 +163,10 @@ async def get_messages(lead_id: str):
 class SendMessageRequest(BaseModel):
     text: str
 
+class SendIntroRequest(BaseModel):
+    custom_name: Optional[str] = None
+    video_urls: List[str] = []
+
 @protected_router.post("/leads/{lead_id}/messages")
 async def send_manual_message(lead_id: str, payload: SendMessageRequest):
     lead = airtable_service.leads_table.get(lead_id)
@@ -177,6 +181,68 @@ async def send_manual_message(lead_id: str, payload: SendMessageRequest):
 
     bot_logic._send_message(phone, payload.text, lead_id)
     return {"status": "sent"}
+
+@protected_router.post("/leads/{lead_id}/send-intro")
+async def send_intro_template(lead_id: str, payload: SendIntroRequest):
+    """Send the warming/intro WhatsApp template to a lead."""
+    from app.services.whatsapp import whatsapp_service
+    
+    lead = airtable_service.leads_table.get(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    phone = lead["fields"].get("Phone")
+    if not phone:
+        raise HTTPException(status_code=400, detail="Lead has no phone number")
+    
+    # Use custom name if provided, otherwise fallback to database name
+    name_to_use = payload.custom_name or lead["fields"].get("Name") or "לקוח נכבד"
+    
+    # Format video links into a single string for template parameter {{2}}
+    # Meta Compliance: Do NOT use \n in parameters. Use a space/symbol separator.
+    video_text = ""
+    if payload.video_urls:
+        video_text = "  |  ".join([f"• {url}" for url in payload.video_urls])
+    else:
+        video_text = "האתר הרשמי: https://www.hayde.co.il"
+
+    # WhatsApp templates do not allow actual newlines in parameters.
+    
+    res = whatsapp_service.send_template(
+        phone, 
+        "customer_warming_v1", 
+        "he", 
+        [name_to_use, video_text]
+    )
+    
+    # Log the action in history
+    airtable_service.create_activity(ActivityCreate(
+        actor="מערכת",
+        action_type="שליחת חומרים",
+        description=f"נשלחו חומרים ללקוח/ה: {name_to_use}",
+        lead_id=lead_id
+    ))
+    
+    return {"status": "success", "whatsapp_res": res}
+
+# ─── Videos (Video Bank) ─────────────────────────────
+
+@protected_router.get("/videos")
+async def get_videos():
+    return airtable_service.get_videos()
+
+@protected_router.post("/videos")
+async def create_video(video: VideoCreate):
+    return airtable_service.create_video(video)
+
+@protected_router.patch("/videos/{video_id}")
+async def update_video(video_id: str, video: VideoUpdate):
+    return airtable_service.update_video(video_id, video)
+
+@protected_router.delete("/videos/{video_id}")
+async def delete_video(video_id: str):
+    airtable_service.delete_video(video_id)
+    return {"status": "success"}
 
 # ─── Notes ────────────────────────────────────────────
 

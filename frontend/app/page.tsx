@@ -9,6 +9,7 @@ import TasksSection from "@/components/TasksSection";
 import MusiciansPage from "@/components/MusiciansPage";
 import AnalyticsPage from "@/components/AnalyticsPage";
 import HistoryPage from "@/components/HistoryPage";
+import VideosPage from "@/components/VideosPage";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
 import { getCurrentUser, signOut, AppUser, createSupabaseClient } from "@/lib/auth";
@@ -20,7 +21,7 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics'>('dashboard');
+  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos'>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [unreadStatus, setUnreadStatus] = useState<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>>({});
@@ -280,6 +281,11 @@ export default function Home() {
               <HistoryPage leads={leads} />
             </div>
           </div>
+        ) : view === 'videos' ? (
+          <VideosPage
+            currentUser={currentUser}
+            onMenuClick={() => setMobileMenuOpen(true)}
+          />
         ) : (
           <ChatWindow
             item={activeItem}

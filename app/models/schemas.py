@@ -164,3 +164,18 @@ class ActivityCreate(BaseModel):
     action_type: str
     description: str
     lead_id: Optional[str] = None
+
+class VideoBase(BaseSchema):
+    label: str = Field(..., alias="Label")
+    url: str = Field(..., alias="URL")
+    category: Optional[str] = Field(None, alias="Category")
+    is_active: bool = Field(True, alias="Is_Active")
+
+class VideoCreate(VideoBase):
+    pass
+
+class VideoUpdate(BaseSchema):
+    label: Optional[str] = Field(None, alias="Label")
+    url: Optional[str] = Field(None, alias="URL")
+    category: Optional[str] = Field(None, alias="Category")
+    is_active: Optional[bool] = Field(None, alias="Is_Active")

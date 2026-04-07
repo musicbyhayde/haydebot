@@ -1,6 +1,6 @@
 from supabase import create_client, Client
 from app.core.config import get_settings
-from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate
+from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate, VideoCreate, VideoUpdate
 from typing import List, Optional
 import uuid
 from datetime import datetime, timedelta
@@ -350,6 +350,35 @@ class SupabaseService:
         response = self.client.table("activities").insert(data).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
 
+    # ─── Videos CRUD ─────────────────────────────────────
+
+    def get_videos(self) -> List[dict]:
+        """Fetch all videos."""
+        if not self.client: return []
+        response = self.client.table("videos").select("*").order("created_at", desc=True).execute()
+        return self._to_airtable_list(response.data)
+
+    def create_video(self, video: VideoCreate) -> dict:
+        """Create a new video entry."""
+        if not self.client: return {}
+        data = video.model_dump(exclude_none=True, by_alias=True, mode='json')
+        data["id"] = self._generate_id()
+        data["created_at"] = datetime.now().isoformat()
+        response = self.client.table("videos").insert(data).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def update_video(self, video_id: str, data: VideoUpdate) -> dict:
+        """Update a video entry."""
+        if not self.client: return {}
+        update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        response = self.client.table("videos").update(update_data).eq("id", video_id).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def delete_video(self, video_id: str):
+        """Delete a video entry."""
+        if not self.client: return
+        self.client.table("videos").delete().eq("id", video_id).execute()
+
     # ─── Compatibility (MockTable) ────────────────────────
 
     class _MockTable:
@@ -394,6 +423,10 @@ class SupabaseService:
     @property
     def tasks_table(self):
         return self._MockTable(self, "tasks")
+
+    @property
+    def videos_table(self):
+        return self._MockTable(self, "videos")
 
 
 supabase_service = SupabaseService()

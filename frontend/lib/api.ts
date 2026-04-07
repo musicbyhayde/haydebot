@@ -226,4 +226,46 @@ export const api = {
         if (!res.ok) throw new Error('Failed to fetch analytics');
         return res.json();
     },
+
+    async sendIntro(leadId: string, data: { custom_name?: string; video_urls: string[] }): Promise<any> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/send-intro`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to send intro bundle');
+        return res.json();
+    },
+
+    // --- Videos ---
+    async getVideos(): Promise<any[]> {
+        const res = await fetchWithAuth(`${API_Base}/videos`);
+        if (!res.ok) throw new Error('Failed to fetch videos');
+        return res.json();
+    },
+
+    async createVideo(data: any): Promise<any> {
+        const res = await fetchWithAuth(`${API_Base}/videos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to create video');
+        return res.json();
+    },
+
+    async updateVideo(id: string, data: any): Promise<any> {
+        const res = await fetchWithAuth(`${API_Base}/videos/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to update video');
+        return res.json();
+    },
+
+    async deleteVideo(id: string): Promise<void> {
+        const res = await fetchWithAuth(`${API_Base}/videos/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete video');
+    }
 };
