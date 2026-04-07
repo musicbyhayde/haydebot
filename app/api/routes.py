@@ -289,6 +289,21 @@ async def create_note(lead_id: str, request: Request):
     
     return result
 
+@protected_router.patch("/notes/{note_id}")
+async def update_note(note_id: str, note: NoteUpdate):
+    try:
+        return airtable_service.update_note(note_id, note)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@protected_router.delete("/notes/{note_id}")
+async def delete_note(note_id: str):
+    try:
+        airtable_service.delete_note(note_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 # ─── File Upload ──────────────────────────────────────
 
 @protected_router.post("/upload")

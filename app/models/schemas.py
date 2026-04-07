@@ -119,6 +119,9 @@ class NoteCreate(BaseSchema):
     file_url: Optional[str] = Field(None, alias="File_URL")
     file_name: Optional[str] = Field(None, alias="File_Name")
 
+class NoteUpdate(BaseSchema):
+    content: Optional[str] = Field(None, alias="Content")
+
 
 class FinanceEntryCreate(BaseSchema):
     owner: str = Field(..., alias="Owner")

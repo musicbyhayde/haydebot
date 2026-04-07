@@ -139,6 +139,23 @@ export const api = {
         return res.json();
     },
 
+    async updateNote(noteId: string, data: { content: string }): Promise<Note> {
+        const res = await fetchWithAuth(`${API_Base}/notes/${noteId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to update note');
+        return res.json();
+    },
+
+    async deleteNote(noteId: string): Promise<void> {
+        const res = await fetchWithAuth(`${API_Base}/notes/${noteId}`, {
+            method: 'DELETE',
+        });
+        if (!res.ok) throw new Error('Failed to delete note');
+    },
+
     // --- Finance ---
     async getFinanceEntries(owner?: string): Promise<FinanceEntry[]> {
         const url = owner ? `${API_Base}/finance?owner=${owner}` : `${API_Base}/finance`;

@@ -235,6 +235,28 @@ class SupabaseService:
             print(f"Error fetching notes for lead {lead_id}: {e}")
             return []
 
+    def update_note(self, note_id: str, note: NoteUpdate) -> dict:
+        """Update a note entry."""
+        if not self.client: return {}
+        try:
+            update_data = note.model_dump(exclude_none=True, by_alias=True, mode='json')
+            response = self.client.table("notes").update(update_data).eq("id", note_id).execute()
+            if not response.data:
+                raise Exception(f"Note with id {note_id} not found or update failed")
+            return self._to_airtable_format(response.data[0])
+        except Exception as e:
+            print(f"Error updating note {note_id}: {e}")
+            raise e
+
+    def delete_note(self, note_id: str):
+        """Delete a note entry."""
+        if not self.client: return
+        try:
+            self.client.table("notes").delete().eq("id", note_id).execute()
+        except Exception as e:
+            print(f"Error deleting note {note_id}: {e}")
+            raise e
+
     # ─── Finance CRUD ─────────────────────────────────────
 
     def create_finance_entry(self, entry: FinanceEntryCreate) -> dict:

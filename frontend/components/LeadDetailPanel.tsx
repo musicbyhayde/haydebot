@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Star } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Star, Save } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task } from '@/types';
 import clsx from 'clsx';
@@ -69,6 +69,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
     const [introSending, setIntroSending] = useState(false);
     const [videoOptions, setVideoOptions] = useState<any[]>([]);
+
+    // Note Editing State
+    const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+    const [editingNoteText, setEditingNoteText] = useState('');
+    const [updatingNote, setUpdatingNote] = useState(false);
 
     useEffect(() => {
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
@@ -196,6 +201,33 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             console.error(e);
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleUpdateNote = async (noteId: string) => {
+        if (!editingNoteText.trim()) return;
+        setUpdatingNote(true);
+        try {
+            await api.updateNote(noteId, { content: editingNoteText });
+            setEditingNoteId(null);
+            setEditingNoteText('');
+            fetchNotes();
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בעדכון ההערה');
+        } finally {
+            setUpdatingNote(false);
+        }
+    };
+
+    const handleDeleteNote = async (noteId: string) => {
+        if (!confirm('האם אתה בטוח שברצונך למחוק עדכון זה?')) return;
+        try {
+            await api.deleteNote(noteId);
+            setNotes(notes.filter(n => n.id !== noteId));
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה במחיקת ההערה');
         }
     };
 
@@ -650,51 +682,104 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 <p className="text-center text-slate-400 text-sm py-8">אין עדכונים עדיין</p>
                             ) : (
                                 notes.map((note) => (
-                                    <div key={note.id} className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
+                                    <div key={note.id} className="group bg-white border border-slate-100 rounded-xl p-4 shadow-sm relative hover:border-slate-200 transition-all">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-400 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold">
                                                     {note.fields.Author?.substring(0, 1)}
                                                 </div>
-                                                <span className="text-sm font-bold text-slate-700">{note.fields.Author}</span>
-                                            </div>
-                                            <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                                                <Clock size={10} /> {formatDate(note.fields.Created_At)}
-                                            </span>
-                                        </div>
-                                        <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{note.fields.Content}</p>
-                                        {note.fields.File_URL && (() => {
-                                            const url = note.fields.File_URL!;
-                                            const name = note.fields.File_Name || 'קובץ מצורף';
-                                            const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(name) || /\.(jpg|jpeg|png|webp|gif)/i.test(url);
-                                            const isPdf = /\.pdf$/i.test(name) || /\.pdf/i.test(url);
-
-                                            return (
-                                                <div className="mt-3">
-                                                    {isImage && (
-                                                        <a href={url} target="_blank" rel="noopener noreferrer">
-                                                            <img
-                                                                src={url}
-                                                                alt={name}
-                                                                className="max-w-full max-h-48 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer object-contain"
-                                                            />
-                                                        </a>
-                                                    )}
-                                                    {isPdf && (
-                                                        <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                                            <iframe
-                                                                src={`https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`}
-                                                                className="w-full h-48 bg-white"
-                                                                title={name}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                    <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors">
-                                                        <ExternalLink size={12} /> {isPdf ? 'פתח PDF' : name}
-                                                    </a>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-slate-700">{note.fields.Author}</span>
+                                                    <span className="text-[9px] text-slate-400 flex items-center gap-1">
+                                                        <Clock size={8} /> {formatDate(note.fields.Created_At)}
+                                                    </span>
                                                 </div>
-                                            );
-                                        })()}
+                                            </div>
+                                            
+                                            {/* Action Buttons (Visible on hover) */}
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => {
+                                                        setEditingNoteId(note.id);
+                                                        setEditingNoteText(note.fields.Content);
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                                                    title="ערוך"
+                                                >
+                                                    <Pencil size={12} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDeleteNote(note.id)}
+                                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    title="מחק"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {editingNoteId === note.id ? (
+                                            <div className="mt-2 space-y-2">
+                                                <textarea 
+                                                    value={editingNoteText}
+                                                    onChange={(e) => setEditingNoteText(e.target.value)}
+                                                    className="w-full text-sm p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none h-20"
+                                                    autoFocus
+                                                />
+                                                <div className="flex justify-end gap-2">
+                                                    <button 
+                                                        onClick={() => setEditingNoteId(null)}
+                                                        className="px-3 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-all"
+                                                    >
+                                                        ביטול
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleUpdateNote(note.id)}
+                                                        disabled={updatingNote || !editingNoteText.trim()}
+                                                        className="px-3 py-1 text-[11px] font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center gap-1.5"
+                                                    >
+                                                        {updatingNote ? <RefreshCw size={10} className="animate-spin" /> : <Save size={10} />}
+                                                        שמור
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{note.fields.Content}</p>
+                                                {note.fields.File_URL && (() => {
+                                                    const url = note.fields.File_URL!;
+                                                    const name = note.fields.File_Name || 'קובץ מצורף';
+                                                    const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(name) || /\.(jpg|jpeg|png|webp|gif)/i.test(url);
+                                                    const isPdf = /\.pdf$/i.test(name) || /\.pdf/i.test(url);
+
+                                                    return (
+                                                        <div className="mt-3">
+                                                            {isImage && (
+                                                                <a href={url} target="_blank" rel="noopener noreferrer">
+                                                                    <img
+                                                                        src={url}
+                                                                        alt={name}
+                                                                        className="max-w-full max-h-48 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer object-contain"
+                                                                    />
+                                                                </a>
+                                                            )}
+                                                            {isPdf && (
+                                                                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                                                    <iframe
+                                                                        src={`https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`}
+                                                                        className="w-full h-48 bg-white"
+                                                                        title={name}
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                            <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors">
+                                                                <ExternalLink size={12} /> {isPdf ? 'פתח PDF' : name}
+                                                            </a>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </>
+                                        )}
                                     </div>
                                 ))
                             )}
