@@ -101,18 +101,6 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                     <h2 className="font-bold text-base md:text-lg text-slate-800">משימות לביצוע</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setFilterStarred(!filterStarred)}
-                        className={clsx(
-                            "flex items-center justify-center p-1.5 rounded-lg text-sm font-bold transition-all border",
-                            filterStarred
-                                ? "bg-amber-50 text-amber-600 border-amber-200"
-                                : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
-                        )}
-                        title="סונן לפי מועדפים שלי"
-                    >
-                        <Star size={16} className={clsx(filterStarred && "fill-amber-400 text-amber-500")} />
-                    </button>
                     <div className="text-xs font-bold px-2.5 py-1 bg-slate-200 text-slate-600 rounded-full">
                         {activeTasks.length} פתוחות
                     </div>
@@ -285,7 +273,7 @@ function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar }: {
                 {isStarMenuOpen && (
                     <>
                         <div className="fixed inset-0 z-[60]" onClick={() => setIsStarMenuOpen(false)}></div>
-                        <div className="absolute left-6 top-6 w-36 bg-white border border-slate-100 rounded-xl shadow-xl z-[70] py-1 overflow-hidden" dir="rtl">
+                        <div className="absolute bottom-full left-0 mb-1 w-36 bg-white border border-slate-100 rounded-xl shadow-xl z-[70] py-1 overflow-hidden" dir="rtl">
                             {['אילן', 'קובי', 'כולם'].map(assignee => {
                                 const isStarred = (task.fields.Starred_By || []).includes(assignee);
                                 const isDisabled = currentUserName === 'קובי' && assignee === 'אילן';

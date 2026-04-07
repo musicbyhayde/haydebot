@@ -382,8 +382,11 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             return (
                                 <div key={lead.id} className="flex items-center px-4 md:px-6 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white group">
                                     <div className="flex-1 min-w-[100px] md:min-w-[120px] flex flex-col justify-center overflow-hidden pr-2">
-                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                        <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
                                             <span className="font-bold text-slate-800 truncate">{lead.fields.Name || 'ללא שם'}</span>
+                                            {(lead.fields.Starred_By || []).length > 0 && (
+                                                <Star size={12} className="text-amber-400 fill-amber-400 shrink-0" />
+                                            )}
                                             {unreadStatus?.[lead.id]?.count > 0 && (
                                                 <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-bold text-white shadow-sm ring-1 ring-white shrink-0">
                                                     {unreadStatus[lead.id].count}

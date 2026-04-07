@@ -538,7 +538,12 @@ async def send_daily_reminders(request: Request):
             
         # Filter items for this specific user or "כולם"
         u_tasks = [t for t in open_tasks if user_name in (t.get("fields", {}).get("Starred_By") or []) or "כולם" in (t.get("fields", {}).get("Starred_By") or [])]
-        u_leads = [l for l in open_leads if user_name in (l.get("fields", {}).get("Starred_By") or []) or "כולם" in (l.get("fields", {}).get("Starred_By") or [])]
+        
+        # New/Processing leads are ALWAYS included for everyone, plus user's starred leads
+        u_leads = [l for l in open_leads if 
+                   l.get("fields", {}).get("Status") in ["New", "Processing"] or
+                   user_name in (l.get("fields", {}).get("Starred_By") or []) or 
+                   "כולם" in (l.get("fields", {}).get("Starred_By") or [])]
         
         if not u_tasks and not u_leads:
             send_results.append({"phone": phone, "status": "No items for this user"})
@@ -564,9 +569,9 @@ async def send_daily_reminders(request: Request):
                 if lead_links:
                     lead_id = lead_links[0]
                     lead = lead_lookup.get(lead_id, {})
-                    lead_name = lead.get("Name", "ליד")
-                    lead_date = lead.get("Event_Date", "")
-                    lead_info = f" ({lead_name}{' ' + lead_date if lead_date else ''})"
+                    lead_name = lead.get("Name")
+                    if lead_name:
+                        lead_info = f" - מקושרת לליד \"{lead_name}\""
                 parts.append(f"✅ {title}{lead_info}")
             task_summary = " | ".join(parts)
         
