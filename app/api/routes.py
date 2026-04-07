@@ -229,20 +229,38 @@ async def send_intro_template(lead_id: str, payload: SendIntroRequest):
 
 @protected_router.get("/videos")
 async def get_videos():
-    return airtable_service.get_videos()
+    try:
+        return airtable_service.get_videos()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @protected_router.post("/videos")
 async def create_video(video: VideoCreate):
-    return airtable_service.create_video(video)
+    try:
+        return airtable_service.create_video(video)
+    except Exception as e:
+        # Check for common database errors
+        detail = str(e)
+        if "column" in detail.lower():
+            detail = f"שגיאת סכימה: אחד השדות לא תואם למסד הנתונים ({detail})"
+        elif "policy" in detail.lower():
+            detail = "בעיית הרשאות: וודא שהרצת את ה-SQL עם ה-POLICY"
+        raise HTTPException(status_code=400, detail=detail)
 
 @protected_router.patch("/videos/{video_id}")
 async def update_video(video_id: str, video: VideoUpdate):
-    return airtable_service.update_video(video_id, video)
+    try:
+        return airtable_service.update_video(video_id, video)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @protected_router.delete("/videos/{video_id}")
 async def delete_video(video_id: str):
-    airtable_service.delete_video(video_id)
-    return {"status": "success"}
+    try:
+        airtable_service.delete_video(video_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # ─── Notes ────────────────────────────────────────────
 

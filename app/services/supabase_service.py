@@ -354,55 +354,59 @@ class SupabaseService:
 
     def get_videos(self) -> List[dict]:
         """Fetch all videos."""
-        if not self.client: return []
+        if not self.client: 
+            raise Exception("Supabase client not initialized")
         try:
             response = self.client.table("videos").select("*").order("created_at", desc=True).execute()
             return self._to_airtable_list(response.data)
         except Exception as e:
             print(f"Error fetching videos: {e}")
-            return []
+            raise e
 
     def create_video(self, video: VideoCreate) -> dict:
         """Create a new video entry."""
-        if not self.client: return {}
+        if not self.client: 
+            raise Exception("Supabase client not initialized")
         try:
             data = video.model_dump(exclude_none=True, by_alias=True, mode='json')
             data["id"] = self._generate_id()
             data["created_at"] = datetime.now().isoformat()
             
             response = self.client.table("videos").insert(data).execute()
-            if hasattr(response, 'error') and response.error:
-                print(f"Supabase Error (Insert): {response.error}")
-            
-            return self._to_airtable_format(response.data[0]) if response.data else {}
+            # If execute() didn't raise, check if we have data
+            if not response.data:
+                raise Exception("No data returned from insert operation")
+                
+            return self._to_airtable_format(response.data[0])
         except Exception as e:
             print(f"Critical Error creating video: {e}")
-            return {}
+            raise e # Raise to be caught by the route handler
 
     def update_video(self, video_id: str, data: VideoUpdate) -> dict:
         """Update a video entry."""
-        if not self.client: return {}
+        if not self.client: 
+            raise Exception("Supabase client not initialized")
         try:
             update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
             response = self.client.table("videos").update(update_data).eq("id", video_id).execute()
             
-            if hasattr(response, 'error') and response.error:
-                print(f"Supabase Error (Update): {response.error}")
+            if not response.data:
+                raise Exception(f"Video with id {video_id} not found or update failed")
                 
-            return self._to_airtable_format(response.data[0]) if response.data else {}
+            return self._to_airtable_format(response.data[0])
         except Exception as e:
             print(f"Critical Error updating video {video_id}: {e}")
-            return {}
+            raise e
 
     def delete_video(self, video_id: str):
         """Delete a video entry."""
-        if not self.client: return
+        if not self.client: 
+            raise Exception("Supabase client not initialized")
         try:
-            response = self.client.table("videos").delete().eq("id", video_id).execute()
-            if hasattr(response, 'error') and response.error:
-                print(f"Supabase Error (Delete): {response.error}")
+            self.client.table("videos").delete().eq("id", video_id).execute()
         except Exception as e:
             print(f"Critical Error deleting video {video_id}: {e}")
+            raise e
 
     # ─── Compatibility (MockTable) ────────────────────────
 
