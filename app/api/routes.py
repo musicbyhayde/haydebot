@@ -304,6 +304,24 @@ async def upload_file(file: UploadFile = FastAPIFile(...)):
 async def get_musicians():
     return airtable_service.get_all_musicians()
 
+@public_router.get("/videos/test")
+async def public_test_videos():
+    """Public test route to check if videos table is reachable."""
+    from app.services.supabase_service import airtable_service
+    if not airtable_service.client:
+        return {"status": "error", "message": "Supabase client not initialized"}
+    try:
+        # Simple count query using exact count for test
+        res = airtable_service.client.table("videos").select("*", count="exact").limit(1).execute()
+        return {
+            "status": "ok", 
+            "count": res.count, 
+            "message": "Connection to videos table successful!",
+            "data_preview": res.data[0] if res.data else "No records found"
+        }
+    except Exception as e:
+        return {"status": "error", "details": str(e)}
+
 @protected_router.post("/musicians")
 async def create_musician(request: Request):
     """Create a new musician from the dashboard."""
