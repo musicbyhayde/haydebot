@@ -1,6 +1,6 @@
 from supabase import create_client, Client
 from app.core.config import get_settings
-from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate, VideoCreate, VideoUpdate
+from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate, VideoCreate, VideoUpdate
 from typing import List, Optional
 import uuid
 from datetime import datetime, timedelta
