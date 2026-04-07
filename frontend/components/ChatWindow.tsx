@@ -3,6 +3,7 @@ import { Send, Bot, CheckCheck, Paperclip, MoreVertical, Phone, Video, Image as 
 import { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { format, isToday, isYesterday } from 'date-fns';
+import SendMaterialsModal from './SendMaterialsModal';
 
 interface ChatWindowProps {
     item: Lead | Musician | null;
@@ -15,6 +16,7 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
     const [inputText, setInputText] = useState("");
     const [sending, setSending] = useState(false);
     const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+    const [isMaterialsModalOpen, setIsMaterialsModalOpen] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -140,6 +142,16 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
                     </div>
                 </div>
                 <div className="flex gap-3 text-slate-400">
+                    {!isMusician && (
+                        <button 
+                            onClick={() => setIsMaterialsModalOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl transition-all border border-green-100 shadow-sm"
+                            title="שלח חומרים בוואטסאפ"
+                        >
+                            <Video size={16} />
+                            <span className="text-xs font-bold hidden sm:inline">שלח חומרים</span>
+                        </button>
+                    )}
                     <a href={`tel:${phone}`} className="p-2 hover:bg-slate-100 rounded-full transition-colors inline-block" title="התקשר"><Phone size={20} /></a>
                     <button className="p-2 hover:bg-slate-100 rounded-full transition-colors"><MoreVertical size={20} /></button>
                 </div>
@@ -241,6 +253,16 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
                         onClick={(e) => e.stopPropagation()} // Prevent click through to close
                     />
                 </div>
+            )}
+
+            {/* Materials Modal (Only for Leads) */}
+            {!isMusician && item && (
+                <SendMaterialsModal 
+                    isOpen={isMaterialsModalOpen}
+                    onClose={() => setIsMaterialsModalOpen(false)}
+                    leadId={item.id}
+                    initialName={item.fields.Name || ''}
+                />
             )}
         </div>
     );
