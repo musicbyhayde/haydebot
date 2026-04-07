@@ -75,6 +75,13 @@ class HaydeBotLogic:
                 contact = value.get("contacts", [{}])[0]
                 sender_phone = message.get("from")
                 sender_name = contact.get("profile", {}).get("name", "Unknown")
+
+                # 0. Admin Detection - Completely ignore messages from admins
+                admin_numbers = settings.NOTIFICATION_NUMBERS.split(",") if settings.NOTIFICATION_NUMBERS else []
+                if any(self._phones_match(n.strip(), sender_phone) for n in admin_numbers):
+                    print(f"DEBUG: Message from admin {sender_phone}. Ignoring entirely.")
+                    return
+                
                 
                 # Identify message type and content
                 msg_type = message.get("type")

@@ -564,14 +564,18 @@ async def send_daily_reminders(request: Request):
             parts = []
             for t in u_tasks:
                 title = t.get("fields", {}).get("Title", "משימה")
-                lead_links = t.get("fields", {}).get("Lead_Link") or []
+                # Fix: In tasks table, the lead link is stored in 'Lead_ID'
+                lead_id = t.get("fields", {}).get("Lead_ID")
                 lead_info = ""
-                if lead_links:
-                    lead_id = lead_links[0]
+                if lead_id:
+                    # lead_id is sometimes a string, sometimes a list in Airtable-emulated schemas
+                    if isinstance(lead_id, list) and lead_id:
+                        lead_id = lead_id[0]
+                    
                     lead = lead_lookup.get(lead_id, {})
                     lead_name = lead.get("Name")
                     if lead_name:
-                        lead_info = f" - מקושרת לליד \"{lead_name}\""
+                        lead_info = f" (מקושרת לליד \"{lead_name}\")"
                 parts.append(f"✅ {title}{lead_info}")
             task_summary = " | ".join(parts)
         
