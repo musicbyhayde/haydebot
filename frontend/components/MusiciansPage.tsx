@@ -46,6 +46,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
         Phone: '',
         Score: 5,
         Is_Active: true,
+        Type: 'REFERRER' as const,
     });
 
     useEffect(() => {
@@ -91,7 +92,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
         try {
             const created = await api.createMusician(form);
             setMusicians([created, ...musicians]);
-            setForm({ Name: '', Phone: '', Score: 5, Is_Active: true });
+            setForm({ Name: '', Phone: '', Score: 5, Is_Active: true, Type: 'REFERRER' });
             setShowAddForm(false);
         } catch (e) {
             console.error('Failed to create musician:', e);
@@ -106,6 +107,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
             Phone: m.fields.Phone,
             Score: m.fields.Score ?? 5,
             Is_Active: m.fields.Is_Active ?? true,
+            Type: m.fields.Type ?? 'REFERRER',
         });
     };
 
@@ -296,6 +298,31 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                     </div>
                                 </div>
                             </form>
+                            <div className="mt-4">
+                                <label className="block text-[10px] font-bold text-slate-500 mb-2">סוג נגן (הפניות או מאגר צוות)</label>
+                                <div className="flex gap-2">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setForm({ ...form, Type: 'REFERRER' })}
+                                        className={clsx(
+                                            "flex-1 px-3 py-2 rounded-lg text-xs font-bold border transition-all",
+                                            form.Type === 'REFERRER' ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-400 border-slate-100"
+                                        )}
+                                    >
+                                        📢 בוזוקי (הפניות)
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setForm({ ...form, Type: 'POOL' })}
+                                        className={clsx(
+                                            "flex-1 px-3 py-2 rounded-lg text-xs font-bold border transition-all",
+                                            form.Type === 'POOL' ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-white text-slate-400 border-slate-100"
+                                        )}
+                                    >
+                                        🎹 מאגר (צוות)
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
                             <button onClick={() => setShowAddForm(false)} className="px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700">ביטול</button>
@@ -321,6 +348,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                 <div className="flex-1 min-w-[120px]">שם הנגן</div>
                             <div className="w-32 shrink-0 hidden md:flex">טלפון</div>
                             <div className="w-24 shrink-0 hidden md:flex text-center justify-center">סטטוס</div>
+                            <div className="w-20 shrink-0 hidden md:flex text-center justify-center">סוג</div>
                             <div className="w-28 shrink-0 hidden md:flex">ציון</div>
                             <div className="w-32 shrink-0 flex justify-end">פעולות</div>
                         </div>
@@ -352,6 +380,16 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                                     {editForm.Is_Active ? 'פעיל' : 'לא פעיל'}
                                                 </button>
                                             </div>
+                                            <div className="w-20 hidden md:flex items-center justify-center">
+                                                <select 
+                                                    value={editForm.Type} 
+                                                    onChange={(e) => setEditForm({ ...editForm, Type: e.target.value })}
+                                                    className="w-full text-[10px] p-1 border border-slate-200 rounded bg-white font-bold"
+                                                >
+                                                    <option value="REFERRER">הפניות</option>
+                                                    <option value="POOL">מאגר</option>
+                                                </select>
+                                            </div>
                                             <div className="w-28 hidden md:flex items-center gap-2">
                                                 <input type="range" min="1" max="10" value={editForm.Score} onChange={(e) => setEditForm({ ...editForm, Score: parseInt(e.target.value) })} className="flex-1 accent-purple-600" />
                                             </div>
@@ -374,6 +412,15 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                             <div className="w-24 shrink-0 hidden md:flex justify-center">
                                                 <span className={clsx("px-2 py-0.5 rounded-full text-[9px] font-bold", isActive ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-slate-100 text-slate-400')}>
                                                     {isActive ? 'פעיל' : 'לא פעיל'}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="w-20 shrink-0 hidden md:flex justify-center">
+                                                <span className={clsx(
+                                                    "px-2 py-0.5 rounded text-[9px] font-bold",
+                                                    m.fields.Type === 'POOL' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                                                )}>
+                                                    {m.fields.Type === 'POOL' ? 'מאגר' : 'הפניות'}
                                                 </span>
                                             </div>
                                             

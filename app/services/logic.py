@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 from app.services.supabase_service import airtable_service
 from app.services.whatsapp import whatsapp_service
-from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, ServiceType, ConversationState, MessageCreate
+from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, ServiceType, ConversationState, MessageCreate, MusicianType
 from app.core.scheduler import scheduler
 from app.core.config import get_settings
 from app.services.ai import ai_service
@@ -702,7 +702,7 @@ class HaydeBotLogic:
         # Update status to Distributed
         airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.DISTRIBUTED))
         
-        active_musicians = airtable_service.get_active_musicians()
+        active_musicians = airtable_service.get_active_musicians(musician_type=MusicianType.REFERRER)
 
         # If no musicians at all, immediately notify admins so the lead isn't lost
         if not active_musicians:
@@ -751,7 +751,7 @@ class HaydeBotLogic:
         lead = airtable_service.leads_table.get(lead_id)
         if lead["fields"].get("Musician_Assigned"): return
 
-        active_musicians = airtable_service.get_active_musicians()
+        active_musicians = airtable_service.get_active_musicians(musician_type=MusicianType.REFERRER)
         tier_b = [m for m in active_musicians if 5 <= m["fields"].get("Score", 5) <= 7]
         
         for mus in tier_b:
@@ -779,7 +779,8 @@ class HaydeBotLogic:
         lead = airtable_service.leads_table.get(lead_id)
         if lead["fields"].get("Musician_Assigned"): return
 
-        active_musicians = airtable_service.get_active_musicians()
+        active_musicians = airtable_service.get_active_musicians(musician_type=MusicianType.REFERRER)
+
         tier_c = [m for m in active_musicians if m["fields"].get("Score", 5) < 5]
         
         for mus in tier_c:

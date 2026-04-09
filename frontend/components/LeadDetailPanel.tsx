@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Star, Save } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Lead, Note, FinanceEntry, Task } from '@/types';
+import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
 import SendMaterialsModal from './SendMaterialsModal';
 
@@ -35,7 +35,7 @@ const MANUAL_STATUSES = [
 ];
 
 export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false, onClose, onStatusChange }: LeadDetailPanelProps) {
-    const [tab, setTab] = useState<'updates' | 'tasks' | 'info' | 'finance'>('updates');
+    const [tab, setTab] = useState<'updates' | 'tasks' | 'team' | 'info' | 'finance'>('updates');
     const [notes, setNotes] = useState<Note[]>([]);
     const [noteText, setNoteText] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -71,6 +71,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
     const [editingNoteText, setEditingNoteText] = useState('');
     const [updatingNote, setUpdatingNote] = useState(false);
+    
+    // Team State
+    const [poolMusicians, setPoolMusicians] = useState<Musician[]>([]);
+    const [loadingTeam, setLoadingTeam] = useState(false);
+    const [savingTeam, setSavingTeam] = useState(false);
 
     useEffect(() => {
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
@@ -90,7 +95,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         fetchNotes();
         fetchFinances();
         fetchTasks();
-    }, [lead.id]);
+        if (tab === 'team') fetchPoolMusicians();
+    }, [lead.id, tab]);
 
 
     const fetchNotes = async () => {
@@ -120,6 +126,19 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             setTasks(allTasks.filter(t => t.fields.Lead_ID === lead.id));
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const fetchPoolMusicians = async () => {
+        setLoadingTeam(true);
+        try {
+            const data = await api.getMusicians();
+            // Filter to only POOL musicians
+            setPoolMusicians(data.filter(m => m.fields.Type === 'POOL' && m.fields.Is_Active !== false));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingTeam(false);
         }
     };
 
@@ -366,6 +385,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         { key: 'updates' as const, label: 'עדכונים', count: notes.length },
         { key: 'finance' as const, label: 'פיננסי', count: finances.length },
         { key: 'tasks' as const, label: 'משימות', count: tasks.filter(t => !t.fields.Is_Completed).length },
+        { key: 'team' as const, label: 'צוות', count: lead.fields.Musician_Team?.length || 0 },
         { key: 'info' as const, label: 'פרטים' },
     ];
 
@@ -904,6 +924,134 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             >
                                 {savingInfo ? 'שומר...' : 'שמור שינויים'}
                             </button>
+                        </div>
+                    )}
+
+                    {tab === 'team' && (
+                        <div className="flex flex-col h-full bg-slate-50">
+                            {/* Selector Header */}
+                            <div className="p-4 bg-white border-b border-slate-200">
+                                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">הוסף נגן לצוות (ממאגר הנגנים)</label>
+                                <div className="flex gap-2">
+                                    <div className="flex-1 relative">
+                                        <select 
+                                            className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 appearance-none transition-all"
+                                            onChange={async (e) => {
+                                                const mId = e.target.value;
+                                                if (!mId) return;
+                                                
+                                                const currentTeam = lead.fields.Musician_Team || [];
+                                                if (currentTeam.includes(mId)) return;
+                                                
+                                                setSavingTeam(true);
+                                                try {
+                                                    const newTeam = [...currentTeam, mId];
+                                                    await api.updateLead(lead.id, { Musician_Team: newTeam });
+                                                    // Update locally
+                                                    Object.assign(lead.fields, { Musician_Team: newTeam });
+                                                    e.target.value = ''; // Reset select
+                                                } catch (err) {
+                                                    console.error(err);
+                                                    alert('שגיאה בעדכון הצוות');
+                                                } finally {
+                                                    setSavingTeam(false);
+                                                }
+                                            }}
+                                            disabled={savingTeam}
+                                        >
+                                            <option value="">בחר נגן להוספה...</option>
+                                            {poolMusicians
+                                                .filter(m => !(lead.fields.Musician_Team || []).includes(m.id))
+                                                .map(m => (
+                                                    <option key={m.id} value={m.id}>{m.fields.Name} ({m.fields.Phone})</option>
+                                                ))
+                                            }
+                                        </select>
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                            <RefreshCw size={14} className={savingTeam ? 'animate-spin' : ''} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Assigned Team List */}
+                            <div className="flex-1 overflow-y-auto p-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                                        <Wrench size={14} className="text-purple-600" /> צוות משובץ לאירוע
+                                    </h3>
+                                    <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                        {(lead.fields.Musician_Team || []).length} נגנים
+                                    </span>
+                                </div>
+
+                                {loadingTeam ? (
+                                    <div className="text-center py-12">
+                                        <RefreshCw size={24} className="text-purple-300 animate-spin mx-auto mb-2" />
+                                        <p className="text-xs font-bold text-slate-400">טוען רשימת צוות...</p>
+                                    </div>
+                                ) : (lead.fields.Musician_Team || []).length === 0 ? (
+                                    <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+                                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-300">
+                                            <Wrench size={24} />
+                                        </div>
+                                        <p className="text-xs font-bold text-slate-400">לא שובץ צוות לאירוע זה</p>
+                                        <p className="text-[10px] text-slate-300 mt-1">השתמש בתפריט למעלה כדי להוסיף נגנים</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {(lead.fields.Musician_Team || []).map(mId => {
+                                            const m = poolMusicians.find(pm => pm.id === mId) || { fields: { Name: 'טוען...', Phone: '' } };
+                                            return (
+                                                <div key={mId} className="group flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-purple-200 transition-all">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-[10px] font-bold">
+                                                            {m.fields.Name.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-bold text-slate-800">{m.fields.Name}</div>
+                                                            <div className="text-[10px] font-medium text-slate-400 font-mono">{m.fields.Phone}</div>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={async () => {
+                                                            if (!confirm(`להסיר את ${m.fields.Name} מהצוות?`)) return;
+                                                            setSavingTeam(true);
+                                                            try {
+                                                                const newTeam = (lead.fields.Musician_Team || []).filter(id => id !== mId);
+                                                                await api.updateLead(lead.id, { Musician_Team: newTeam });
+                                                                Object.assign(lead.fields, { Musician_Team: newTeam });
+                                                            } catch (err) {
+                                                                console.error(err);
+                                                                alert('שגיאה בעדכון הצוות');
+                                                            } finally {
+                                                                setSavingTeam(false);
+                                                            }
+                                                        }}
+                                                        disabled={savingTeam}
+                                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Future automation hint */}
+                            <div className="p-4 mt-auto">
+                                <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 flex gap-3">
+                                    <Calendar size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-[10px] font-bold text-blue-800">בעתיד: סנכרון יומן אוטומטי</p>
+                                        <p className="text-[9px] text-blue-600 leading-relaxed mt-0.5">
+                                            כאשר הליד יעבור לסטטוס הצעה, הבוט יקים אירוע ביומן וישלח זימונים לצוות שנבחר כאן באופן אוטומטי.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 

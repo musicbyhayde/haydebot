@@ -388,6 +388,7 @@ async def create_musician(request: Request):
         phone=body.get("Phone", ""),
         is_active=body.get("Is_Active", True),
         score=body.get("Score", 5),
+        type=body.get("Type", "REFERRER")
     )
     return airtable_service.create_musician(musician)
 

@@ -146,10 +146,13 @@ class SupabaseService:
 
     # ─── Musicians ────────────────────────────────────────
 
-    def get_active_musicians(self) -> List[dict]:
+    def get_active_musicians(self, musician_type: Optional[str] = None) -> List[dict]:
         """Get all musicians marked as Is_Active."""
         if not self.client: return []
-        response = self.client.table("musicians").select("*").eq("Is_Active", True).execute()
+        query = self.client.table("musicians").select("*").eq("Is_Active", True)
+        if musician_type:
+            query = query.eq("Type", musician_type)
+        response = query.execute()
         return self._to_airtable_list(response.data)
 
     def get_all_musicians(self) -> List[dict]:

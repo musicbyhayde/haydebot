@@ -15,6 +15,7 @@ export interface Lead {
         Closing_Amount?: number;
         Lost_Reason?: string;
         Musician_Assigned?: string[];
+        Musician_Team?: string[];
         Bot_Mute_Until?: string;
         Last_Read_At?: string;
         Starred_By?: string[];
@@ -42,8 +43,10 @@ export interface Musician {
         Phone: string;
         Is_Active?: boolean;
         Score?: number;
+        Type?: 'REFERRER' | 'POOL';
     };
 }
+
 
 export interface Note {
     id: string;

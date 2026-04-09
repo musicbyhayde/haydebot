@@ -19,6 +19,10 @@ class LeadStatus(str, Enum):
     WAITING_PAYMENT = "Waiting_Payment"
     TALKING = "Talking"
 
+class MusicianType(str, Enum):
+    REFERRER = "REFERRER"
+    POOL = "POOL"
+
 class ConversationState(str, Enum):
     START = "START"
     AWAITING_SERVICE = "AWAITING_SERVICE"
@@ -52,6 +56,7 @@ class LeadBase(BaseSchema):
     owner: Optional[str] = Field(None, alias="Owner")
     last_read_at: Optional[datetime] = Field(None, alias="Last_Read_At")
     starred_by: Optional[List[str]] = Field(default_factory=list, alias="Starred_By")
+    musician_team: Optional[List[str]] = Field(default_factory=list, alias="Musician_Team")
 
 class LeadCreate(LeadBase):
     pass
@@ -66,6 +71,7 @@ class LeadUpdate(BaseSchema):
     location: Optional[str] = Field(None, alias="Location")
     guests: Optional[str] = Field(None, alias="Guests")
     musician_assigned: Optional[List[str]] = Field(None, alias="Musician_Assigned") 
+    musician_team: Optional[List[str]] = Field(None, alias="Musician_Team")
     bot_mute_until: Optional[datetime] = Field(None, alias="Bot_Mute_Until")
     last_summary: Optional[str] = Field(None, alias="Last_Summary")
     closing_amount: Optional[float] = Field(None, alias="Closing_Amount")
@@ -84,21 +90,25 @@ class MusicianBase(BaseSchema):
     phone: str = Field(..., alias="Phone")
     is_active: bool = Field(True, alias="Is_Active")
     score: int = Field(5, alias="Score")
+    type: MusicianType = Field(MusicianType.REFERRER, alias="Type")
 
 class MusicianCreate(BaseSchema):
     name: str = Field(..., alias="Name")
     phone: str = Field(..., alias="Phone")
     is_active: bool = Field(True, alias="Is_Active")
     score: int = Field(5, alias="Score")
+    type: MusicianType = Field(MusicianType.REFERRER, alias="Type")
 
 class MusicianUpdate(BaseSchema):
     name: Optional[str] = Field(None, alias="Name")
     phone: Optional[str] = Field(None, alias="Phone")
     is_active: Optional[bool] = Field(None, alias="Is_Active")
     score: Optional[int] = Field(None, alias="Score")
+    type: Optional[MusicianType] = Field(None, alias="Type")
 
 class MusicianResponse(MusicianBase):
     id: str
+
 
 class MessageCreate(BaseSchema):
     lead: Optional[List[str]] = Field(None, alias="Lead") # Link to Lead Record ID
