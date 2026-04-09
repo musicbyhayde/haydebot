@@ -218,13 +218,16 @@ async def send_intro_template(lead_id: str, payload: SendIntroRequest):
     # Save the message to history so it appears in the chat
     try:
         # Construct a human-readable version of the template for the DB
+        # Note: We must avoid backslashes inside f-string expressions for Python compatibility
+        formatted_videos = video_text.replace('  |  ', '\n')
         readable_content = (
             f"היי {name_to_use}, איזה כיף שפנית אלינו! 🎸\n\n"
             f"הנה כמה סרטונים להתרשמות מהביצועים שלנו:\n"
-            f"{video_text.replace('  |  ', '\\n')}\n\n"
+            f"{formatted_videos}\n\n"
             f"נשמח להתאים לכם את החבילה המושלמת! 🎶"
-        ).replace('\\n', '\n')
+        )
         
+        from app.models.schemas import MessageCreate
         airtable_service.create_message(MessageCreate(
             Lead=[lead_id],
             Direction="Outbound",
