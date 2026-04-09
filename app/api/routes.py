@@ -215,7 +215,27 @@ async def send_intro_template(lead_id: str, payload: SendIntroRequest):
         [name_to_use, video_text]
     )
     
-    # Log the action in history
+    # Save the message to history so it appears in the chat
+    try:
+        # Construct a human-readable version of the template for the DB
+        readable_content = (
+            f"היי {name_to_use}, איזה כיף שפנית אלינו! 🎸\n\n"
+            f"הנה כמה סרטונים להתרשמות מהביצועים שלנו:\n"
+            f"{video_text.replace('  |  ', '\\n')}\n\n"
+            f"נשמח להתאים לכם את החבילה המושלמת! 🎶"
+        ).replace('\\n', '\n')
+        
+        airtable_service.create_message(MessageCreate(
+            Lead=[lead_id],
+            Direction="Outbound",
+            Content=readable_content,
+            Timestamp=datetime.now(),
+            Status="Sent"
+        ))
+    except Exception as e:
+        print(f"Error saving intro message to history: {e}")
+
+    # Log the action in activity history
     airtable_service.create_activity(ActivityCreate(
         actor="מערכת",
         action_type="שליחת חומרים",
