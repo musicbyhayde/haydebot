@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { AppUser } from '@/lib/auth';
+import { Analytics } from '@/types';
 import { BarChart3, TrendingUp, Users, Music, DollarSign, AlertTriangle, Menu, ArrowDown, ArrowUp, Minus, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -11,15 +12,7 @@ interface AnalyticsPageProps {
     onMenuClick?: () => void;
 }
 
-interface Analytics {
-    funnel: { total: number; completedBot: number; assigned: number; closed: number; lost: number };
-    monthly: Record<string, { new: number; closed: number; lost: number; revenue: number }>;
-    services: Record<string, { count: number; closed: number; revenue: number }>;
-    musicianPerformance: Array<{ name: string; received: number; closed: number; lost: number; revenue: number }>;
-    revenue: { total: number; commission: number };
-    lostReasons: Record<string, number>;
-    conversionRate: number;
-}
+// Interface moved to @/types
 
 export default function AnalyticsPage({ currentUser, onMenuClick }: AnalyticsPageProps) {
     const [data, setData] = useState<Analytics | null>(null);
@@ -100,7 +93,7 @@ export default function AnalyticsPage({ currentUser, onMenuClick }: AnalyticsPag
                     <div className="p-4 md:p-5 bg-white rounded-2xl shadow-sm border border-slate-200">
                         <div className="flex items-center gap-2 mb-2">
                             <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600"><Users size={16} /></div>
-                            <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase">סה"כ לידים</span>
+                            <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase">סה&quot;כ לידים</span>
                         </div>
                         <p className="text-2xl md:text-3xl font-extrabold text-slate-900">{funnel.total}</p>
                     </div>

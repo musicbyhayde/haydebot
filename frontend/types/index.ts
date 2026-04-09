@@ -96,7 +96,45 @@ export interface Activity {
         actor: string;
         action_type: string;
         description: string;
-        lead_id?: string;
         created_at: string;
+        lead_id?: string;
     };
+}
+
+export interface Video {
+    id: string;
+    fields: {
+        Label: string;
+        URL: string;
+        Thumbnail?: string;
+        Category?: string;
+        Is_Active?: boolean;
+        Created_At?: string;
+    };
+}
+
+export interface MusicianStats {
+    received: number;
+    closed: number;
+    lost: number;
+    revenue: number;
+    commission: number;
+}
+
+export interface Analytics {
+    funnel: { total: number; completedBot: number; assigned: number; closed: number; lost: number };
+    monthly: Record<string, { new: number; closed: number; lost: number; revenue: number }>;
+    services: Record<string, { count: number; closed: number; revenue: number }>;
+    musicianPerformance: Array<{ name: string; received: number; closed: number; lost: number; revenue: number }>;
+    revenue: { total: number; commission: number };
+    lostReasons: Record<string, number>;
+    conversionRate: number;
+}
+
+export interface FinanceSummaryItem {
+    income: number;
+    expenses: number;
+    balance: number;
+    cash_balance: number;
+    bank_balance: number;
 }

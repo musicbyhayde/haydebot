@@ -5,15 +5,7 @@ import { X, Send, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
 
-interface VideoEntry {
-    id: string;
-    fields: {
-        label: string;
-        url: string;
-        category?: string;
-        is_active: boolean;
-    };
-}
+import { Video } from '@/types';
 
 interface SendMaterialsModalProps {
     isOpen: boolean;
@@ -25,7 +17,7 @@ interface SendMaterialsModalProps {
 export default function SendMaterialsModal({ isOpen, onClose, leadId, initialName }: SendMaterialsModalProps) {
     const [introCustomName, setIntroCustomName] = useState(initialName);
     const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
-    const [videoOptions, setVideoOptions] = useState<VideoEntry[]>([]);
+    const [videoOptions, setVideoOptions] = useState<Video[]>([]);
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
 
@@ -40,8 +32,8 @@ export default function SendMaterialsModal({ isOpen, onClose, leadId, initialNam
         setLoading(true);
         try {
             const data = await api.getVideos();
-            // Filter only active videos using lowercase 'is_active'
-            setVideoOptions(data.filter((v: any) => v.fields.is_active));
+            // Filter only active videos using PascalCase 'Is_Active'
+            setVideoOptions(data.filter((v: Video) => v.fields.Is_Active !== false));
         } catch (e) {
             console.error('Error fetching videos:', e);
         } finally {
@@ -97,7 +89,7 @@ export default function SendMaterialsModal({ isOpen, onClose, leadId, initialNam
                             placeholder="שם הלקוח..."
                             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
                         />
-                        <p className="text-[9px] text-slate-400 italic font-medium">זה השם שיופיע אחרי "היי..." בתבנית</p>
+                        <p className="text-[9px] text-slate-400 italic font-medium">זה השם שיופיע אחרי &quot;היי...&quot; בתבנית</p>
                     </div>
 
                     {/* Video Selection */}
@@ -114,20 +106,20 @@ export default function SendMaterialsModal({ isOpen, onClose, leadId, initialNam
                                 videoOptions.map(video => (
                                     <label key={video.id} className={clsx(
                                         "flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all",
-                                        selectedVideos.includes(video.fields.url) 
+                                        selectedVideos.includes(video.fields.URL) 
                                             ? "bg-green-50 border-green-200" 
                                             : "bg-white border-slate-100 hover:border-slate-300 shadow-sm"
                                     )}>
                                         <input 
                                             type="checkbox"
                                             className="w-4 h-4 rounded text-green-600 focus:ring-green-500 border-slate-300"
-                                            checked={selectedVideos.includes(video.fields.url)}
+                                            checked={selectedVideos.includes(video.fields.URL)}
                                             onChange={(e) => {
-                                                if (e.target.checked) setSelectedVideos([...selectedVideos, video.fields.url]);
-                                                else setSelectedVideos(selectedVideos.filter(u => u !== video.fields.url));
+                                                if (e.target.checked) setSelectedVideos([...selectedVideos, video.fields.URL]);
+                                                else setSelectedVideos(selectedVideos.filter(u => u !== video.fields.URL));
                                             }}
                                         />
-                                        <span className="text-xs font-bold text-slate-700">{video.fields.label}</span>
+                                        <span className="text-xs font-bold text-slate-700">{video.fields.Label}</span>
                                     </label>
                                 ))
                             )}

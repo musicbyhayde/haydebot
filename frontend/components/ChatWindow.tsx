@@ -57,7 +57,9 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
 
     const name = item.fields.Name || item.fields.Phone;
     const isMusician = 'Is_Active' in item.fields;
-    const status = isMusician ? (item.fields as any).Is_Active ? 'פעיל' : 'לא פעיל' : (item as Lead).fields.Status;
+    const status = isMusician 
+        ? (item.fields as Musician['fields']).Is_Active ? 'פעיל' : 'לא פעיל' 
+        : (item as Lead).fields.Status;
     const subtext = isMusician ? '🎻 נגן רשום' : (item as Lead).fields.Service || "🌟 ליד חדש";
     const phone = item.fields.Phone;
 

@@ -17,8 +17,9 @@ export default function LoginPage() {
         try {
             await signIn(email, password);
             window.location.href = '/';
-        } catch (err: any) {
-            setError(err.message || 'שגיאה בהתחברות');
+        } catch (err: unknown) {
+            const error = err as Error;
+            setError(error.message || 'שגיאה בהתחברות');
         } finally {
             setLoading(false);
         }

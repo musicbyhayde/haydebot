@@ -42,7 +42,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [showClosed, setShowClosed] = useState(false);
     const [showLost, setShowLost] = useState(false);
     const [showWaitingPayment, setShowWaitingPayment] = useState(false);
-    const [detailLead, setDetailLead] = useState<Lead | null>(null);
+    const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
+    const detailLead = useMemo(() => {
+        return detailLeadId ? leads.find(l => l.id === detailLeadId) || null : null;
+    }, [leads, detailLeadId]);
     const [tasks, setTasks] = useState<Task[]>([]);
 
     // ─── Search & Filter State ──────────────────────────
@@ -58,14 +61,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     }, []);
 
     // Sync detailLead with updated data from props when leads list changes
-    useEffect(() => {
-        if (detailLead) {
-            const updatedLead = leads.find(l => l.id === detailLead.id);
-            if (updatedLead) {
-                setDetailLead(updatedLead);
-            }
-        }
-    }, [leads, detailLead?.id]);
+    // Replaced synchronous setState effect with useMemo derived state
 
     const activeTasks = tasks.filter(t => !t.fields.Is_Completed);
 
@@ -166,7 +162,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         {lead.fields.Closing_Amount ? `₪${lead.fields.Closing_Amount.toLocaleString()}` : (lead.fields.Lost_Reason || '—')}
                                     </div>
                                     <div className="w-12 flex justify-center">
-                                        <button onClick={() => setDetailLead(lead)} className="text-slate-400 hover:text-blue-600 transition-colors" title="פרטים">
+                                        <button onClick={() => setDetailLeadId(lead.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title="פרטים">
                                             <FileText size={14} />
                                         </button>
                                     </div>
@@ -425,7 +421,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     </div>
                                     <div className="w-24 md:w-28 shrink-0 flex items-center justify-end gap-1 md:gap-1.5">
                                         <button
-                                            onClick={() => setDetailLead(lead)}
+                                            onClick={() => setDetailLeadId(lead.id)}
                                             className="text-slate-400 hover:text-blue-600 transition-colors p-1"
                                             title="פרטים ועדכונים"
                                         >
@@ -440,7 +436,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                     : "bg-blue-50 text-blue-600 border border-blue-50 hover:bg-blue-100"
                                             )}
                                         >
-                                            <span className="hidden sm:inline">צ'אט</span> <ArrowRight size={11} />
+                                            <span className="hidden sm:inline">צ&apos;אט</span> <ArrowRight size={11} />
                                         </button>
                                     </div>
                                 </div>
@@ -483,7 +479,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                     lead={detailLead}
                     currentUserName={currentUser?.displayName || ''}
                     isAdmin={currentUser?.role === 'admin' || currentUser?.role === 'partner'}
-                    onClose={() => setDetailLead(null)}
+                    onClose={() => setDetailLeadId(null)}
                     onStatusChange={() => { 
                         // Instead of closing, we just refresh. 
                         // The useEffect above will update detailLead state when prop updates.

@@ -237,7 +237,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     };
 
     const handleStatusChange = async (newStatus: string) => {
-        const updateData: any = { Status: newStatus };
+        const updateData: Partial<Lead['fields']> = { Status: newStatus };
         if (newStatus === 'Closed' && closingAmount) {
             updateData.Closing_Amount = parseFloat(closingAmount);
         }
@@ -865,14 +865,14 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <label className="text-[10px] font-bold text-slate-500 mr-1">שירות</label>
                                     <select
                                         value={editData.Service || ''}
-                                        onChange={(e) => setEditData({ ...editData, Service: e.target.value as any })}
+                                        onChange={(e) => setEditData({ ...editData, Service: e.target.value })}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
                                     >
                                         <option value="">בחר שירות...</option>
                                         <option value="Bouzouki">נגן בוזוקי 🎸</option>
                                         <option value="Reception">קבלת פנים 🎻</option>
                                         <option value="Band">להקה 🥁</option>
-                                        <option value="DJ">דיג'יי 🎧</option>
+                                        <option value="DJ">דיג&apos;יי 🎧</option>
                                         <option value="Talk">לדבר עם מישהו 📞</option>
                                         <option value="Other">אחר ✨</option>
                                     </select>
@@ -1200,7 +1200,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 />
                                 <select
                                     value={financePaymentMethod}
-                                    onChange={(e) => setFinancePaymentMethod(e.target.value as any)}
+                                    onChange={(e) => setFinancePaymentMethod(e.target.value as 'חשבון' | 'מזומן')}
                                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
                                 >
                                     <option value="חשבון">העברה / אשראי / ביט</option>

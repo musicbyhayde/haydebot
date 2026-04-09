@@ -1,4 +1,4 @@
-import { Lead, Message, Note, FinanceEntry, Task, Activity } from '@/types';
+import { Lead, Message, Note, FinanceEntry, Task, Activity, Musician, Video, MusicianStats, Analytics, FinanceSummaryItem } from '@/types';
 
 const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'hayde-security-key';
@@ -29,7 +29,7 @@ export const api = {
         return res.json();
     },
 
-    async updateLead(leadId: string, data: Partial<Lead['fields']>): Promise<any> {
+    async updateLead(leadId: string, data: Partial<Lead['fields']>): Promise<Lead> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -39,7 +39,7 @@ export const api = {
         return res.json();
     },
 
-    async markLeadAsRead(leadId: string): Promise<any> {
+    async markLeadAsRead(leadId: string): Promise<{ status: string }> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/read`, {
             method: 'POST',
         });
@@ -70,7 +70,7 @@ export const api = {
     },
 
     // --- Musicians ---
-    async getMusicians(): Promise<any[]> {
+    async getMusicians(): Promise<Musician[]> {
         const res = await fetchWithAuth(`${API_Base}/musicians`);
         if (!res.ok) throw new Error('Failed to fetch musicians');
         return res.json();
@@ -91,7 +91,7 @@ export const api = {
         if (!res.ok) throw new Error('Failed to send musician message');
     },
 
-    async createMusician(data: any): Promise<any> {
+    async createMusician(data: Partial<Musician['fields']>): Promise<Musician> {
         const res = await fetchWithAuth(`${API_Base}/musicians`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -101,7 +101,7 @@ export const api = {
         return res.json();
     },
 
-    async updateMusician(id: string, data: any): Promise<any> {
+    async updateMusician(id: string, data: Partial<Musician['fields']>): Promise<Musician> {
         const res = await fetchWithAuth(`${API_Base}/musicians/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -116,7 +116,7 @@ export const api = {
         if (!res.ok) throw new Error('Failed to delete musician');
     },
 
-    async getMusicianStats(id: string): Promise<{ received: number; closed: number; lost: number; revenue: number; commission: number }> {
+    async getMusicianStats(id: string): Promise<MusicianStats> {
         const res = await fetchWithAuth(`${API_Base}/musicians/${id}/stats`);
         if (!res.ok) throw new Error('Failed to fetch musician stats');
         return res.json();
@@ -164,7 +164,7 @@ export const api = {
         return res.json();
     },
 
-    async createFinanceEntry(data: any): Promise<FinanceEntry> {
+    async createFinanceEntry(data: Partial<FinanceEntry['fields']>): Promise<FinanceEntry> {
         const res = await fetchWithAuth(`${API_Base}/finance`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -174,7 +174,7 @@ export const api = {
         return res.json();
     },
 
-    async updateFinanceEntry(id: string, data: any): Promise<any> {
+    async updateFinanceEntry(id: string, data: Partial<FinanceEntry['fields']>): Promise<FinanceEntry> {
         const res = await fetchWithAuth(`${API_Base}/finance/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -189,7 +189,7 @@ export const api = {
         if (!res.ok) throw new Error('Failed to delete finance entry');
     },
 
-    async getFinanceSummary(): Promise<any> {
+    async getFinanceSummary(): Promise<Record<string, FinanceSummaryItem>> {
         const res = await fetchWithAuth(`${API_Base}/finance/summary`);
         if (!res.ok) throw new Error('Failed to fetch finance summary');
         return res.json();
@@ -204,7 +204,7 @@ export const api = {
         return Array.isArray(data) ? data : [];
     },
 
-    async createTask(data: any): Promise<Task> {
+    async createTask(data: Partial<Task['fields']>): Promise<Task> {
         const res = await fetchWithAuth(`${API_Base}/tasks`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -214,7 +214,7 @@ export const api = {
         return res.json();
     },
 
-    async updateTask(id: string, data: any): Promise<Task> {
+    async updateTask(id: string, data: Partial<Task['fields']>): Promise<Task> {
         const res = await fetchWithAuth(`${API_Base}/tasks/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -238,13 +238,13 @@ export const api = {
 
     // ── Analytics ─────────────────────────────────────
 
-    async getAnalytics(): Promise<any> {
+    async getAnalytics(): Promise<Analytics> {
         const res = await fetchWithAuth(`${API_Base}/analytics`);
         if (!res.ok) throw new Error('Failed to fetch analytics');
         return res.json();
     },
 
-    async sendIntro(leadId: string, data: { custom_name?: string; video_urls: string[] }): Promise<any> {
+    async sendIntro(leadId: string, data: { custom_name?: string; video_urls: string[] }): Promise<{ status: string }> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/send-intro`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -255,13 +255,13 @@ export const api = {
     },
 
     // --- Videos ---
-    async getVideos(): Promise<any[]> {
+    async getVideos(): Promise<Video[]> {
         const res = await fetchWithAuth(`${API_Base}/videos`);
         if (!res.ok) throw new Error('Failed to fetch videos');
         return res.json();
     },
 
-    async createVideo(data: any): Promise<any> {
+    async createVideo(data: Partial<Video['fields']>): Promise<Video> {
         const res = await fetchWithAuth(`${API_Base}/videos`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -271,7 +271,7 @@ export const api = {
         return res.json();
     },
 
-    async updateVideo(id: string, data: any): Promise<any> {
+    async updateVideo(id: string, data: Partial<Video['fields']>): Promise<Video> {
         const res = await fetchWithAuth(`${API_Base}/videos/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },

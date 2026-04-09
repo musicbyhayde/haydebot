@@ -59,8 +59,9 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
             onCreated();
             onClose();
             setForm({ Name: '', Phone: '', Service: '', Event_Date: '', Location: '', Guests: '', Owner: currentUserName || 'אילן', Status: 'New' });
-        } catch (err: any) {
-            setError(err.message || 'שגיאה ביצירת ליד');
+        } catch (err: unknown) {
+            const error = err as Error;
+            setError(error.message || 'שגיאה ביצירת ליד');
         } finally {
             setSubmitting(false);
         }

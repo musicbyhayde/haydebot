@@ -5,7 +5,7 @@ import { Musician, Message } from '@/types';
 import { api } from '@/lib/api';
 import { AppUser } from '@/lib/auth';
 import {
-    Plus, Trash2, Edit, Check, X, Star, Phone, Music, Menu,
+    Plus, Trash2, Edit, Check, X, Star, Music, Menu,
     TrendingUp, Users, Award, DollarSign, AlertTriangle,
     ChevronDown, ChevronUp, MessageSquare, Send
 } from 'lucide-react';
@@ -24,12 +24,12 @@ interface MusicianStats {
     commission: number;
 }
 
-export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPageProps) {
+export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
     const [musicians, setMusicians] = useState<Musician[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState<any>({});
+    const [editForm, setEditForm] = useState<Partial<Musician['fields']>>({});
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [stats, setStats] = useState<Record<string, MusicianStats>>({});
     const [loadingStats, setLoadingStats] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
         Phone: '',
         Score: 5,
         Is_Active: true,
-        Type: 'REFERRER' as const,
+        Type: 'REFERRER' as 'REFERRER' | 'POOL',
     });
 
     useEffect(() => {
@@ -383,7 +383,7 @@ export default function MusiciansPage({ currentUser, onMenuClick }: MusiciansPag
                                             <div className="w-20 hidden md:flex items-center justify-center">
                                                 <select 
                                                     value={editForm.Type} 
-                                                    onChange={(e) => setEditForm({ ...editForm, Type: e.target.value })}
+                                                    onChange={(e) => setEditForm({ ...editForm, Type: e.target.value as 'REFERRER' | 'POOL' })}
                                                     className="w-full text-[10px] p-1 border border-slate-200 rounded bg-white font-bold"
                                                 >
                                                     <option value="REFERRER">הפניות</option>

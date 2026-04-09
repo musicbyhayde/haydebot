@@ -159,9 +159,9 @@ export default function Home() {
     }
   };
 
-  const activeItem: any = view === 'musicians'
+  const activeItem: Lead | Musician | null = (view === 'musicians'
     ? musicians.find(m => m.id === activeId)
-    : leads.find(l => l.id === activeId);
+    : leads.find(l => l.id === activeId)) || null;
 
   const handleSelect = async (id: string) => {
     setActiveId(id);
@@ -247,7 +247,6 @@ export default function Home() {
           />
         ) : view === 'musicians' ? (
           <MusiciansPage
-            currentUser={currentUser}
             onMenuClick={() => setMobileMenuOpen(true)}
           />
         ) : view === 'analytics' ? (
@@ -283,7 +282,6 @@ export default function Home() {
           </div>
         ) : view === 'videos' ? (
           <VideosPage
-            currentUser={currentUser}
             onMenuClick={() => setMobileMenuOpen(true)}
           />
         ) : (

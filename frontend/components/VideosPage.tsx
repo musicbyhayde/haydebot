@@ -2,21 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Video, Trash2, Plus, Film, ExternalLink, RefreshCw, Save, X } from 'lucide-react';
+import { Video } from '@/types';
+import { Trash2, Plus, Film, ExternalLink, RefreshCw, X } from 'lucide-react';
 import clsx from 'clsx';
 
-interface VideoEntry {
-    id: string;
-    fields: {
-        label: string;
-        url: string;
-        category?: string;
-        is_active: boolean;
-    };
-}
+// VideoEntry removed, using Video from @/types
 
-export default function VideosPage({ currentUser, onMenuClick }: { currentUser: any, onMenuClick: () => void }) {
-    const [videos, setVideos] = useState<VideoEntry[]>([]);
+export default function VideosPage({ onMenuClick }: { onMenuClick: () => void }) {
+    const [videos, setVideos] = useState<Video[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newLabel, setNewLabel] = useState('');
@@ -71,10 +64,10 @@ export default function VideosPage({ currentUser, onMenuClick }: { currentUser: 
         }
     };
 
-    const handleToggleActive = async (video: VideoEntry) => {
+    const handleToggleActive = async (video: Video) => {
         try {
-            await api.updateVideo(video.id, { Is_Active: !video.fields.is_active });
-            setVideos(videos.map(v => v.id === video.id ? { ...v, fields: { ...v.fields, is_active: !v.fields.is_active } } : v));
+            await api.updateVideo(video.id, { Is_Active: !video.fields.Is_Active });
+            setVideos(videos.map(v => v.id === video.id ? { ...v, fields: { ...v.fields, Is_Active: !v.fields.Is_Active } } : v));
         } catch (e) {
             console.error(e);
         }
@@ -112,7 +105,7 @@ export default function VideosPage({ currentUser, onMenuClick }: { currentUser: 
                         {videos.map(video => (
                             <div key={video.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
                                 <div className="flex justify-between items-start mb-3">
-                                    <h3 className="font-bold text-slate-800 text-lg">{video.fields.label}</h3>
+                                    <h3 className="font-bold text-slate-800 text-lg">{video.fields.Label}</h3>
                                     <div className="flex items-center gap-1">
                                         <button 
                                             onClick={() => handleDeleteVideo(video.id)}
@@ -122,10 +115,10 @@ export default function VideosPage({ currentUser, onMenuClick }: { currentUser: 
                                         </button>
                                     </div>
                                 </div>
-                                <p className="text-xs text-slate-400 truncate mb-4 select-all" dir="ltr">{video.fields.url}</p>
+                                <p className="text-xs text-slate-400 truncate mb-4 select-all" dir="ltr">{video.fields.URL}</p>
                                 <div className="flex items-center justify-between">
                                     <a 
-                                        href={video.fields.url} 
+                                        href={video.fields.URL} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
                                         className="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:underline"
@@ -137,12 +130,12 @@ export default function VideosPage({ currentUser, onMenuClick }: { currentUser: 
                                         onClick={() => handleToggleActive(video)}
                                         className={clsx(
                                             "text-[10px] font-bold px-2.5 py-1 rounded-full transition-all",
-                                            video.fields.is_active 
+                                            video.fields.Is_Active 
                                                 ? "bg-green-100 text-green-700 hover:bg-green-200" 
                                                 : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                                         )}
                                     >
-                                        {video.fields.is_active ? 'פעיל' : 'לא פעיל'}
+                                        {video.fields.Is_Active ? 'פעיל' : 'לא פעיל'}
                                     </button>
                                 </div>
                             </div>

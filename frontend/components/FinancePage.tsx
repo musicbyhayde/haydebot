@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Edit, Check, X, TrendingUp, TrendingDown, Menu, AlertCircle, Link, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import { api } from '@/lib/api';
-import { FinanceEntry, Lead } from '@/types';
+import { FinanceEntry, Lead, FinanceSummaryItem } from '@/types';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
 
@@ -20,10 +20,22 @@ interface FormErrors {
     Date?: string;
 }
 
+interface FinanceForm {
+    Type: 'income' | 'expense';
+    Date: string;
+    Description: string;
+    Musician: string;
+    Amount: string;
+    Payment_Status: string;
+    Payment_Method: 'חשבון' | 'מזומן';
+    Lead_ID: string;
+    Owner: string;
+}
+
 export default function FinancePage({ currentUser, onMenuClick }: FinancePageProps) {
     const [entries, setEntries] = useState<FinanceEntry[]>([]);
     const [leads, setLeads] = useState<Lead[]>([]);
-    const [summary, setSummary] = useState<Record<string, { income: number; expenses: number; balance: number; cash_balance: number; bank_balance: number }>>({});
+    const [summary, setSummary] = useState<Record<string, FinanceSummaryItem>>({});
     const [loading, setLoading] = useState(true);
     // removed showAddForm
     const [activeTab, setActiveTab] = useState<'אילן' | 'קובי'>('אילן');
@@ -40,7 +52,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     const [sortBy, setSortBy] = useState<'date' | 'type'>('date');
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<FinanceForm>({
         Type: 'income',
         Date: new Date().toISOString().split('T')[0],
         Description: '',
@@ -469,7 +481,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                         <div>
                             <label className="block text-[10px] font-bold text-slate-500 mb-1">סוג תנועה *</label>
-                            <select value={form.Type} onChange={(e) => setForm({ ...form, Type: e.target.value, Musician: '' })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all">
+                            <select value={form.Type} onChange={(e) => setForm({ ...form, Type: e.target.value as 'income' | 'expense', Musician: '' })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all">
                                 <option value="income">💰 הכנסה</option>
                                 <option value="expense">💸 הוצאה</option>
                             </select>
@@ -577,7 +589,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                                 {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                             <label className="block text-[10px] font-bold text-slate-500 mb-1">אמצעי</label>
-                            <select value={form.Payment_Method} onChange={(e) => setForm({ ...form, Payment_Method: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
+                            <select value={form.Payment_Method} onChange={(e) => setForm({ ...form, Payment_Method: e.target.value as 'חשבון' | 'מזומן' })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
                                 <option value="חשבון">🏦 חשבון (בנק/אשראי/העברה)</option>
                                 <option value="מזומן">💵 מזומן</option>
                             </select>

@@ -12,7 +12,7 @@ beforeEach(() => {
     mockFetch.mockReset();
 });
 
-const okJson = (data: any) => ({
+const okJson = (data: unknown) => ({
     ok: true,
     json: () => Promise.resolve(data),
     status: 200,
