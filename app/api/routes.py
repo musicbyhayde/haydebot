@@ -210,7 +210,7 @@ async def send_intro_template(lead_id: str, payload: SendIntroRequest):
     
     res = whatsapp_service.send_template(
         phone, 
-        "customer_warming_v1", 
+        "customer_warming_intro", 
         "he", 
         [name_to_use, video_text]
     )
