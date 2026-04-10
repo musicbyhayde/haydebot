@@ -98,6 +98,7 @@ class MusicianBase(BaseSchema):
 class MusicianCreate(BaseSchema):
     name: str = Field(..., alias="Name")
     phone: str = Field(..., alias="Phone")
+    email: Optional[str] = Field(None, alias="Email")
     is_active: bool = Field(True, alias="Is_Active")
     score: int = Field(5, alias="Score")
     type: MusicianType = Field(MusicianType.REFERRER, alias="Type")
