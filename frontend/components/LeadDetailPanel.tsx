@@ -343,18 +343,16 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         }
     };
 
-    const handleCalendarConfirm = async (data: any) => {
+    const handleCreateCalendarEvent = async (payload: any) => {
         try {
-            if (isCalendarUpdate) {
-                await api.updateCalendarEvent(lead.id, data);
-                alert('האירוע עודכן בהצלחה ביומן');
-            } else {
-                const res = await api.createCalendarEvent(lead.id, data);
-                if (res.status === 'created' || res.status === 'exists') {
-                    alert('האירוע נוצר בהצלחה והצוות סומן ביומן');
-                }
+            const eventId = await api.createCalendarEvent(lead.id, payload);
+            if (eventId) {
+                // Update local state for immediate UI reflect
+                Object.assign(lead.fields, { Google_Event_ID: eventId });
+                alert('האירוע נוצר בהצלחה ביומן');
+                onStatusChange(lead.id, lead.fields.Status);
+                setIsCalendarModalOpen(false);
             }
-            onStatusChange(lead.id, lead.fields.Status); // Refresh
         } catch (e) {
             console.error(e);
             alert('שגיאה בסנכרון היומן');
@@ -365,6 +363,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         if (!confirm('האם אתה בטוח שברצונך למחוק את האירוע מהיומן?')) return;
         try {
             await api.deleteCalendarEvent(lead.id);
+            // Update local state for immediate UI reflect
+            Object.assign(lead.fields, { Google_Event_ID: undefined });
             alert('האירוע נמחק מהיומן');
             onStatusChange(lead.id, lead.fields.Status);
         } catch (e) {
