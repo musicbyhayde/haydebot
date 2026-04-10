@@ -154,17 +154,43 @@ class SupabaseService:
     def get_active_musicians(self, musician_type: Optional[str] = None) -> List[dict]:
         """Get all musicians marked as Is_Active."""
         if not self.client: return []
-        query = self.client.table("musicians").select("*").eq("Is_Active", True)
+        query = self.client.table("musicians").select("*").eq("is_active", True)
         if musician_type:
-            query = query.eq("Type", musician_type)
+            query = query.eq("type", musician_type)
         response = query.execute()
-        return self._to_airtable_list(response.data)
+        results = []
+        for r in response.data:
+            results.append({
+                "id": r.get("id"),
+                "fields": {
+                    "Name": r.get("name"),
+                    "Phone": r.get("phone"),
+                    "Email": r.get("email"),
+                    "Type": r.get("type"),
+                    "Score": r.get("score"),
+                    "Is_Active": r.get("is_active")
+                }
+            })
+        return results
 
     def get_all_musicians(self) -> List[dict]:
         """Fetch all musicians."""
         if not self.client: return []
         response = self.client.table("musicians").select("*").execute()
-        return self._to_airtable_list(response.data)
+        results = []
+        for r in response.data:
+            results.append({
+                "id": r.get("id"),
+                "fields": {
+                    "Name": r.get("name"),
+                    "Phone": r.get("phone"),
+                    "Email": r.get("email"),
+                    "Type": r.get("type"),
+                    "Score": r.get("score"),
+                    "Is_Active": r.get("is_active")
+                }
+            })
+        return results
 
     def create_musician(self, musician: "MusicianCreate") -> dict:
         """Create a new musician."""
