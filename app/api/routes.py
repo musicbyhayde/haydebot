@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException, Query, UploadFile, Depends, Security, File as FastAPIFile
 from fastapi.security.api_key import APIKeyHeader
-from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, VideoCreate, VideoUpdate
+from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, VideoCreate, VideoUpdate, CalendarEventCreate, CalendarEventUpdate
 from app.core.config import get_settings
 from app.services.logic import bot_logic
 from typing import List, Optional
