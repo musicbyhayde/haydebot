@@ -257,7 +257,8 @@ async def delete_calendar_event(lead_id: str):
 
     success = google_calendar.delete_event(event_id)
     if success:
-        airtable_service.update_lead(lead_id, LeadUpdate(google_event_id=None))
+        # Using a direct dictionary update to ensure field is cleared (Airtable prefers "" or None)
+        airtable_service.leads_table.update(lead_id, {"Google_Event_ID": ""})
         return {"status": "deleted"}
     else:
         raise HTTPException(status_code=500, detail="Failed to delete calendar event")
