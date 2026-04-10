@@ -196,3 +196,20 @@ class VideoUpdate(BaseSchema):
     url: Optional[str] = Field(None, alias="URL")
     category: Optional[str] = Field(None, alias="Category")
     is_active: Optional[bool] = Field(None, alias="Is_Active")
+
+class VideoResponse(VideoBase):
+    id: str
+
+class CalendarEventCreate(BaseSchema):
+    summary: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    event_date: str
+    team_emails: List[str]
+
+class CalendarEventUpdate(BaseSchema):
+    summary: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    event_date: Optional[str] = None
+    team_emails: Optional[List[str]] = None
