@@ -34,9 +34,10 @@ class GoogleCalendarService:
                 )
                 # Refresh the token immediately to verify
                 creds.refresh(Request())
+                print("GOOGLE_CALENDAR: Authenticated with OAuth 2.0 (Invitations supported)")
                 return build('calendar', 'v3', credentials=creds)
             except Exception as e:
-                print(f"Failed to authenticate with OAuth 2.0 Refresh Token: {e}")
+                print(f"GOOGLE_CALENDAR: Failed to authenticate with OAuth 2.0 Refresh Token: {e}")
 
         # 2. Fallback to Service Account (Legacy - Does NOT support external invitations)
         p_id = os.getenv('G_PROJECT_ID')
@@ -54,11 +55,12 @@ class GoogleCalendarService:
                     "token_uri": "https://oauth2.googleapis.com/token",
                 }
                 creds = service_account.Credentials.from_service_account_info(info, scopes=self.scopes)
+                print("GOOGLE_CALENDAR: Falling back to Service Account (Invitations NOT supported)")
                 return build('calendar', 'v3', credentials=creds)
             except Exception as e:
-                print(f"Failed to authenticate with service account fallback: {e}")
+                print(f"GOOGLE_CALENDAR: Failed to authenticate with service account fallback: {e}")
 
-        print("WARNING: No valid Google Calendar credentials found.")
+        print("GOOGLE_CALENDAR: WARNING: No valid Google Calendar credentials found.")
         return None
 
     def create_event(self, lead_name: str, location: str, event_date_str: str, musician_emails: List[str], custom_description: Optional[str] = None) -> Optional[str]:

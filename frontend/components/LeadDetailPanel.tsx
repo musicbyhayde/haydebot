@@ -82,6 +82,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [poolMusicians, setPoolMusicians] = useState<Musician[]>([]);
     const [loadingTeam, setLoadingTeam] = useState(false);
     const [savingTeam, setSavingTeam] = useState(false);
+    const [syncingCalendar, setSyncingCalendar] = useState(false);
 
     useEffect(() => {
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
@@ -361,6 +362,20 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         } catch (e) {
             console.error(e);
             alert('שגיאה בסנכרון היומן');
+        }
+    };
+
+    const handleSyncMusicians = async () => {
+        if (!lead.fields.Google_Event_ID) return;
+        setSyncingCalendar(true);
+        try {
+            await api.updateCalendarEvent(lead.id, {});
+            alert('הנגנים סונכרנו בהצלחה ליומן');
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בסנכרון הנגנים ליומן');
+        } finally {
+            setSyncingCalendar(false);
         }
     };
 
@@ -1067,15 +1082,6 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     // Update locally
                                                     Object.assign(lead.fields, { Musician_Team: newTeam });
                                                     
-                                                    // Automatic Calendar Sync
-                                                    if (lead.fields.Google_Event_ID) {
-                                                        try {
-                                                            await api.updateCalendarEvent(lead.id, {});
-                                                        } catch (err) {
-                                                            console.error('Auto calendar sync failed:', err);
-                                                        }
-                                                    }
-                                                    
                                                     e.target.value = ''; // Reset select
                                                 } catch (err) {
                                                     console.error(err);
@@ -1148,15 +1154,6 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                                 const newTeam = (lead.fields.Musician_Team || []).filter(id => id !== mId);
                                                                 await api.updateLead(lead.id, { Musician_Team: newTeam });
                                                                 Object.assign(lead.fields, { Musician_Team: newTeam });
-
-                                                                // Automatic Calendar Sync
-                                                                if (lead.fields.Google_Event_ID) {
-                                                                    try {
-                                                                        await api.updateCalendarEvent(lead.id, {});
-                                                                    } catch (err) {
-                                                                        console.error('Auto calendar sync failed:', err);
-                                                                    }
-                                                                }
                                                             } catch (err) {
                                                                 console.error(err);
                                                                 alert('שגיאה בעדכון הצוות');
@@ -1176,18 +1173,22 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 )}
                             </div>
                             
-                            {/* Future automation hint */}
-                            <div className="p-4 mt-auto">
-                                <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 flex gap-3">
-                                    <Calendar size={16} className="text-blue-500 shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-[10px] font-bold text-blue-800">בעתיד: סנכרון יומן אוטומטי</p>
-                                        <p className="text-[9px] text-blue-600 leading-relaxed mt-0.5">
-                                            כאשר הליד יעבור לסטטוס הצעה, הבוט יקים אירוע ביומן וישלח זימונים לצוות שנבחר כאן באופן אוטומטי.
-                                        </p>
-                                    </div>
+                            {/* Calendar Sync Action */}
+                            {lead.fields.Google_Event_ID && (
+                                <div className="p-4 mt-auto border-t border-slate-200 bg-white">
+                                    <button
+                                        onClick={handleSyncMusicians}
+                                        disabled={syncingCalendar}
+                                        className="w-full py-3 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+                                    >
+                                        {syncingCalendar ? <RefreshCw className="animate-spin" size={14} /> : <Calendar size={14} />}
+                                        עדכן נגנים ביומן
+                                    </button>
+                                    <p className="text-[10px] text-slate-400 text-center mt-2 font-medium">
+                                        שלח זימונים או עדכן את רשימת המשתתפים ביומן
+                                    </p>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
 
