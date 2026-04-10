@@ -1,5 +1,13 @@
 import { Lead, Message, Note, FinanceEntry, Task, Activity, Musician, Video, MusicianStats, Analytics, FinanceSummaryItem } from '@/types';
 
+export interface CalendarEventPayload {
+    summary?: string;
+    location?: string;
+    description?: string;
+    event_date: string;
+    team_emails: string[];
+}
+
 const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'hayde-security-key';
 
@@ -286,7 +294,8 @@ export const api = {
         if (!res.ok) throw new Error('Failed to delete video');
     },
 
-    async createCalendarEvent(leadId: string, payload?: any): Promise<{ status: string; event_id: string }> {
+
+    async createCalendarEvent(leadId: string, payload?: CalendarEventPayload): Promise<{ status: string; event_id: string }> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/calendar-event`, {
             method: 'POST',
             headers: payload ? { 'Content-Type': 'application/json' } : {},
@@ -296,7 +305,7 @@ export const api = {
         return res.json();
     },
 
-    async updateCalendarEvent(leadId: string, payload: any): Promise<{ status: string }> {
+    async updateCalendarEvent(leadId: string, payload: CalendarEventPayload): Promise<{ status: string }> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/calendar-event`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
