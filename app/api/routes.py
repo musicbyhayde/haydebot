@@ -229,7 +229,12 @@ async def update_calendar_event(lead_id: str, payload: CalendarEventUpdate):
     else:
         team_ids = lead["fields"].get("Musician_Team") or []
         musicians = airtable_service.get_all_musicians()
-        emails_to_use = [m["fields"].get("Email") for m in musicians if m["id"] in team_ids and m["fields"].get("Email")]
+        emails_to_use = []
+        for m in musicians:
+            if m["id"] in team_ids:
+                email = m["fields"].get("Email") or m["fields"].get("email")
+                if email:
+                    emails_to_use.append(email)
         
         print(f"DEBUG: Musician Team IDs: {team_ids}")
         print(f"DEBUG: Found {len(emails_to_use)} emails for the team: {emails_to_use}")
