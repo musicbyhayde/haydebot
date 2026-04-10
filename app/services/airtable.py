@@ -48,7 +48,9 @@ class AirtableService:
 
     def update_lead(self, record_id: str, data: LeadUpdate) -> dict:
         """Update an existing lead by Record ID."""
-        update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        # Use exclude_unset=True so that fields explicitly set to None (like Google_Event_ID) 
+        # are included in the update to clear them in Airtable.
+        update_data = data.model_dump(exclude_unset=True, by_alias=True, mode='json')
         return self.leads_table.update(record_id, update_data)
 
     def get_all_leads(self) -> List[dict]:
