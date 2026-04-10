@@ -122,24 +122,6 @@ async def update_lead(lead_id: str, request: Request):
     import asyncio
     asyncio.create_task(bot_logic.check_and_trigger_bouzouki_protocol(lead_id))
 
-    # Auto-create finance entry when lead is closed with a closing amount
-    if body.get("Status") == "Closed":
-        if body.get("Closing_Amount"):
-            try:
-                lead = airtable_service.leads_table.get(lead_id)
-                finance_entry = FinanceEntryCreate(
-                    owner=lead["fields"].get("Owner", ""),
-                    entry_type="income",
-                    date=datetime.now().strftime("%Y-%m-%d"),
-                    description=f"סגירת ליד: {lead['fields'].get('Name', 'ללא שם')}",
-                    event_name=lead["fields"].get("Service", ""),
-                    amount=float(body["Closing_Amount"]),
-                    payment_status="לא שולם",
-                    lead_id=lead_id,
-                )
-                airtable_service.create_finance_entry(finance_entry)
-            except Exception as e:
-                print(f"Error auto-creating finance entry: {e}")
 
         # Remove (אופציה) prefix from Google Calendar event if it exists
         try:
