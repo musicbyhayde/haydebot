@@ -155,6 +155,10 @@ class GoogleCalendarService:
             self.service.events().delete(calendarId=self.calendar_id, eventId=event_id).execute()
             return True
         except HttpError as error:
+            # If already deleted (410) or not found (404), count as success
+            if error.resp.status in [404, 410]:
+                print(f"Event {event_id} already deleted or not found.")
+                return True
             print(f"An error occurred in delete_event: {error}")
             return False
 
