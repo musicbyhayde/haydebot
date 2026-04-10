@@ -284,5 +284,40 @@ export const api = {
     async deleteVideo(id: string): Promise<void> {
         const res = await fetchWithAuth(`${API_Base}/videos/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete video');
+    },
+
+    async createCalendarEvent(leadId: string, payload?: any): Promise<{ status: string; event_id: string }> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/calendar-event`, {
+            method: 'POST',
+            headers: payload ? { 'Content-Type': 'application/json' } : {},
+            body: payload ? JSON.stringify(payload) : undefined,
+        });
+        if (!res.ok) throw new Error('Failed to create calendar event');
+        return res.json();
+    },
+
+    async updateCalendarEvent(leadId: string, payload: any): Promise<{ status: string }> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/calendar-event`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Failed to update calendar event');
+        return res.json();
+    },
+
+    async deleteCalendarEvent(leadId: string): Promise<{ status: string }> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/calendar-event`, {
+            method: 'DELETE',
+        });
+        if (!res.ok) throw new Error('Failed to delete calendar event');
+        return res.json();
+    },
+
+    async deleteLead(leadId: string, deleteCalendar: boolean = false): Promise<void> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${leadId}?delete_calendar=${deleteCalendar}`, {
+            method: 'DELETE',
+        });
+        if (!res.ok) throw new Error('Failed to delete lead');
     }
 };

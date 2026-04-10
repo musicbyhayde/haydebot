@@ -57,6 +57,7 @@ class LeadBase(BaseSchema):
     last_read_at: Optional[datetime] = Field(None, alias="Last_Read_At")
     starred_by: Optional[List[str]] = Field(default_factory=list, alias="Starred_By")
     musician_team: Optional[List[str]] = Field(default_factory=list, alias="Musician_Team")
+    google_event_id: Optional[str] = Field(None, alias="Google_Event_ID")
 
 class LeadCreate(LeadBase):
     pass
@@ -79,6 +80,7 @@ class LeadUpdate(BaseSchema):
     owner: Optional[str] = Field(None, alias="Owner")
     last_read_at: Optional[datetime] = Field(None, alias="Last_Read_At")
     starred_by: Optional[List[str]] = Field(None, alias="Starred_By")
+    google_event_id: Optional[str] = Field(None, alias="Google_Event_ID")
 
 class LeadResponse(LeadBase):
     id: str # Airtable Record ID
@@ -91,6 +93,7 @@ class MusicianBase(BaseSchema):
     is_active: bool = Field(True, alias="Is_Active")
     score: int = Field(5, alias="Score")
     type: MusicianType = Field(MusicianType.REFERRER, alias="Type")
+    email: Optional[str] = Field(None, alias="Email")
 
 class MusicianCreate(BaseSchema):
     name: str = Field(..., alias="Name")
@@ -105,6 +108,7 @@ class MusicianUpdate(BaseSchema):
     is_active: Optional[bool] = Field(None, alias="Is_Active")
     score: Optional[int] = Field(None, alias="Score")
     type: Optional[MusicianType] = Field(None, alias="Type")
+    email: Optional[str] = Field(None, alias="Email")
 
 class MusicianResponse(MusicianBase):
     id: str

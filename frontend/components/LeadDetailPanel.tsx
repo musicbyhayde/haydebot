@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
 import SendMaterialsModal from './SendMaterialsModal';
+import CalendarEventModal from './CalendarEventModal';
 
 interface LeadDetailPanelProps {
     lead: Lead;
@@ -72,6 +73,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [editingNoteText, setEditingNoteText] = useState('');
     const [updatingNote, setUpdatingNote] = useState(false);
     
+    // Calendar State
+    const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+    const [isCalendarUpdate, setIsCalendarUpdate] = useState(false);
+    const [calendarDirty, setCalendarDirty] = useState(false);
+    
     // Team State
     const [poolMusicians, setPoolMusicians] = useState<Musician[]>([]);
     const [loadingTeam, setLoadingTeam] = useState(false);
@@ -90,6 +96,19 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             Last_Summary: lead.fields.Last_Summary,
         });
     }, [lead]);
+
+    useEffect(() => {
+        // Check if calendar details are different from saved lead
+        if (lead.fields.Google_Event_ID) {
+            const isDirty = 
+                lead.fields.Name !== editData.Name || 
+                lead.fields.Location !== editData.Location || 
+                lead.fields.Event_Date !== editData.Event_Date;
+            setCalendarDirty(isDirty);
+        } else {
+            setCalendarDirty(false);
+        }
+    }, [editData, lead.fields.Google_Event_ID, lead.fields.Name, lead.fields.Location, lead.fields.Event_Date]);
 
     useEffect(() => {
         fetchNotes();
@@ -324,6 +343,63 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         }
     };
 
+    const handleCalendarConfirm = async (data: any) => {
+        try {
+            if (isCalendarUpdate) {
+                await api.updateCalendarEvent(lead.id, data);
+                alert('האירוע עודכן בהצלחה ביומן');
+            } else {
+                const res = await api.createCalendarEvent(lead.id, data);
+                if (res.status === 'created' || res.status === 'exists') {
+                    alert('האירוע נוצר בהצלחה והצוות סומן ביומן');
+                }
+            }
+            onStatusChange(lead.id, lead.fields.Status); // Refresh
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בסנכרון היומן');
+        }
+    };
+
+    const handleDeleteCalendarEvent = async () => {
+        if (!confirm('האם אתה בטוח שברצונך למחוק את האירוע מהיומן?')) return;
+        try {
+            await api.deleteCalendarEvent(lead.id);
+            alert('האירוע נמחק מהיומן');
+            onStatusChange(lead.id, lead.fields.Status);
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה במחיקת האירוע מהיומן');
+        }
+    };
+
+    const handleDeleteLead = async () => {
+        // Step 1: Basic confirmation
+        if (!confirm('האם אתה בטוח שברצונך למחוק ליד זה מהמערכת?')) return;
+        
+        // Step 2: Double confirmation (Safety check)
+        if (!confirm('שים לב: מחיקת הליד היא פעולה סופית ולא ניתן יהיה לשחזר את המידע. האם אתה בטוח לחלוטין?')) return;
+
+        const hasCalendar = !!lead.fields.Google_Event_ID;
+        let deleteCalendar = false;
+
+        if (hasCalendar) {
+            // Step 3: Calendar sync question
+            const choice = confirm('ליד זה מקושר לאירוע ביומן. האם למחוק גם את האירוע מהיומן של גוגל?\n\nאישור = מחק גם מהיומן\nביטול = מחק ליד בלבד');
+            deleteCalendar = choice;
+        }
+
+        try {
+            await api.deleteLead(lead.id, deleteCalendar);
+            alert('הליד נמחק בהצלחה');
+            onClose();
+            onStatusChange('', ''); // Reload the whole list
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה במחיקת הליד');
+        }
+    };
+
     const handleDeleteFinance = async (id: string) => {
         if (!confirm('למחוק תנועה זו?')) return;
         try {
@@ -545,6 +621,42 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 text-amber-700 text-[11px] font-bold rounded-lg hover:bg-amber-100 transition-all"
                             >
                                 <BellOff size={12} /> השתק בוט 24ש׳
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsCalendarUpdate(!!lead.fields.Google_Event_ID);
+                                    setIsCalendarModalOpen(true);
+                                }}
+                                className={clsx(
+                                    "flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition-all border",
+                                    lead.fields.Google_Event_ID 
+                                        ? (calendarDirty ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-100")
+                                        : "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-100"
+                                )}
+                            >
+                                <Calendar size={12} /> 
+                                {lead.fields.Google_Event_ID 
+                                    ? (calendarDirty ? 'עדכן יומן (שינוי זוהה)' : 'פתח אירוע ביומן') 
+                                    : 'צור אירוע ביומן'}
+                            </button>
+
+                            {lead.fields.Google_Event_ID && (
+                                <button
+                                    onClick={handleDeleteCalendarEvent}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 bg-red-50 text-red-700 text-[11px] font-bold rounded-lg hover:bg-red-100 transition-all border border-red-100"
+                                    title="מחק רק את האירוע ביומן"
+                                >
+                                    <Trash2 size={12} /> מחק מהיומן
+                                </button>
+                            )}
+
+                            <div className="flex-1" />
+                            
+                            <button
+                                onClick={handleDeleteLead}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 text-slate-500 text-[11px] font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all ml-auto"
+                            >
+                                <Trash2 size={12} /> מחק ליד
                             </button>
                         </div>
                     </div>
@@ -1232,6 +1344,17 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     onClose={() => setIsIntroModalOpen(false)}
                     leadId={lead.id}
                     initialName={lead.fields.Name || ''}
+                />
+
+                <CalendarEventModal 
+                    isOpen={isCalendarModalOpen}
+                    onClose={() => setIsCalendarModalOpen(false)}
+                    onConfirm={handleCalendarConfirm}
+                    leadName={lead.fields.Name || lead.fields.Phone}
+                    initialLocation={lead.fields.Location || ''}
+                    initialDate={lead.fields.Event_Date || ''}
+                    teamEmails={(poolMusicians.filter(m => (lead.fields.Musician_Team || []).includes(m.id)).map(m => m.fields.Email)).filter((e): e is string => !!e)}
+                    isUpdate={isCalendarUpdate}
                 />
 
             </div>

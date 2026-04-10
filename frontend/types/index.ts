@@ -19,6 +19,7 @@ export interface Lead {
         Bot_Mute_Until?: string;
         Last_Read_At?: string;
         Starred_By?: string[];
+        Google_Event_ID?: string;
     };
 }
 
@@ -44,6 +45,7 @@ export interface Musician {
         Is_Active?: boolean;
         Score?: number;
         Type?: 'REFERRER' | 'POOL';
+        Email?: string;
     };
 }
 

@@ -47,6 +47,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
         Score: 5,
         Is_Active: true,
         Type: 'REFERRER' as 'REFERRER' | 'POOL',
+        Email: '',
     });
 
     useEffect(() => {
@@ -92,7 +93,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
         try {
             const created = await api.createMusician(form);
             setMusicians([created, ...musicians]);
-            setForm({ Name: '', Phone: '', Score: 5, Is_Active: true, Type: 'REFERRER' });
+            setForm({ Name: '', Phone: '', Score: 5, Is_Active: true, Type: 'REFERRER', Email: '' });
             setShowAddForm(false);
         } catch (e) {
             console.error('Failed to create musician:', e);
@@ -108,6 +109,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
             Score: m.fields.Score ?? 5,
             Is_Active: m.fields.Is_Active ?? true,
             Type: m.fields.Type ?? 'REFERRER',
+            Email: m.fields.Email || '',
         });
     };
 
@@ -281,6 +283,10 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                         <label className="block text-[10px] font-bold text-slate-500 mb-1">טלפון *</label>
                                         <input type="text" value={form.Phone} onChange={(e) => setForm({ ...form, Phone: e.target.value })} placeholder="972501234567" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" dir="ltr" required />
                                     </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">אימייל (לזימון יומן)</label>
+                                        <input type="email" value={form.Email} onChange={(e) => setForm({ ...form, Email: e.target.value })} placeholder="email@example.com" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" dir="ltr" />
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -374,6 +380,9 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                             </div>
                                             <div className="w-32 hidden md:block">
                                                 <input type="text" value={editForm.Phone} onChange={(e) => setEditForm({ ...editForm, Phone: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="טלפון" />
+                                            </div>
+                                            <div className="w-40 hidden md:block">
+                                                <input type="email" value={editForm.Email} onChange={(e) => setEditForm({ ...editForm, Email: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="אימייל" />
                                             </div>
                                             <div className="w-24 hidden md:flex items-center justify-center">
                                                 <button type="button" onClick={() => setEditForm({ ...editForm, Is_Active: !editForm.Is_Active })} className={clsx("px-2 py-0.5 rounded text-[10px] font-bold w-full border", editForm.Is_Active ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-50 text-slate-500 border-slate-200")}>

@@ -74,6 +74,11 @@ class SupabaseService:
         response = self.client.table("leads").update(update_data).eq("id", record_id).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
 
+    def delete_lead(self, record_id: str):
+        """Physical deletion of a lead."""
+        if not self.client: return
+        self.client.table("leads").delete().eq("id", record_id).execute()
+
     def get_active_leads(self) -> List[dict]:
         """Fetch leads that are not Closed or Lost."""
         if not self.client: return []

@@ -123,22 +123,33 @@ async def update_lead(lead_id: str, request: Request):
     asyncio.create_task(bot_logic.check_and_trigger_bouzouki_protocol(lead_id))
 
     # Auto-create finance entry when lead is closed with a closing amount
-    if body.get("Status") == "Closed" and body.get("Closing_Amount"):
+    if body.get("Status") == "Closed":
+        if body.get("Closing_Amount"):
+            try:
+                lead = airtable_service.leads_table.get(lead_id)
+                finance_entry = FinanceEntryCreate(
+                    owner=lead["fields"].get("Owner", ""),
+                    entry_type="income",
+                    date=datetime.now().strftime("%Y-%m-%d"),
+                    description=f"סגירת ליד: {lead['fields'].get('Name', 'ללא שם')}",
+                    event_name=lead["fields"].get("Service", ""),
+                    amount=float(body["Closing_Amount"]),
+                    payment_status="לא שולם",
+                    lead_id=lead_id,
+                )
+                airtable_service.create_finance_entry(finance_entry)
+            except Exception as e:
+                print(f"Error auto-creating finance entry: {e}")
+
+        # Remove (אופציה) prefix from Google Calendar event if it exists
         try:
             lead = airtable_service.leads_table.get(lead_id)
-            finance_entry = FinanceEntryCreate(
-                owner=lead["fields"].get("Owner", ""),
-                entry_type="income",
-                date=datetime.now().strftime("%Y-%m-%d"),
-                description=f"סגירת ליד: {lead['fields'].get('Name', 'ללא שם')}",
-                event_name=lead["fields"].get("Service", ""),
-                amount=float(body["Closing_Amount"]),
-                payment_status="לא שולם",
-                lead_id=lead_id,
-            )
-            airtable_service.create_finance_entry(finance_entry)
+            event_id = lead["fields"].get("Google_Event_ID")
+            if event_id:
+                from app.services.google_calendar_service import google_calendar
+                google_calendar.update_event_closed(event_id)
         except Exception as e:
-            print(f"Error auto-creating finance entry: {e}")
+            print(f"Error updating Google Calendar on close: {e}")
 
     return result
 
@@ -153,6 +164,115 @@ async def mark_lead_as_read(lead_id: str):
 async def get_unread_status():
     """Get unread message counts and latest message preview for all leads."""
     return airtable_service.get_unread_status()
+
+@protected_router.post("/leads/{lead_id}/calendar-event")
+async def create_calendar_event(lead_id: str, payload: Optional[CalendarEventCreate] = None):
+    """Manually create a Google Calendar event for a lead."""
+    from app.services.google_calendar_service import google_calendar
+    
+    lead = airtable_service.leads_table.get(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Check if already exists
+    if lead["fields"].get("Google_Event_ID"):
+        return {"status": "exists", "event_id": lead["fields"].get("Google_Event_ID")}
+
+    if payload:
+        # Use provided details from modal
+        name_to_use = payload.summary or lead["fields"].get("Name", "ללא שם")
+        loc_to_use = payload.location or lead["fields"].get("Location", "לא צוין")
+        date_to_use = payload.event_date
+        emails_to_use = payload.team_emails
+        desc_to_use = payload.description
+    else:
+        # Auto-detect from database
+        team_ids = lead["fields"].get("Musician_Team") or []
+        musicians = airtable_service.get_all_musicians()
+        emails_to_use = [m["fields"].get("Email") for m in musicians if m["id"] in team_ids and m["fields"].get("Email")]
+        name_to_use = lead["fields"].get("Name", "ללא שם")
+        loc_to_use = lead["fields"].get("Location", "לא צוין")
+        date_to_use = lead["fields"].get("Event_Date", "")
+        desc_to_use = None
+
+    event_id = google_calendar.create_event(
+        lead_name=name_to_use,
+        location=loc_to_use,
+        event_date_str=date_to_use,
+        musician_emails=emails_to_use,
+        custom_description=desc_to_use
+    )
+
+    if event_id:
+        airtable_service.update_lead(lead_id, LeadUpdate(google_event_id=event_id))
+        return {"status": "created", "event_id": event_id}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to create calendar event")
+
+@protected_router.patch("/leads/{lead_id}/calendar-event")
+async def update_calendar_event(lead_id: str, payload: CalendarEventUpdate):
+    """Update an existing Google Calendar event."""
+    from app.services.google_calendar_service import google_calendar
+    
+    lead = airtable_service.leads_table.get(lead_id)
+    event_id = lead["fields"].get("Google_Event_ID")
+    if not event_id:
+        raise HTTPException(status_code=404, detail="No calendar event exists for this lead")
+
+    # Use payload fields or fallback to current lead fields
+    name_to_use = payload.summary or lead["fields"].get("Name", "ללא שם")
+    loc_to_use = payload.location or lead["fields"].get("Location", "לא צוין")
+    date_to_use = payload.event_date or lead["fields"].get("Event_Date", "")
+    
+    if payload.team_emails is not None:
+        emails_to_use = payload.team_emails
+    else:
+        team_ids = lead["fields"].get("Musician_Team") or []
+        musicians = airtable_service.get_all_musicians()
+        emails_to_use = [m["fields"].get("Email") for m in musicians if m["id"] in team_ids and m["fields"].get("Email")]
+
+    success = google_calendar.update_event(
+        event_id=event_id,
+        lead_name=name_to_use,
+        location=loc_to_use,
+        event_date_str=date_to_use,
+        musician_emails=emails_to_use,
+        description=payload.description
+    )
+
+    if success:
+        return {"status": "updated"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update calendar event")
+
+@protected_router.delete("/leads/{lead_id}/calendar-event")
+async def delete_calendar_event(lead_id: str):
+    """Delete the Google Calendar event associated with a lead."""
+    from app.services.google_calendar_service import google_calendar
+    
+    lead = airtable_service.leads_table.get(lead_id)
+    event_id = lead["fields"].get("Google_Event_ID")
+    if not event_id:
+        return {"status": "no_event"}
+
+    success = google_calendar.delete_event(event_id)
+    if success:
+        airtable_service.update_lead(lead_id, LeadUpdate(google_event_id=None))
+        return {"status": "deleted"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to delete calendar event")
+
+@protected_router.delete("/leads/{lead_id}")
+async def delete_lead(lead_id: str, delete_calendar: bool = False):
+    """Physically delete a lead and optionally its calendar event."""
+    if delete_calendar:
+        try:
+            await delete_calendar_event(lead_id)
+        except Exception as e:
+            print(f"Error deleting calendar event while deleting lead: {e}")
+
+    airtable_service.delete_lead(lead_id)
+    return {"status": "deleted"}
 
 # ─── Messages ─────────────────────────────────────────
 
