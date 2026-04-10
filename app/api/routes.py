@@ -122,7 +122,7 @@ async def update_lead(lead_id: str, request: Request):
     import asyncio
     asyncio.create_task(bot_logic.check_and_trigger_bouzouki_protocol(lead_id))
 
-
+    if body.get("Status") == "Closed":
         # Remove (אופציה) prefix from Google Calendar event if it exists
         try:
             lead = airtable_service.leads_table.get(lead_id)
