@@ -343,16 +343,21 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         }
     };
 
-    const handleCreateCalendarEvent = async (payload: any) => {
+    const handleCalendarConfirm = async (payload: any) => {
         try {
-            const eventId = await api.createCalendarEvent(lead.id, payload);
-            if (eventId) {
-                // Update local state for immediate UI reflect
-                Object.assign(lead.fields, { Google_Event_ID: eventId });
-                alert('האירוע נוצר בהצלחה ביומן');
-                onStatusChange(lead.id, lead.fields.Status);
-                setIsCalendarModalOpen(false);
+            if (isCalendarUpdate) {
+                await api.updateCalendarEvent(lead.id, payload);
+                alert('האירוע עודכן בהצלחה ביומן');
+            } else {
+                const res = await api.createCalendarEvent(lead.id, payload);
+                if (res && res.event_id) {
+                    // Update local state for immediate UI reflect
+                    Object.assign(lead.fields, { Google_Event_ID: res.event_id });
+                    alert('האירוע נוצר בהצלחה ביומן');
+                }
             }
+            onStatusChange(lead.id, lead.fields.Status);
+            setIsCalendarModalOpen(false);
         } catch (e) {
             console.error(e);
             alert('שגיאה בסנכרון היומן');
