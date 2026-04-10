@@ -1066,6 +1066,16 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     await api.updateLead(lead.id, { Musician_Team: newTeam });
                                                     // Update locally
                                                     Object.assign(lead.fields, { Musician_Team: newTeam });
+                                                    
+                                                    // Automatic Calendar Sync
+                                                    if (lead.fields.Google_Event_ID) {
+                                                        try {
+                                                            await api.updateCalendarEvent(lead.id, {});
+                                                        } catch (err) {
+                                                            console.error('Auto calendar sync failed:', err);
+                                                        }
+                                                    }
+                                                    
                                                     e.target.value = ''; // Reset select
                                                 } catch (err) {
                                                     console.error(err);
@@ -1138,6 +1148,15 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                                 const newTeam = (lead.fields.Musician_Team || []).filter(id => id !== mId);
                                                                 await api.updateLead(lead.id, { Musician_Team: newTeam });
                                                                 Object.assign(lead.fields, { Musician_Team: newTeam });
+
+                                                                // Automatic Calendar Sync
+                                                                if (lead.fields.Google_Event_ID) {
+                                                                    try {
+                                                                        await api.updateCalendarEvent(lead.id, {});
+                                                                    } catch (err) {
+                                                                        console.error('Auto calendar sync failed:', err);
+                                                                    }
+                                                                }
                                                             } catch (err) {
                                                                 console.error(err);
                                                                 alert('שגיאה בעדכון הצוות');

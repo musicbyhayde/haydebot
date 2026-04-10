@@ -4,8 +4,8 @@ export interface CalendarEventPayload {
     summary?: string;
     location?: string;
     description?: string;
-    event_date: string;
-    team_emails: string[];
+    event_date?: string;
+    team_emails?: string[];
 }
 
 const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
