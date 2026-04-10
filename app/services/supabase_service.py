@@ -388,7 +388,18 @@ class SupabaseService:
             raise Exception("Supabase client not initialized")
         try:
             response = self.client.table("videos").select("*").order("created_at", desc=True).execute()
-            return self._to_airtable_list(response.data)
+            results = []
+            for r in response.data:
+                results.append({
+                    "id": r.get("id"),
+                    "fields": {
+                        "Label": r.get("label"),
+                        "URL": r.get("url"),
+                        "Category": r.get("category"),
+                        "Is_Active": r.get("is_active")
+                    }
+                })
+            return results
         except Exception as e:
             print(f"Error fetching videos: {e}")
             raise e
@@ -411,8 +422,18 @@ class SupabaseService:
             response = self.client.table("videos").insert(data).execute()
             if not response.data:
                 raise Exception("No data returned from insert operation")
-                
-            return self._to_airtable_format(response.data[0])
+            
+            # Map back to Airtable format for frontend
+            r = response.data[0]
+            return {
+                "id": r.get("id"),
+                "fields": {
+                    "Label": r.get("label"),
+                    "URL": r.get("url"),
+                    "Category": r.get("category"),
+                    "Is_Active": r.get("is_active")
+                }
+            }
         except Exception as e:
             print(f"Critical Error creating video: {e}")
             raise e
@@ -434,7 +455,17 @@ class SupabaseService:
             if not response.data:
                 raise Exception(f"Video with id {video_id} not found or update failed")
                 
-            return self._to_airtable_format(response.data[0])
+            # Map back to Airtable format for frontend
+            r = response.data[0]
+            return {
+                "id": r.get("id"),
+                "fields": {
+                    "Label": r.get("label"),
+                    "URL": r.get("url"),
+                    "Category": r.get("category"),
+                    "Is_Active": r.get("is_active")
+                }
+            }
         except Exception as e:
             print(f"Critical Error updating video {video_id}: {e}")
             raise e
