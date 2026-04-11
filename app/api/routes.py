@@ -206,6 +206,9 @@ async def update_calendar_event(lead_id: str, payload: CalendarEventUpdate):
     loc_to_use = payload.location or lead["fields"].get("Location", "לא צוין")
     date_to_use = payload.event_date or lead["fields"].get("Event_Date", "")
     
+    if not date_to_use:
+        raise HTTPException(status_code=400, detail="יש להזין תאריך אירוע בכדי לסנכרן מול היומן")
+    
     if payload.team_emails is not None:
         emails_to_use = payload.team_emails
     else:

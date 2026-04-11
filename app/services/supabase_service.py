@@ -23,6 +23,16 @@ class SupabaseService:
         for key, value in record.items():
             if key != "id" and key != "created_at":
                 formatted["fields"][key] = value
+                
+                # Auto-generate Title_Cased aliases for resilience (e.g. 'email' -> 'Email', 'is_active' -> 'Is_Active')
+                capitalized_key = '_'.join([word.capitalize() for word in key.split('_')])
+                if capitalized_key == "Google_Event_Id":
+                    capitalized_key = "Google_Event_ID"
+                    
+                # Only add the alias if it wasn't already explicitly provided with that exact casing
+                if capitalized_key != key:
+                    formatted["fields"][capitalized_key] = value
+                    
         return formatted
 
     def _to_airtable_list(self, records: list) -> List[dict]:
