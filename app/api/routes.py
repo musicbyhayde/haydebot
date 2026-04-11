@@ -53,10 +53,40 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
         print(f"Error: {e}")
         return {"status": "error"}
 
+@public_router.post("/webhooks/calendar")
+async def google_calendar_webhook(request: Request, background_tasks: BackgroundTasks):
+    """
+    Receive push notifications from Google Calendar for event updates (e.g., RSVPs).
+    Google sends headers like X-Goog-Resource-State.
+    """
+    # According to Google Docs, any update triggers this webhook.
+    # We will enqueue a sync_calendar_rsvps job to pull the latest instead of parsing diffs.
+    print(f"DEBUG: Received Google Calendar Webhook: {request.headers.get('x-goog-resource-state')}")
+    background_tasks.add_task(bot_logic.sync_calendar_rsvps)
+    return {"status": "ok"}
+
 # ─── Leads ────────────────────────────────────────────
 
 from app.services.supabase_service import airtable_service
 from app.models.schemas import ActivityCreate
+
+@public_router.get("/quote/{lead_id}")
+async def get_quote_data(lead_id: str):
+    """Public endpoint to fetch a lead's public quote template."""
+    lead = airtable_service.leads_table.get(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Quote not found")
+        
+    return {
+        "id": lead["id"],
+        "name": lead["fields"].get("Name", ""),
+        "service": lead["fields"].get("Service", ""),
+        "date": lead["fields"].get("Event_Date", ""),
+        "location": lead["fields"].get("Location", ""),
+        "amount": lead["fields"].get("Closing_Amount", 0),
+        "quote_data": lead["fields"].get("Quote_Data", {})
+    }
+
 
 @protected_router.get("/activities")
 async def get_activities():
@@ -728,7 +758,10 @@ async def get_analytics():
     total_commission = sum(
         max(float(l["fields"].get("Closing_Amount") or 0) * 0.15, 400.0)
         for l in leads
-        if l["fields"].get("Status") == "Closed" and l["fields"].get("Closing_Amount")
+        if l["fields"].get("Status") == "Closed" 
+        and l["fields"].get("Closing_Amount")
+        and str(l["fields"].get("Service")).lower() == "bouzouki"
+        and str(l["fields"].get("Conversation_State")).upper() == "COMPLETED"
     )
 
     # ─── Lost Reasons ────────────────────────────────

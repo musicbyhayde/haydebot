@@ -143,6 +143,20 @@ class GoogleCalendarService:
             print(f"An error occurred in delete_event: {error}")
             return False
 
+    def get_event_attendees_status(self, event_id: str) -> dict:
+        """Fetch RSVPs of attendees for the event. Returns {email: status}"""
+        if not self.service or not event_id:
+            return {}
+        try:
+            event = self.service.events().get(calendarId=self.calendar_id, eventId=event_id).execute()
+            attendees = event.get('attendees', [])
+            return {a.get('email', '').lower(): a.get('responseStatus', 'needsAction') for a in attendees}
+        except HttpError as error:
+            if error.resp.status in [404, 410]:
+                return {} # Event does not exist
+            print(f"An error occurred in get_event_attendees_status: {error}")
+            return {}
+
     def _parse_date(self, date_str: str) -> Optional[datetime]:
         # Handle 25.12.24 or 2024-12-25
         formats = ['%d.%m.%y', '%d.%m.%Y', '%Y-%m-%d']

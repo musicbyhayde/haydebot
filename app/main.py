@@ -15,6 +15,9 @@ async def lifespan(app: FastAPI):
     # Schedule Weekly Summary (Sunday at 10:00 AM)
     from app.services.logic import bot_logic
     scheduler.add_job(bot_logic.send_weekly_summary, 'cron', day_of_week='sun', hour=10, minute=0)
+    
+    # Schedule Google Calendar RSVP Sync (Every 5 minutes)
+    scheduler.add_job(bot_logic.sync_calendar_rsvps, 'interval', minutes=5, id='sync_rsvps', replace_existing=True)
     yield
     # Shutdown
     scheduler.shutdown()

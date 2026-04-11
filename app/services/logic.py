@@ -1078,4 +1078,49 @@ class HaydeBotLogic:
                 timestamp=datetime.now()
             ))
 
+    async def sync_calendar_rsvps(self):
+        """Poll Google Calendar to update RSVP status of musicians for each lead."""
+        from app.services.google_calendar_service import google_calendar
+        leads = airtable_service.get_all_leads()
+        updated_count = 0
+        
+        for lead in leads:
+            event_id = lead["fields"].get("Google_Event_ID")
+            team_ids = lead["fields"].get("Musician_Team") or []
+            if not event_id or not team_ids:
+                continue
+                
+            old_rsvps = lead["fields"].get("Musician_RSVPs") or {}
+            if isinstance(old_rsvps, str):
+                import json
+                try:
+                    old_rsvps = json.loads(old_rsvps)
+                except:
+                    old_rsvps = {}
+                    
+            status_map = google_calendar.get_event_attendees_status(event_id)
+            if not status_map:
+                continue
+                
+            new_rsvps = {}
+            musicians = airtable_service.get_all_musicians()
+            musician_emails = {m["id"]: (m["fields"].get("Email") or m["fields"].get("email") or "").lower() for m in musicians}
+            
+            changed = False
+            for m_id in team_ids:
+                email = musician_emails.get(m_id)
+                if email and email in status_map:
+                    status = status_map[email]
+                    new_rsvps[m_id] = status
+                    if old_rsvps.get(m_id) != status:
+                        changed = True
+                        
+            if changed:
+                # Store the updated dict in Musician_RSVPs. Supabase natively supports JSON objects.
+                airtable_service.update_lead(lead["id"], {"Musician_RSVPs": new_rsvps})
+                updated_count += 1
+                
+        if updated_count > 0:
+            print(f"DEBUG: Synced Google Calendar RSVPs for {updated_count} leads.")
+
 bot_logic = HaydeBotLogic()

@@ -21,6 +21,12 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
 export const api = {
     // --- Leads ---
+    async getPublicQuote(leadId: string): Promise<any> {
+        const res = await fetch(`${API_Base}/quote/${leadId}`);
+        if (!res.ok) throw new Error('Failed to fetch quote');
+        return res.json();
+    },
+
     async getLeads(): Promise<Lead[]> {
         const res = await fetchWithAuth(`${API_Base}/leads`);
         if (!res.ok) throw new Error('Failed to fetch leads');

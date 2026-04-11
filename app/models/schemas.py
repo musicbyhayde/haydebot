@@ -58,6 +58,8 @@ class LeadBase(BaseSchema):
     starred_by: Optional[List[str]] = Field(default_factory=list, alias="Starred_By")
     musician_team: Optional[List[str]] = Field(default_factory=list, alias="Musician_Team")
     google_event_id: Optional[str] = Field(None, alias="Google_Event_ID")
+    quote_data: Optional[dict] = Field(None, alias="Quote_Data")
+    musician_rsvps: Optional[dict] = Field(None, alias="Musician_RSVPs")
 
 class LeadCreate(LeadBase):
     pass

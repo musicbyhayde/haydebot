@@ -7,6 +7,7 @@ import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
 import SendMaterialsModal from './SendMaterialsModal';
 import CalendarEventModal from './CalendarEventModal';
+import ProposalModal from './ProposalModal';
 
 interface LeadDetailPanelProps {
     lead: Lead;
@@ -67,6 +68,9 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
     // Intro/Materials Modal State
     const [isIntroModalOpen, setIsIntroModalOpen] = useState(false);
+    
+    // Proposal Modal State
+    const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
 
     // Note Editing State
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -504,6 +508,14 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 >
                                     <Send size={12} />
                                     שלח חומרים
+                                </button>
+                                <button 
+                                    onClick={() => setIsProposalModalOpen(true)}
+                                    className="p-1 px-2 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center gap-1.5"
+                                    title="הפקת הצעת מחיר אינטראקטיבית"
+                                >
+                                    <FileText size={12} />
+                                    הצעת מחיר
                                 </button>
                             </h2>
                             {lead.fields.Event_Date && (
@@ -1146,8 +1158,18 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                             <div className="text-[10px] font-medium text-slate-400 font-mono">{m.fields.Phone}</div>
                                                         </div>
                                                     </div>
-                                                    <button 
-                                                        onClick={async () => {
+                                                    <div className="flex items-center gap-2">
+                                                        {(() => {
+                                                            const rsvps = (lead.fields as any).Musician_RSVPs || {};
+                                                            const status = rsvps[mId];
+                                                            if (status === 'accepted') return <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><Check size={10}/> אישר</span>;
+                                                            if (status === 'declined') return <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><X size={10}/> סירב</span>;
+                                                            if (status === 'tentative') return <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">אולי</span>;
+                                                            if (status === 'needsAction') return <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><Clock size={10}/> ממתין לתשובה</span>;
+                                                            return null;
+                                                        })()}
+                                                        <button 
+                                                            onClick={async () => {
                                                             if (!confirm(`להסיר את ${m.fields.Name} מהצוות?`)) return;
                                                             setSavingTeam(true);
                                                             try {
@@ -1166,6 +1188,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -1369,6 +1392,24 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     onClose={() => setIsIntroModalOpen(false)}
                     leadId={lead.id}
                     initialName={lead.fields.Name || ''}
+                />
+                
+                {/* Proposal Modal */}
+                <ProposalModal 
+                    isOpen={isProposalModalOpen}
+                    onClose={() => setIsProposalModalOpen(false)}
+                    leadId={lead.id}
+                    initialData={{
+                        name: lead.fields.Name || lead.fields.Phone,
+                        service: lead.fields.Service || '',
+                        date: lead.fields.Event_Date || '',
+                        location: lead.fields.Location || '',
+                        amount: lead.fields.Closing_Amount || 0,
+                        quote_data: (lead.fields as any).Quote_Data
+                    }}
+                    onSave={(quoteData) => {
+                        Object.assign(lead.fields, { Quote_Data: quoteData });
+                    }}
                 />
 
                 <CalendarEventModal 

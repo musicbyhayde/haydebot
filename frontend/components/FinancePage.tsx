@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Edit, Check, X, TrendingUp, TrendingDown, Menu, AlertCircle, Link, Search, ArrowUp, ArrowDown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { api } from '@/lib/api';
 import { FinanceEntry, Lead, FinanceSummaryItem } from '@/types';
 import { AppUser } from '@/lib/auth';
@@ -342,6 +343,24 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         const rawEntries = ownerEntries(owner);
         const sortedEntries = sortEntries(rawEntries);
 
+        // Chart Data Preparation
+        const chartData = [...sortedEntries].reverse().reduce((acc: any[], entry) => {
+            const month = new Date(entry.fields.Date).toLocaleString('he-IL', { month: 'short', year: 'numeric' });
+            const existing = acc.find(item => item.month === month);
+            
+            if (existing) {
+                if (entry.fields.Type === 'income') existing.income += entry.fields.Amount;
+                if (entry.fields.Type === 'expense') existing.expense += entry.fields.Amount;
+            } else {
+                acc.push({
+                    month,
+                    income: entry.fields.Type === 'income' ? entry.fields.Amount : 0,
+                    expense: entry.fields.Type === 'expense' ? entry.fields.Amount : 0
+                });
+            }
+            return acc;
+        }, []);
+
         return (
             <div className="flex-1 min-w-0">
                 <div className="grid grid-cols-3 gap-3 mb-6">
@@ -362,6 +381,27 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                         </div>
                     </div>
                 </div>
+
+                {/* Visual Chart */}
+                {chartData.length > 0 && (
+                    <div className="h-48 md:h-64 w-full mb-6 p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
+                        <h3 className="text-xs font-bold text-slate-500 mb-4 px-2">הכנסות מול הוצאות</h3>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} margin={{ top: 10, right: 0, left: -30, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 10, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                                <Tooltip 
+                                    cursor={{fill: '#F1F5F9'}}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                />
+                                <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', bottom: -5 }} />
+                                <Bar dataKey="income" name="הכנסות" fill="#059669" radius={[4, 4, 0, 0]} barSize={25} />
+                                <Bar dataKey="expense" name="הוצאות" fill="#E11D48" radius={[4, 4, 0, 0]} barSize={25} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
 
                 <div className="flex flex-col sm:flex-row items-center justify-between mb-4 bg-white p-2 border border-slate-200 rounded-xl gap-2 shadow-sm">
                     <div className="flex items-center gap-2 w-full sm:w-auto">
