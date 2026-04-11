@@ -20,6 +20,8 @@ export interface Lead {
         Last_Read_At?: string;
         Starred_By?: string[];
         Google_Event_ID?: string;
+        Quote_Data?: any;
+        Musician_RSVPs?: any;
     };
 }
 
