@@ -40,14 +40,16 @@ export default function QuotePage() {
         );
     }
 
-    // Default template or dynamic from DB
+    // Dynamic data from DB
     const quoteData = quote.quote_data || {};
     const title = quoteData.title || `הצעת מחיר לאירוע של ${quote.name}`;
     const description = quoteData.description || `שמחים מאוד על פנייתכם! להלן פירוט הצעת המחיר לשירותי המוזיקה עבור האירוע הקרוב שלכם.`;
-    const inclusions = quoteData.inclusions || [
-        "צוות נגנים מקצועי",
-        "הגברה ותאורה בסיסית",
-        "תיאום מוזיקלי מלא מראש"
+    const inclusions: string[] = quoteData.inclusions || [];
+    const terms: string[] = quoteData.terms || [
+        "הצעת המחיר תקפה ל-14 ימים בלבד",
+        "המחירים כוללים מע״מ כחוק",
+        "במידה והנחיות פיקוד העורף לא יאפשרו את קיום האירוע לא יגבו דמי ביטול",
+        "אישור הצעה זו בהודעה חוזרת",
     ];
     const amount = quoteData.amount || quote.amount;
 
@@ -86,20 +88,22 @@ export default function QuotePage() {
                             </div>
                         </div>
 
-                        {/* Package Details */}
-                        <div className="mb-12">
-                            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                <Music4 className="text-slate-400" /> מה כלול בשירות? ({quoteData.service || quote.service})
-                            </h2>
-                            <ul className="space-y-4">
-                                {inclusions.map((inc: string, idx: number) => (
-                                    <li key={idx} className="flex items-start gap-3 text-slate-600">
-                                        <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
-                                        <span>{inc}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                        {/* Package Details - only show if inclusions exist */}
+                        {inclusions.length > 0 && (
+                            <div className="mb-12">
+                                <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                                    <Music4 className="text-slate-400" /> מה כלול בשירות? ({quoteData.service || quote.service})
+                                </h2>
+                                <ul className="space-y-4">
+                                    {inclusions.map((inc: string, idx: number) => (
+                                        <li key={idx} className="flex items-start gap-3 text-slate-600">
+                                            <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
+                                            <span>{inc}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
 
                         {/* Pricing */}
                         <div className="bg-slate-900 rounded-3xl p-8 md:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
@@ -131,9 +135,11 @@ export default function QuotePage() {
                 </div>
 
                 {/* Footer terms */}
-                <div className="text-center mt-12 text-slate-400 text-sm pb-12">
-                    <p className="font-bold mb-1">Hayde Music • ייצוג אמנים והפקות מוזיקליות</p>
-                    <p>הצעת המחיר תקפה ל-14 ימים בלבד • המחירים כוללים מע״מ כחוק</p>
+                <div className="text-center mt-12 text-slate-400 text-sm pb-12 space-y-1">
+                    <p className="font-bold mb-2">Hayde Music • מוזיקה לאירועים</p>
+                    {terms.map((term: string, idx: number) => (
+                        <p key={idx}>{term}</p>
+                    ))}
                 </div>
             </main>
         </div>
