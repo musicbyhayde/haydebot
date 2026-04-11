@@ -121,7 +121,20 @@ class GoogleCalendarService:
                 'date': (start_date + timedelta(days=1)).strftime('%Y-%m-%d'),
                 'timeZone': 'Asia/Jerusalem',
             }
-            event['attendees'] = [{'email': email} for email in musician_emails if email]
+            existing_attendees = event.get('attendees', [])
+            existing_attendees_map = {a.get('email', '').lower(): a for a in existing_attendees if a.get('email')}
+            
+            new_attendees = []
+            for email in musician_emails:
+                if not email:
+                    continue
+                email_lower = email.lower()
+                if email_lower in existing_attendees_map:
+                    new_attendees.append(existing_attendees_map[email_lower])
+                else:
+                    new_attendees.append({'email': email})
+                    
+            event['attendees'] = new_attendees
 
             self.service.events().update(calendarId=self.calendar_id, eventId=event_id, body=event, sendUpdates='all').execute()
             return True

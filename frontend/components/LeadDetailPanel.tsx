@@ -374,6 +374,15 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         setSyncingCalendar(true);
         try {
             await api.updateCalendarEvent(lead.id, {});
+            // After updating the calendar, immediately sync RSVP statuses
+            try {
+                const rsvpResult = await api.syncLeadRsvps(lead.id);
+                if (rsvpResult.rsvps) {
+                    Object.assign(lead.fields, { Musician_RSVPs: rsvpResult.rsvps });
+                }
+            } catch (rsvpErr) {
+                console.log('RSVP sync skipped:', rsvpErr);
+            }
             alert('הנגנים סונכרנו בהצלחה ליומן');
         } catch (e) {
             console.error(e);
@@ -1160,7 +1169,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         {(() => {
-                                                            const rsvps = (lead.fields as any).Musician_RSVPs || {};
+                                                            const rsvps = lead.fields.Musician_RSVPs || {};
                                                             const status = rsvps[mId];
                                                             if (status === 'accepted') return <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><Check size={10}/> אישר</span>;
                                                             if (status === 'declined') return <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><X size={10}/> סירב</span>;

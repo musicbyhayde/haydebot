@@ -1082,6 +1082,8 @@ class HaydeBotLogic:
         """Poll Google Calendar to update RSVP status of musicians for each lead."""
         from app.services.google_calendar_service import google_calendar
         leads = airtable_service.get_all_leads()
+        musicians = airtable_service.get_all_musicians()
+        musician_emails = {m["id"]: (m["fields"].get("Email") or m["fields"].get("email") or "").lower().strip() for m in musicians}
         updated_count = 0
         
         for lead in leads:
@@ -1103,9 +1105,6 @@ class HaydeBotLogic:
                 continue
                 
             new_rsvps = {}
-            musicians = airtable_service.get_all_musicians()
-            musician_emails = {m["id"]: (m["fields"].get("Email") or m["fields"].get("email") or "").lower() for m in musicians}
-            
             changed = False
             for m_id in team_ids:
                 email = musician_emails.get(m_id)
@@ -1114,13 +1113,12 @@ class HaydeBotLogic:
                     new_rsvps[m_id] = status
                     if old_rsvps.get(m_id) != status:
                         changed = True
+                        print(f"DEBUG RSVP: Lead {lead['id']} musician {m_id} ({email}): {old_rsvps.get(m_id)} -> {status}")
                         
-            if changed:
-                # Store the updated dict in Musician_RSVPs. Supabase natively supports JSON objects.
+            if changed and new_rsvps:
                 airtable_service.update_lead(lead["id"], {"Musician_RSVPs": new_rsvps})
                 updated_count += 1
                 
-        if updated_count > 0:
-            print(f"DEBUG: Synced Google Calendar RSVPs for {updated_count} leads.")
+        print(f"DEBUG: RSVP sync complete. Checked {len(leads)} leads, updated {updated_count}.")
 
 bot_logic = HaydeBotLogic()

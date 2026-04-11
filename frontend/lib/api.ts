@@ -334,5 +334,13 @@ export const api = {
             method: 'DELETE',
         });
         if (!res.ok) throw new Error('Failed to delete lead');
+    },
+
+    async syncLeadRsvps(leadId: string): Promise<{ status: string; rsvps: Record<string, string> }> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/sync-rsvps`, {
+            method: 'POST',
+        });
+        if (!res.ok) throw new Error('Failed to sync RSVPs');
+        return res.json();
     }
 };

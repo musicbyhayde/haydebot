@@ -264,9 +264,41 @@ async def update_calendar_event(lead_id: str, payload: CalendarEventUpdate):
     )
 
     if success:
+        # After updating the calendar, immediately sync RSVPs so the frontend picks up initial statuses
+        from app.services.logic import bot_logic
+        import asyncio
+        asyncio.create_task(bot_logic.sync_calendar_rsvps())
         return {"status": "updated"}
     else:
         raise HTTPException(status_code=500, detail="Failed to update calendar event")
+
+@protected_router.post("/leads/{lead_id}/sync-rsvps")
+async def sync_lead_rsvps(lead_id: str):
+    """Manually sync RSVP statuses from Google Calendar for a specific lead."""
+    from app.services.google_calendar_service import google_calendar
+    
+    lead = airtable_service.leads_table.get(lead_id)
+    event_id = lead["fields"].get("Google_Event_ID")
+    team_ids = lead["fields"].get("Musician_Team") or []
+    
+    if not event_id:
+        raise HTTPException(status_code=404, detail="No calendar event for this lead")
+    
+    status_map = google_calendar.get_event_attendees_status(event_id)
+    
+    musicians = airtable_service.get_all_musicians()
+    musician_emails = {m["id"]: (m["fields"].get("Email") or m["fields"].get("email") or "").lower().strip() for m in musicians}
+    
+    new_rsvps = {}
+    for m_id in team_ids:
+        email = musician_emails.get(m_id)
+        if email and email in status_map:
+            new_rsvps[m_id] = status_map[email]
+    
+    if new_rsvps:
+        airtable_service.update_lead(lead_id, {"Musician_RSVPs": new_rsvps})
+    
+    return {"status": "synced", "rsvps": new_rsvps}
 
 @protected_router.delete("/leads/{lead_id}/calendar-event")
 async def delete_calendar_event(lead_id: str):
