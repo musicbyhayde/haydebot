@@ -83,6 +83,8 @@ class LeadUpdate(BaseSchema):
     last_read_at: Optional[datetime] = Field(None, alias="Last_Read_At")
     starred_by: Optional[List[str]] = Field(None, alias="Starred_By")
     google_event_id: Optional[str] = Field(None, alias="Google_Event_ID")
+    quote_data: Optional[dict] = Field(None, alias="Quote_Data")
+    musician_rsvps: Optional[dict] = Field(None, alias="Musician_RSVPs")
 
 class LeadResponse(LeadBase):
     id: str # Airtable Record ID
