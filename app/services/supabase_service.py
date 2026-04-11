@@ -77,12 +77,23 @@ class SupabaseService:
         response = self.client.table("leads").insert(data).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
 
-    def update_lead(self, record_id: str, data: LeadUpdate) -> dict:
-        """Update an existing lead by Record ID."""
+    def update_lead(self, record_id: str, data) -> dict:
+        """Update an existing lead by Record ID. Accepts LeadUpdate or raw dict."""
         if not self.client: return {}
-        update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
-        response = self.client.table("leads").update(update_data).eq("id", record_id).execute()
-        return self._to_airtable_format(response.data[0]) if response.data else {}
+        if isinstance(data, dict):
+            update_data = data
+        else:
+            update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        
+        if not update_data:
+            return {}
+            
+        try:
+            response = self.client.table("leads").update(update_data).eq("id", record_id).execute()
+            return self._to_airtable_format(response.data[0]) if response.data else {}
+        except Exception as e:
+            print(f"ERROR update_lead({record_id}): {e} | data keys: {list(update_data.keys())}")
+            return {}
 
     def delete_lead(self, record_id: str):
         """Physical deletion of a lead."""
