@@ -76,7 +76,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
         if (!confirm('האם אתה בטוח שברצונך למחוק/לאפס את הצעת המחיר? הלינק יפסיק לעבוד.')) return;
         setSaving(true);
         try {
-            await api.updateLead(leadId, { Quote_Data: null } as any);
+            await api.updateLead(leadId, { Quote_Data: {} });
             onSave(null);
             alert('ההצעה אופסה בהצלחה');
             onClose();
