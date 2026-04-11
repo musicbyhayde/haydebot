@@ -31,26 +31,38 @@ export default function QuotePage() {
         return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 font-bold">טוען הצעת מחיר...</div>;
     }
 
-    if (error || !quote) {
+    const noQuote = error || !quote || !quote.quote_data || Object.keys(quote.quote_data).length === 0;
+
+    if (noQuote) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50" dir="rtl">
-                <h1 className="text-2xl font-bold text-slate-800 mb-2">אופס!</h1>
-                <p className="text-slate-500">הצעת המחיר לא נמצאה או שפג תוקפה.</p>
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 px-6" dir="rtl">
+                <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-10 max-w-md text-center border border-white/10 shadow-2xl">
+                    <div className="text-5xl mb-4">🎵</div>
+                    <h1 className="text-2xl font-black text-white mb-3">הצעת המחיר לא נמצאה</h1>
+                    <p className="text-slate-300 mb-8 leading-relaxed">
+                        הצעת המחיר שחיפשת אינה קיימת, פג תוקפה, או שהוסרה מהמערכת.
+                        <br/>ליצירת קשר ולקבלת הצעה חדשה:
+                    </p>
+                    <a 
+                        href="https://haydemusic.com" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-block bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-8 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/20"
+                    >
+                        לאתר Hayde Music →
+                    </a>
+                </div>
+                <p className="text-slate-500 text-xs mt-8">Hayde Music • מוזיקה לאירועים</p>
             </div>
         );
     }
 
     // Dynamic data from DB
-    const quoteData = quote.quote_data || {};
+    const quoteData = quote.quote_data;
     const title = quoteData.title || `הצעת מחיר לאירוע של ${quote.name}`;
     const description = quoteData.description || `שמחים מאוד על פנייתכם! להלן פירוט הצעת המחיר לשירותי המוזיקה עבור האירוע הקרוב שלכם.`;
     const inclusions: string[] = quoteData.inclusions || [];
-    const terms: string[] = quoteData.terms || [
-        "הצעת המחיר תקפה ל-14 ימים בלבד",
-        "המחירים כוללים מע״מ כחוק",
-        "במידה והנחיות פיקוד העורף לא יאפשרו את קיום האירוע לא יגבו דמי ביטול",
-        "אישור הצעה זו בהודעה חוזרת",
-    ];
+    const terms: string[] = quoteData.terms || [];
     const amount = quoteData.amount || quote.amount;
 
     return (
