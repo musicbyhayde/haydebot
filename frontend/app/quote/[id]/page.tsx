@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { CheckCircle2, MapPin, Calendar, Music4, ArrowRight } from 'lucide-react';
 import { notFound, useParams } from 'next/navigation';
 
 export default function QuotePage() {
     const params = useParams();
     const leadId = params.id as string;
-    
+
     const [quote, setQuote] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -28,130 +27,145 @@ export default function QuotePage() {
     }, [leadId]);
 
     if (loading) {
-        return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 font-bold">טוען הצעת מחיר...</div>;
+        return <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6] text-[#B8986D] font-serif italic text-lg tracking-widest">טוען...</div>;
     }
 
     const noQuote = error || !quote || !quote.quote_data || Object.keys(quote.quote_data).length === 0;
 
     if (noQuote) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 px-6" dir="rtl">
-                <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-10 max-w-md text-center border border-white/10 shadow-2xl">
-                    <div className="text-5xl mb-4">🎵</div>
-                    <h1 className="text-2xl font-black text-white mb-3">הצעת המחיר לא נמצאה</h1>
-                    <p className="text-slate-300 mb-8 leading-relaxed">
-                        הצעת המחיר שחיפשת אינה קיימת, פג תוקפה, או שהוסרה מהמערכת.
-                        <br/>ליצירת קשר ולקבלת הצעה חדשה:
+            <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF9F6] px-6" dir="rtl">
+                <div className="bg-white rounded p-10 max-w-md text-center border border-[#EBE6DD] shadow-xl">
+                    <div className="text-4xl mb-4 opacity-50">📄</div>
+                    <h1 className="text-xl font-bold text-slate-800 mb-2">הצעת המחיר לא נמצאה</h1>
+                    <p className="text-slate-500 mb-6 text-sm">
+                        הצעת המחיר שחיפשת אינה קיימת, פג תוקפה או הוסרה מהמערכת.
                     </p>
-                    <a 
-                        href="https://haydemusic.com" 
-                        target="_blank" 
+                    <a
+                        href="https://haydemusic.com"
+                        target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-block bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-8 py-3 rounded-xl transition-colors shadow-lg shadow-amber-500/20"
+                        className="inline-block bg-[#B8986D] hover:bg-[#a6865a] text-white font-medium px-6 py-2 transition-colors uppercase tracking-widest text-xs"
                     >
-                        לאתר Hayde Music →
+                        לאתר הבית
                     </a>
                 </div>
-                <p className="text-slate-500 text-xs mt-8">Hayde Music • מוזיקה לאירועים</p>
             </div>
         );
     }
 
     // Dynamic data from DB
     const quoteData = quote.quote_data;
-    const title = quoteData.title || `הצעת מחיר לאירוע של ${quote.name}`;
-    const description = quoteData.description || `שמחים מאוד על פנייתכם! להלן פירוט הצעת המחיר לשירותי המוזיקה עבור האירוע הקרוב שלכם.`;
+    const title = quoteData.title || `הצעת מחיר - ${quote.name}`;
+    const description = quoteData.description || `היידה תספק את השירותים המוסיקליים והטכניים הבאים:`;
     const inclusions: string[] = quoteData.inclusions || [];
-    const terms: string[] = quoteData.terms || [];
+    const terms: string[] = quoteData.terms || [
+        "דמי ביטול ב-7 ימי עסקים שלפני האירוע ועד 48 שעות לפני האירוע חצי מדמי ההפקה כולל מע\"מ",
+        "ביטול האירוע ב-48 השעות לפני תחילת האירוע יגררו חיוב מלא.",
+        "במידה והנחיות פיקוד העורף לא יאפשרו את קיום האירוע לא יגבו דמי ביטול.",
+        "אישור הצעה זו בהודעה חוזרת."
+    ];
     const amount = quoteData.amount || quote.amount;
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-amber-100 selection:text-amber-900" dir="rtl">
-            <main className="max-w-3xl mx-auto md:py-12 md:px-6">
-                
-                <div className="bg-white md:rounded-3xl shadow-xl overflow-hidden border border-slate-100">
-                    {/* Header Cover */}
-                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-8 py-12 text-center relative overflow-hidden">
-                        {/* Decorative texture */}
-                        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.8)_0,transparent_100%)]"></div>
-                        <h1 className="text-3xl md:text-4xl font-black text-white relative z-10">{title}</h1>
-                        <p className="mt-4 text-slate-300 relative z-10 max-w-xl mx-auto leading-relaxed">
-                            {description}
-                        </p>
-                    </div>
+        <div className="min-h-screen bg-[#F5F2EC] font-sans selection:bg-[#EBE6DD] selection:text-slate-900 md:py-10" dir="rtl">
+            <main className="max-w-[850px] mx-auto bg-[#FDFBF7] min-h-[1100px] shadow-2xl relative print:shadow-none print:m-0 print:p-0">
 
-                    <div className="p-8 md:p-12">
-                        {/* Event Details Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-start gap-4">
-                                <div className="bg-white p-3 rounded-xl shadow-sm"><MapPin className="text-amber-500" /></div>
-                                <div>
-                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">מיקום</p>
-                                    <p className="font-semibold text-slate-800">{quoteData.location || quote.location || 'ייקבע בהמשך'}</p>
-                                </div>
-                            </div>
-                            
-                            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-start gap-4">
-                                <div className="bg-white p-3 rounded-xl shadow-sm"><Calendar className="text-amber-500" /></div>
-                                <div>
-                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">תאריך</p>
-                                    <p className="font-semibold text-slate-800">{quoteData.date || quote.date || 'ייקבע בהמשך'}</p>
-                                </div>
-                            </div>
+                {/* Background watermark logo */}
+                <div className="absolute left-1/4 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.02] pointer-events-none select-none z-0 hidden md:block w-full max-w-[600px]">
+                    <img src="/logos/haydeLogo.png" alt="" className="w-full h-auto grayscale" />
+                </div>
+
+                <div className="relative z-10">
+                    {/* Header Top Layer */}
+                    <div className="pt-12 md:pt-16 px-8 md:px-16 flex justify-between items-start mb-8">
+                        {/* Contact Info (Left) */}
+                        <div className="text-[#AF9470] font-bold text-xs md:text-sm leading-relaxed tracking-wide pt-2 md:pt-4">
+                            <p>היידה - מוסיקה לאירועים</p>
+                            <p><a href="https://haydemusic.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">haydemusic.com</a></p>
+                            <p><a href="tel:055-9662885" className="hover:opacity-80 transition-opacity" dir="ltr">055-9662885</a></p>
+                            <p className="mt-2 text-[#AF9470]"><a href="mailto:musicbyhayde@gmail.com" className="hover:opacity-80 transition-opacity">musicbyhayde@gmail.com</a></p>
                         </div>
 
-                        {/* Package Details - only show if inclusions exist */}
-                        {inclusions.length > 0 && (
-                            <div className="mb-12">
-                                <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                    <Music4 className="text-slate-400" /> מה כלול בשירות? ({quoteData.service || quote.service})
-                                </h2>
-                                <ul className="space-y-4">
-                                    {inclusions.map((inc: string, idx: number) => (
-                                        <li key={idx} className="flex items-start gap-3 text-slate-600">
-                                            <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={20} />
-                                            <span>{inc}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                        {/* Logo (Right) */}
+                        <div className="relative">
+                            <img src="/logos/haydeLogo.png" alt="Hayde Music" className="h-32 md:h-44 object-contain" />
+                        </div>
+                    </div>
 
-                        {/* Pricing */}
-                        <div className="bg-slate-900 rounded-3xl p-8 md:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
-                            {/* Accent glow */}
-                            <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-amber-500/20 blur-[80px] rounded-full"></div>
-            
-                            <div className="relative z-10 text-center md:text-right">
-                                <p className="text-amber-400 font-bold text-sm tracking-widest mb-2">סה״כ לתשלום</p>
-                                <p className="text-4xl md:text-5xl font-black">
-                                    ₪{Number(amount).toLocaleString()}
-                                </p>
-                            </div>
-                            
-                            {/* Extra Addons (If any) */}
+                    {/* Ribbon Title */}
+                    <div className="bg-[#EFEBE4] w-full py-2.5 px-8 md:px-16 flex items-center mb-12">
+                        <h1 className="text-slate-800 font-bold text-lg md:text-xl">{title}</h1>
+                    </div>
+
+                    {/* Intro Event Details */}
+                    <div className="px-8 md:px-16 mb-8 text-slate-800">
+                        <p className="text-base md:text-lg font-bold mb-4">
+                            עבור {quoteData.service === 'Bouzouki' ? 'אירוע בוזוקי' : 'אירוע'} שיערך בתאריך {quoteData.date || quote.date || '___'} ב{quote.fields?.Location || quoteData.location || '___'}.
+                        </p>
+                        <p className="text-slate-700">{description}</p>
+                    </div>
+
+                    {/* Inclusions */}
+                    <div className="px-8 md:px-16 space-y-6 mb-16">
+                        {inclusions.length > 0 ? (
+                            inclusions.map((inc: string, idx: number) => {
+                                // Simple parser: if the line contains a dash or is a bold statement, format it
+                                // Alternatively, we format the first line boldly and the rest normally
+                                const lines = inc.split('\n');
+                                const heading = lines[0];
+                                const body = lines.slice(1).join(' ');
+
+                                return (
+                                    <div key={idx} className="mb-6">
+                                        <h3 className="font-bold text-slate-800 text-lg mb-1">{heading}</h3>
+                                        {(body || !inc.includes('\n')) && (
+                                            <p className="text-slate-600 leading-relaxed text-sm md:text-base">
+                                                {body || (lines.length === 1 ? '' : '')}
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="text-slate-400 italic">לא פורטו שירותים במסמך זה.</div>
+                        )}
+                    </div>
+
+                    {/* Pricing */}
+                    <div className="px-8 md:px-16 mb-16">
+                        <div className="border-t border-slate-200 pt-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <p className="text-lg md:text-xl font-bold text-slate-800">
+                                מחיר: {Number(amount).toLocaleString()} ש״ח
+                            </p>
+
                             {quoteData.addons && quoteData.addons.length > 0 && (
-                                <div className="relative z-10 text-right text-sm text-slate-400 border-t md:border-t-0 md:border-r border-slate-700 pt-4 md:pt-0 md:pr-8 w-full md:w-auto">
-                                    <p className="font-bold text-white mb-2">תוספות אפשריות:</p>
-                                    {quoteData.addons.map((addon: any, idx: number) => (
-                                        <div key={idx} className="flex justify-between gap-8 mb-1">
-                                            <span>{addon.name}</span>
-                                            <span className="text-slate-300 font-mono">+₪{addon.price}</span>
-                                        </div>
-                                    ))}
+                                <div className="text-sm text-slate-500 bg-[#FAF9F6] p-4 border border-slate-100">
+                                    <p className="font-bold text-slate-700 mb-2">תוספות אפשריות:</p>
+                                    <div className="space-y-1">
+                                        {quoteData.addons.map((addon: any, idx: number) => (
+                                            <div key={idx} className="flex justify-between gap-6">
+                                                <span>{addon.name}</span>
+                                                <span className="font-mono">+₪{addon.price}</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
-
                     </div>
-                </div>
 
-                {/* Footer terms */}
-                <div className="text-center mt-12 text-slate-400 text-sm pb-12 space-y-1">
-                    <p className="font-bold mb-2">Hayde Music • מוזיקה לאירועים</p>
-                    {terms.map((term: string, idx: number) => (
-                        <p key={idx}>{term}</p>
-                    ))}
+                    {/* Terms */}
+                    <div className="px-8 md:px-16 pb-16 pt-8 mt-auto">
+                        <ul className="space-y-1.5 md:space-y-2 w-full md:w-3/4 mr-auto pr-[20%] text-[10px] md:text-xs text-slate-600 list-none">
+                            {terms.map((term: string, idx: number) => (
+                                <li key={idx} className="relative before:content-['•'] before:absolute before:-right-4 before:text-[#B8986D] before:font-bold">
+                                    {term}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
                 </div>
             </main>
         </div>
