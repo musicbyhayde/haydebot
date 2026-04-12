@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import SendMaterialsModal from './SendMaterialsModal';
 import CalendarEventModal from './CalendarEventModal';
 import ProposalModal from './ProposalModal';
+import { toDisplayPhone, toDbPhone, formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
 
 interface LeadDetailPanelProps {
     lead: Lead;
@@ -536,7 +537,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 </span>
                             )}
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">{lead.fields.Phone} · {lead.fields.Service || '—'}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{toDisplayPhone(lead.fields.Phone)} · {lead.fields.Service || '—'}</p>
                     </div>
                     <div className="flex items-center gap-2 relative">
                         {/* Star Menu Toggle */}
@@ -1021,9 +1022,9 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 <div className="flex flex-col gap-1">
                                     <label className="text-[10px] font-bold text-slate-500 mr-1">טלפון</label>
                                     <input
-                                        type="text"
-                                        value={editData.Phone || ''}
-                                        onChange={(e) => setEditData({ ...editData, Phone: e.target.value })}
+                                        type="tel"
+                                        value={toDisplayPhone(editData.Phone)}
+                                        onChange={(e) => setEditData({ ...editData, Phone: toDbPhone(e.target.value) })}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                         dir="ltr"
                                     />
@@ -1047,11 +1048,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 <div className="flex flex-col gap-1">
                                     <label className="text-[10px] font-bold text-slate-500 mr-1">תאריך אירוע</label>
                                     <input
-                                        type="text"
-                                        value={editData.Event_Date || ''}
-                                        onChange={(e) => setEditData({ ...editData, Event_Date: e.target.value })}
+                                        type="date"
+                                        value={formatDateForInput(editData.Event_Date)}
+                                        onChange={(e) => setEditData({ ...editData, Event_Date: formatInputDateToDisplay(e.target.value) })}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="למשל: 25.12.24"
+                                        dir="ltr"
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1">

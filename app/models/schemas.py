@@ -66,6 +66,7 @@ class LeadCreate(LeadBase):
 
 class LeadUpdate(BaseSchema):
     name: Optional[str] = Field(None, alias="Name")
+    phone: Optional[str] = Field(None, alias="Phone")
     status: Optional[LeadStatus] = Field(None, alias="Status")
     conversation_state: Optional[ConversationState] = Field(None, alias="Conversation_State")
     last_interaction: Optional[datetime] = Field(None, alias="Last_Interaction")

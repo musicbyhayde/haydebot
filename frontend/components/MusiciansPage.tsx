@@ -10,6 +10,7 @@ import {
     ChevronDown, ChevronUp, MessageSquare, Send
 } from 'lucide-react';
 import clsx from 'clsx';
+import { toDisplayPhone, toDbPhone } from '@/lib/formatters';
 
 interface MusiciansPageProps {
     currentUser?: AppUser | null;
@@ -281,7 +282,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-bold text-slate-500 mb-1">טלפון *</label>
-                                        <input type="text" value={form.Phone} onChange={(e) => setForm({ ...form, Phone: e.target.value })} placeholder="972501234567" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" dir="ltr" required />
+                                        <input type="tel" value={toDisplayPhone(form.Phone)} onChange={(e) => setForm({ ...form, Phone: toDbPhone(e.target.value) })} placeholder="05X-XXXXXXX" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" dir="ltr" required />
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-bold text-slate-500 mb-1">אימייל (לזימון יומן)</label>
@@ -379,7 +380,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                                 <input type="text" value={editForm.Name} onChange={(e) => setEditForm({ ...editForm, Name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" placeholder="שם" />
                                             </div>
                                             <div className="w-32 hidden md:block">
-                                                <input type="text" value={editForm.Phone} onChange={(e) => setEditForm({ ...editForm, Phone: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="טלפון" />
+                                                <input type="tel" value={toDisplayPhone(editForm.Phone)} onChange={(e) => setEditForm({ ...editForm, Phone: toDbPhone(e.target.value) })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="טלפון" />
                                             </div>
                                             <div className="w-40 hidden md:block">
                                                 <input type="email" value={editForm.Email} onChange={(e) => setEditForm({ ...editForm, Email: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="אימייל" />

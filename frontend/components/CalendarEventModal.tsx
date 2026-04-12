@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Calendar, MapPin, AlignLeft, Users, RefreshCw, Check } from 'lucide-react';
 import clsx from 'clsx';
 import { Musician } from '@/types';
+import { formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
 
 interface CalendarEventModalProps {
     isOpen: boolean;
@@ -134,13 +135,14 @@ export default function CalendarEventModal({
                         {/* Date */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                <Calendar size={14} className="text-slate-400" /> תאריך (DD.MM.YY)
+                                <Calendar size={14} className="text-slate-400" /> תאריך
                             </label>
                             <input
-                                type="text"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
+                                type="date"
+                                value={formatDateForInput(date)}
+                                onChange={(e) => setDate(formatInputDateToDisplay(e.target.value))}
                                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                                dir="ltr"
                             />
                         </div>
                     </div>

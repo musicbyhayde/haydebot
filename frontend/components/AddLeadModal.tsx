@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
+import { toDisplayPhone, toDbPhone, formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
 
 interface AddLeadModalProps {
     isOpen: boolean;
@@ -93,7 +94,7 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1">טלפון *</label>
-                            <input type="tel" className={inputClass} value={form.Phone} onChange={(e) => setForm({ ...form, Phone: e.target.value })} placeholder="05X-XXXXXXX" dir="ltr" required />
+                            <input type="tel" className={inputClass} value={toDisplayPhone(form.Phone)} onChange={(e) => setForm({ ...form, Phone: toDbPhone(e.target.value) })} placeholder="05X-XXXXXXX" dir="ltr" required />
                         </div>
                     </div>
 
@@ -115,7 +116,7 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1">תאריך אירוע</label>
-                            <input type="date" className={inputClass} value={form.Event_Date} onChange={(e) => setForm({ ...form, Event_Date: e.target.value })} dir="ltr" />
+                            <input type="date" className={inputClass} value={formatDateForInput(form.Event_Date)} onChange={(e) => setForm({ ...form, Event_Date: formatInputDateToDisplay(e.target.value) })} dir="ltr" />
                         </div>
                     </div>
 
