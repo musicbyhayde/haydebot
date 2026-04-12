@@ -57,12 +57,24 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
 async def google_calendar_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     Receive push notifications from Google Calendar for event updates (e.g., RSVPs).
-    Google sends headers like X-Goog-Resource-State.
+    Google sends:
+      - 'sync' on initial watch registration (just acknowledge)
+      - 'exists' when an event actually changes (trigger RSVP sync)
     """
-    # According to Google Docs, any update triggers this webhook.
-    # We will enqueue a sync_calendar_rsvps job to pull the latest instead of parsing diffs.
-    print(f"DEBUG: Received Google Calendar Webhook: {request.headers.get('x-goog-resource-state')}")
-    background_tasks.add_task(bot_logic.sync_calendar_rsvps)
+    state = request.headers.get('x-goog-resource-state', '')
+    channel_id = request.headers.get('x-goog-channel-id', '')
+    print(f"WEBHOOK: Google Calendar push — state={state}, channel={channel_id}")
+    
+    if state == 'sync':
+        # Initial sync verification from Google — just acknowledge
+        print("WEBHOOK: Sync verification received. Watch is active.")
+        return {"status": "ok"}
+    
+    if state == 'exists':
+        # An event was created/updated/deleted — sync RSVPs
+        print("WEBHOOK: Event change detected! Triggering RSVP sync...")
+        background_tasks.add_task(bot_logic.sync_calendar_rsvps)
+    
     return {"status": "ok"}
 
 # ─── Leads ────────────────────────────────────────────

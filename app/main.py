@@ -16,8 +16,33 @@ async def lifespan(app: FastAPI):
     from app.services.logic import bot_logic
     scheduler.add_job(bot_logic.send_weekly_summary, 'cron', day_of_week='sun', hour=10, minute=0)
     
-    # Schedule Google Calendar RSVP Sync (Every 5 minutes)
-    scheduler.add_job(bot_logic.sync_calendar_rsvps, 'interval', minutes=5, id='sync_rsvps', replace_existing=True)
+    # Schedule Google Calendar RSVP Sync (Every 2 minutes as fallback)
+    scheduler.add_job(bot_logic.sync_calendar_rsvps, 'interval', minutes=2, id='sync_rsvps', replace_existing=True)
+    
+    # Register Google Calendar Watch for real-time RSVP push notifications
+    try:
+        from app.services.google_calendar_service import google_calendar
+        webhook_url = "https://orca-app-g9jyu.ondigitalocean.app/api/v1/webhooks/calendar"
+        result = google_calendar.watch_calendar(webhook_url)
+        if result:
+            print(f"STARTUP: Google Calendar Watch active until {result.get('expiration')}")
+        else:
+            print("STARTUP: Google Calendar Watch failed — falling back to polling only")
+    except Exception as e:
+        print(f"STARTUP: Could not register Calendar Watch: {e}")
+    
+    # Re-register the watch every 6 days (Google watch expires after ~7 days)
+    def renew_calendar_watch():
+        try:
+            from app.services.google_calendar_service import google_calendar
+            webhook_url = "https://orca-app-g9jyu.ondigitalocean.app/api/v1/webhooks/calendar"
+            google_calendar.watch_calendar(webhook_url)
+            print("SCHEDULER: Google Calendar Watch renewed")
+        except Exception as e:
+            print(f"SCHEDULER: Failed to renew Calendar Watch: {e}")
+    
+    scheduler.add_job(renew_calendar_watch, 'interval', days=6, id='renew_calendar_watch', replace_existing=True)
+    
     yield
     # Shutdown
     scheduler.shutdown()

@@ -170,6 +170,46 @@ class GoogleCalendarService:
             print(f"An error occurred in get_event_attendees_status: {error}")
             return {}
 
+    def watch_calendar(self, webhook_url: str) -> Optional[dict]:
+        """
+        Register a push notification channel so Google notifies us 
+        whenever any event on this calendar changes (including RSVP updates).
+        The watch expires after ~7 days and needs to be renewed.
+        """
+        if not self.service:
+            return None
+        import uuid
+        channel_id = str(uuid.uuid4())
+        try:
+            body = {
+                'id': channel_id,
+                'type': 'web_hook',
+                'address': webhook_url,
+            }
+            result = self.service.events().watch(
+                calendarId=self.calendar_id,
+                body=body
+            ).execute()
+            print(f"GOOGLE_CALENDAR: Watch registered! channel_id={channel_id}, expiration={result.get('expiration')}")
+            return result
+        except HttpError as error:
+            print(f"GOOGLE_CALENDAR: Failed to register watch: {error}")
+            return None
+
+    def stop_watch(self, channel_id: str, resource_id: str) -> bool:
+        """Stop a previously registered push notification channel."""
+        if not self.service:
+            return False
+        try:
+            self.service.channels().stop(body={
+                'id': channel_id,
+                'resourceId': resource_id
+            }).execute()
+            return True
+        except HttpError as error:
+            print(f"GOOGLE_CALENDAR: Failed to stop watch: {error}")
+            return False
+
     def _parse_date(self, date_str: str) -> Optional[datetime]:
         # Handle 25.12.24 or 2024-12-25
         formats = ['%d.%m.%y', '%d.%m.%Y', '%Y-%m-%d']
@@ -182,3 +222,4 @@ class GoogleCalendarService:
 
 # Singleton instance
 google_calendar = GoogleCalendarService()
+

@@ -1210,17 +1210,40 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             
                             {/* Calendar Sync Action */}
                             {lead.fields.Google_Event_ID && (
-                                <div className="p-4 mt-auto border-t border-slate-200 bg-white">
-                                    <button
-                                        onClick={handleSyncMusicians}
-                                        disabled={syncingCalendar}
-                                        className="w-full py-3 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
-                                    >
-                                        {syncingCalendar ? <RefreshCw className="animate-spin" size={14} /> : <Calendar size={14} />}
-                                        עדכן נגנים ביומן
-                                    </button>
-                                    <p className="text-[10px] text-slate-400 text-center mt-2 font-medium">
-                                        שלח זימונים או עדכן את רשימת המשתתפים ביומן
+                                <div className="p-4 mt-auto border-t border-slate-200 bg-white space-y-2">
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleSyncMusicians}
+                                            disabled={syncingCalendar}
+                                            className="flex-1 py-2.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {syncingCalendar ? <RefreshCw className="animate-spin" size={13} /> : <Calendar size={13} />}
+                                            עדכן נגנים ביומן
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                setSyncingCalendar(true);
+                                                try {
+                                                    const result = await api.syncLeadRsvps(lead.id);
+                                                    console.log('RSVP refresh result:', result);
+                                                    if (result.rsvps && Object.keys(result.rsvps).length > 0) {
+                                                        Object.assign(lead.fields, { Musician_RSVPs: result.rsvps });
+                                                    }
+                                                } catch (err) {
+                                                    console.error('RSVP refresh error:', err);
+                                                } finally {
+                                                    setSyncingCalendar(false);
+                                                }
+                                            }}
+                                            disabled={syncingCalendar}
+                                            className="py-2.5 px-3 border border-slate-200 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-all flex items-center gap-1"
+                                            title="רענן סטטוס אישורים"
+                                        >
+                                            <RefreshCw size={13} className={syncingCalendar ? 'animate-spin' : ''} />
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 text-center font-medium">
+                                        שלח זימונים או רענן סטטוס אישורי נגנים
                                     </p>
                                 </div>
                             )}
