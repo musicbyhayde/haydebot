@@ -284,21 +284,47 @@ async def sync_lead_rsvps(lead_id: str):
     if not event_id:
         raise HTTPException(status_code=404, detail="No calendar event for this lead")
     
+    # Step 1: Get Google Calendar attendees
     status_map = google_calendar.get_event_attendees_status(event_id)
+    print(f"DEBUG sync-rsvps: event_id={event_id}, google_attendees={status_map}")
     
+    # Step 2: Get musician emails from DB
     musicians = airtable_service.get_all_musicians()
-    musician_emails = {m["id"]: (m["fields"].get("Email") or m["fields"].get("email") or "").lower().strip() for m in musicians}
+    musician_emails = {}
+    debug_emails = {}
+    for m in musicians:
+        if m["id"] in team_ids:
+            email = (m["fields"].get("Email") or m["fields"].get("email") or "").lower().strip()
+            musician_emails[m["id"]] = email
+            debug_emails[m["fields"].get("Name", m["id"])] = email or "(no email)"
     
+    print(f"DEBUG sync-rsvps: team_musician_emails={debug_emails}")
+    
+    # Step 3: Match
     new_rsvps = {}
     for m_id in team_ids:
-        email = musician_emails.get(m_id)
+        email = musician_emails.get(m_id, "")
         if email and email in status_map:
             new_rsvps[m_id] = status_map[email]
+        elif email:
+            # Email exists but not found in Google — might be needsAction or not invited yet
+            new_rsvps[m_id] = "needsAction"
     
+    print(f"DEBUG sync-rsvps: result_rsvps={new_rsvps}")
+    
+    # Step 4: Always save (even if needsAction) so the UI shows something
     if new_rsvps:
         airtable_service.update_lead(lead_id, {"Musician_RSVPs": new_rsvps})
     
-    return {"status": "synced", "rsvps": new_rsvps}
+    return {
+        "status": "synced", 
+        "rsvps": new_rsvps,
+        "debug": {
+            "event_id": event_id,
+            "google_attendees": status_map,
+            "team_emails": debug_emails,
+        }
+    }
 
 @protected_router.delete("/leads/{lead_id}/calendar-event")
 async def delete_calendar_event(lead_id: str):

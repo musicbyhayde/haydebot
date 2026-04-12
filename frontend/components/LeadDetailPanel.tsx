@@ -377,11 +377,12 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             // After updating the calendar, immediately sync RSVP statuses
             try {
                 const rsvpResult = await api.syncLeadRsvps(lead.id);
-                if (rsvpResult.rsvps) {
+                console.log('RSVP sync result:', JSON.stringify(rsvpResult, null, 2));
+                if (rsvpResult.rsvps && Object.keys(rsvpResult.rsvps).length > 0) {
                     Object.assign(lead.fields, { Musician_RSVPs: rsvpResult.rsvps });
                 }
             } catch (rsvpErr) {
-                console.log('RSVP sync skipped:', rsvpErr);
+                console.warn('RSVP sync failed:', rsvpErr);
             }
             alert('הנגנים סונכרנו בהצלחה ליומן');
         } catch (e) {
