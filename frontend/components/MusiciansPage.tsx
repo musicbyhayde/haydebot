@@ -412,11 +412,11 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                         <div className="flex items-center px-4 md:px-6 py-2 text-xs hover:bg-slate-50 transition-colors w-full cursor-pointer" onClick={() => toggleExpand(m.id)}>
                                             <div className="flex-1 min-w-[120px] flex flex-col justify-center gap-0.5">
                                                 <span className="font-bold text-slate-800">{m.fields.Name}</span>
-                                                <span className="text-[10px] text-slate-400 md:hidden">{m.fields.Phone}</span>
+                                                <span className="text-[10px] text-slate-400 md:hidden">{toDisplayPhone(m.fields.Phone)}</span>
                                             </div>
                                             
                                             <div className="w-32 shrink-0 hidden md:flex text-slate-500 font-mono text-[11px]">
-                                                {m.fields.Phone}
+                                                {toDisplayPhone(m.fields.Phone)}
                                             </div>
                                             
                                             <div className="w-24 shrink-0 hidden md:flex justify-center">

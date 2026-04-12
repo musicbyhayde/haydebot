@@ -8,6 +8,7 @@ import AddLeadModal from './AddLeadModal';
 import LeadDetailPanel from './LeadDetailPanel';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
+import { toDisplayPhone } from '@/lib/formatters';
 
 interface LeadsDashboardProps {
     leads: Lead[];
@@ -153,7 +154,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
                                     <div className="flex-1 min-w-[120px] flex flex-col justify-center">
                                         <span className="font-bold text-slate-600">{lead.fields.Name || 'ללא שם'}</span>
-                                        <span className="text-[10px] text-slate-400">{lead.fields.Phone}</span>
+                                        <span className="text-[10px] text-slate-400">{toDisplayPhone(lead.fields.Phone)}</span>
                                     </div>
                                     <div className="w-32 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Service || '—'}
@@ -389,7 +390,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                 </span>
                                             )}
                                         </div>
-                                        <span className="text-[10px] text-slate-400 truncate">{lead.fields.Phone}</span>
+                                        <span className="text-[10px] text-slate-400 truncate">{toDisplayPhone(lead.fields.Phone)}</span>
                                     </div>
                                     <div className="w-20 md:w-24 shrink-0 flex items-center">
                                         <span className={clsx("inline-flex items-center px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold border", statusInfo.class)}>
