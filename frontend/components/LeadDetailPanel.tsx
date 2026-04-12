@@ -1130,73 +1130,75 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
                             {/* Assigned Team List */}
                             <div className="flex-1 overflow-y-auto p-4">
-                                <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
                                         <Wrench size={14} className="text-purple-600" /> צוות משובץ לאירוע
                                     </h3>
-                                    <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    <span className="text-[10px] font-bold text-slate-400">
                                         {(lead.fields.Musician_Team || []).length} נגנים
                                     </span>
                                 </div>
 
                                 {loadingTeam ? (
-                                    <div className="text-center py-12">
-                                        <RefreshCw size={24} className="text-purple-300 animate-spin mx-auto mb-2" />
-                                        <p className="text-xs font-bold text-slate-400">טוען רשימת צוות...</p>
+                                    <div className="text-center py-8">
+                                        <RefreshCw size={18} className="text-slate-300 animate-spin mx-auto mb-2" />
+                                        <p className="text-xs text-slate-400">טוען...</p>
                                     </div>
                                 ) : (lead.fields.Musician_Team || []).length === 0 ? (
-                                    <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
-                                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-300">
-                                            <Wrench size={24} />
-                                        </div>
-                                        <p className="text-xs font-bold text-slate-400">לא שובץ צוות לאירוע זה</p>
-                                        <p className="text-[10px] text-slate-300 mt-1">השתמש בתפריט למעלה כדי להוסיף נגנים</p>
+                                    <div className="text-center py-8 text-slate-300">
+                                        <p className="text-xs">לא שובץ צוות לאירוע זה</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
-                                        {(lead.fields.Musician_Team || []).map(mId => {
+                                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                        {(lead.fields.Musician_Team || []).map((mId, idx) => {
                                             const m = poolMusicians.find(pm => pm.id === mId) || { fields: { Name: 'טוען...', Phone: '' } };
+                                            const rsvps = lead.fields.Musician_RSVPs || {};
+                                            const status = rsvps[mId];
                                             return (
-                                                <div key={mId} className="group flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-purple-200 transition-all">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-[10px] font-bold">
-                                                            {m.fields.Name.charAt(0)}
-                                                        </div>
-                                                        <div>
-                                                            <div className="text-sm font-bold text-slate-800">{m.fields.Name}</div>
-                                                            <div className="text-[10px] font-medium text-slate-400 font-mono">{m.fields.Phone}</div>
-                                                        </div>
+                                                <div key={mId} className={`flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 transition-colors ${idx > 0 ? 'border-t border-slate-100' : ''}`}>
+                                                    {/* Right side: Name + Phone */}
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <span className="text-sm font-bold text-slate-800 truncate">{m.fields.Name}</span>
+                                                        <span className="text-[10px] text-slate-400 font-mono whitespace-nowrap">{m.fields.Phone}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {(() => {
-                                                            const rsvps = lead.fields.Musician_RSVPs || {};
-                                                            const status = rsvps[mId];
-                                                            if (status === 'accepted') return <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><Check size={10}/> אישר</span>;
-                                                            if (status === 'declined') return <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><X size={10}/> סירב</span>;
-                                                            if (status === 'tentative') return <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">אולי</span>;
-                                                            if (status === 'needsAction') return <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><Clock size={10}/> ממתין לתשובה</span>;
-                                                            return null;
-                                                        })()}
-                                                        <button 
+
+                                                    {/* Left side: RSVP + Delete */}
+                                                    <div className="flex items-center gap-3 shrink-0">
+                                                        {status === 'accepted' && (
+                                                            <span className="text-green-600 flex items-center gap-1 text-xs font-bold"><Check size={14} strokeWidth={3}/></span>
+                                                        )}
+                                                        {status === 'declined' && (
+                                                            <span className="text-red-500 flex items-center gap-1 text-xs font-bold"><X size={14} strokeWidth={3}/></span>
+                                                        )}
+                                                        {status === 'tentative' && (
+                                                            <span className="text-yellow-500 flex items-center gap-1 text-xs font-bold">~</span>
+                                                        )}
+                                                        {status === 'needsAction' && (
+                                                            <span className="text-slate-300"><Clock size={13}/></span>
+                                                        )}
+                                                        {!status && lead.fields.Google_Event_ID && (
+                                                            <span className="text-slate-200"><Clock size={13}/></span>
+                                                        )}
+                                                        <button
                                                             onClick={async () => {
-                                                            if (!confirm(`להסיר את ${m.fields.Name} מהצוות?`)) return;
-                                                            setSavingTeam(true);
-                                                            try {
-                                                                const newTeam = (lead.fields.Musician_Team || []).filter(id => id !== mId);
-                                                                await api.updateLead(lead.id, { Musician_Team: newTeam });
-                                                                Object.assign(lead.fields, { Musician_Team: newTeam });
-                                                            } catch (err) {
-                                                                console.error(err);
-                                                                alert('שגיאה בעדכון הצוות');
-                                                            } finally {
-                                                                setSavingTeam(false);
-                                                            }
-                                                        }}
-                                                        disabled={savingTeam}
-                                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                                if (!confirm(`להסיר את ${m.fields.Name} מהצוות?`)) return;
+                                                                setSavingTeam(true);
+                                                                try {
+                                                                    const newTeam = (lead.fields.Musician_Team || []).filter(id => id !== mId);
+                                                                    await api.updateLead(lead.id, { Musician_Team: newTeam });
+                                                                    Object.assign(lead.fields, { Musician_Team: newTeam });
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                    alert('שגיאה בעדכון הצוות');
+                                                                } finally {
+                                                                    setSavingTeam(false);
+                                                                }
+                                                            }}
+                                                            disabled={savingTeam}
+                                                            className="text-slate-300 hover:text-red-500 transition-colors"
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
                                                     </div>
                                                 </div>
                                             );
