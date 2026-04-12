@@ -42,7 +42,7 @@ class GoogleCalendarService:
         print("GOOGLE_CALENDAR: CRITICAL: No valid Google Calendar OAuth credentials found. Calendar synchronization and invitations will not work.")
         return None
 
-    def create_event(self, lead_name: str, location: str, event_date_str: str, musician_emails: List[str], custom_description: Optional[str] = None) -> Optional[str]:
+    def create_event(self, lead_name: str, location: str, event_date_str: str, musician_emails: List[str], custom_description: Optional[str] = None, is_closed: bool = False) -> Optional[str]:
         if not self.service:
             return None
 
@@ -52,8 +52,9 @@ class GoogleCalendarService:
             print(f"ERROR: Could not parse date {event_date_str}")
             return None
 
+        summary = f'{lead_name} + {location}' if is_closed else f'(אופציה) - {lead_name} + {location}'
         event_body = {
-            'summary': f'(אופציה) - {lead_name} + {location}',
+            'summary': summary,
             'location': location,
             'description': custom_description or f'אירוע שנוצר מהיידהבוט עבור {lead_name}.',
             'start': {
@@ -93,6 +94,23 @@ class GoogleCalendarService:
         except HttpError as error:
             print(f"An error occurred in update_event_closed: {error}")
             return False
+
+    def get_event(self, event_id: str) -> Optional[dict]:
+        """Fetch an event's current details from Google Calendar."""
+        if not self.service or not event_id:
+            return None
+        try:
+            event = self.service.events().get(calendarId=self.calendar_id, eventId=event_id).execute()
+            return {
+                'summary': event.get('summary', ''),
+                'location': event.get('location', ''),
+                'description': event.get('description', ''),
+                'date': event.get('start', {}).get('date', ''),
+                'attendees': [a.get('email', '') for a in event.get('attendees', []) if a.get('email')],
+            }
+        except HttpError as error:
+            print(f"An error occurred in get_event: {error}")
+            return None
 
     def update_event(self, event_id: str, lead_name: str, location: str, event_date_str: str, musician_emails: List[str], description: Optional[str] = None) -> bool:
         if not self.service or not event_id:

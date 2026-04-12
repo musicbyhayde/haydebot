@@ -219,12 +219,14 @@ async def create_calendar_event(lead_id: str, payload: Optional[CalendarEventCre
         date_to_use = lead["fields"].get("Event_Date", "")
         desc_to_use = None
 
+    is_closed = lead["fields"].get("Status") == "Closed"
     event_id = google_calendar.create_event(
         lead_name=name_to_use,
         location=loc_to_use,
         event_date_str=date_to_use,
         musician_emails=emails_to_use,
-        custom_description=desc_to_use
+        custom_description=desc_to_use,
+        is_closed=is_closed
     )
 
     if event_id:
@@ -232,6 +234,22 @@ async def create_calendar_event(lead_id: str, payload: Optional[CalendarEventCre
         return {"status": "created", "event_id": event_id}
     else:
         raise HTTPException(status_code=500, detail="Failed to create calendar event")
+
+@protected_router.get("/leads/{lead_id}/calendar-event")
+async def get_calendar_event(lead_id: str):
+    """Fetch current event details from Google Calendar for editing."""
+    from app.services.google_calendar_service import google_calendar
+    
+    lead = airtable_service.leads_table.get(lead_id)
+    event_id = lead["fields"].get("Google_Event_ID")
+    if not event_id:
+        raise HTTPException(status_code=404, detail="No calendar event for this lead")
+    
+    event_data = google_calendar.get_event(event_id)
+    if not event_data:
+        raise HTTPException(status_code=404, detail="Event not found in Google Calendar")
+    
+    return event_data
 
 @protected_router.patch("/leads/{lead_id}/calendar-event")
 async def update_calendar_event(lead_id: str, payload: CalendarEventUpdate):

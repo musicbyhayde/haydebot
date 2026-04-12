@@ -301,6 +301,12 @@ export const api = {
     },
 
 
+    async getCalendarEvent(leadId: string): Promise<{ summary: string; location: string; description: string; date: string; attendees: string[] }> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/calendar-event`);
+        if (!res.ok) throw new Error('Failed to fetch calendar event');
+        return res.json();
+    },
+
     async createCalendarEvent(leadId: string, payload?: CalendarEventPayload): Promise<{ status: string; event_id: string }> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/calendar-event`, {
             method: 'POST',

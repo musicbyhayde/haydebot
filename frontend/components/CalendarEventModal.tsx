@@ -20,6 +20,7 @@ interface CalendarEventModalProps {
     initialDate: string;
     teamEmails: string[];
     isUpdate?: boolean;
+    existingEventData?: { summary: string; location: string; description: string; date: string; attendees: string[] } | null;
 }
 
 export default function CalendarEventModal({
@@ -30,7 +31,8 @@ export default function CalendarEventModal({
     initialLocation,
     initialDate,
     teamEmails,
-    isUpdate = false
+    isUpdate = false,
+    existingEventData = null,
 }: CalendarEventModalProps) {
     const [summary, setSummary] = useState('');
     const [location, setLocation] = useState(initialLocation);
@@ -40,12 +42,21 @@ export default function CalendarEventModal({
 
     useEffect(() => {
         if (isOpen) {
-            setSummary(isUpdate ? leadName : `(אופציה) - ${leadName} + ${initialLocation}`);
-            setLocation(initialLocation);
-            setDate(initialDate);
-            setDescription(`אירוע שנוצר מהיידהבוט עבור ${leadName}.`);
+            if (isUpdate && existingEventData) {
+                // Editing existing event — populate from Google Calendar data
+                setSummary(existingEventData.summary);
+                setLocation(existingEventData.location);
+                setDate(existingEventData.date);
+                setDescription(existingEventData.description);
+            } else {
+                // Creating new event — use lead data as defaults
+                setSummary(leadName);
+                setLocation(initialLocation);
+                setDate(initialDate);
+                setDescription(`אירוע שנוצר מהיידהבוט עבור ${leadName}.`);
+            }
         }
-    }, [isOpen, leadName, initialLocation, initialDate, isUpdate]);
+    }, [isOpen, leadName, initialLocation, initialDate, isUpdate, existingEventData]);
 
     const handleConfirm = async () => {
         if (!summary.trim() || !date.trim()) {

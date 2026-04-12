@@ -81,6 +81,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
     const [isCalendarUpdate, setIsCalendarUpdate] = useState(false);
     const [calendarDirty, setCalendarDirty] = useState(false);
+    const [existingCalendarData, setExistingCalendarData] = useState<{ summary: string; location: string; description: string; date: string; attendees: string[] } | null>(null);
     
     // Team State
     const [poolMusicians, setPoolMusicians] = useState<Musician[]>([]);
@@ -665,8 +666,20 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 <BellOff size={12} /> השתק בוט 24ש׳
                             </button>
                             <button
-                                onClick={() => {
-                                    setIsCalendarUpdate(!!lead.fields.Google_Event_ID);
+                                onClick={async () => {
+                                    const isUpdate = !!lead.fields.Google_Event_ID;
+                                    setIsCalendarUpdate(isUpdate);
+                                    if (isUpdate) {
+                                        try {
+                                            const eventData = await api.getCalendarEvent(lead.id);
+                                            setExistingCalendarData(eventData);
+                                        } catch (err) {
+                                            console.warn('Could not fetch event data, using defaults:', err);
+                                            setExistingCalendarData(null);
+                                        }
+                                    } else {
+                                        setExistingCalendarData(null);
+                                    }
                                     setIsCalendarModalOpen(true);
                                 }}
                                 className={clsx(
@@ -1456,6 +1469,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     initialDate={lead.fields.Event_Date || ''}
                     teamEmails={(poolMusicians.filter(m => (lead.fields.Musician_Team || []).includes(m.id)).map(m => m.fields.Email)).filter((e): e is string => !!e)}
                     isUpdate={isCalendarUpdate}
+                    existingEventData={existingCalendarData}
                 />
 
             </div>
