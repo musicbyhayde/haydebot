@@ -1282,11 +1282,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <div className="flex gap-2">
                                         <div className="w-1/2 flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 focus-within:border-blue-400 transition-all">
                                             <input
-                                                type="text"
-                                                placeholder="תאריך יעד (אופציונלי)"
-                                                value={newTaskDueDate}
-                                                onChange={(e) => setNewTaskDueDate(e.target.value)}
+                                                type="date"
+                                                value={formatDateForInput(newTaskDueDate)}
+                                                onChange={(e) => setNewTaskDueDate(formatInputDateToDisplay(e.target.value))}
                                                 className="w-full bg-transparent text-xs outline-none placeholder:text-slate-400"
+                                                dir="ltr"
                                             />
                                         </div>
                                         <div className="w-1/2 flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 focus-within:border-blue-400 transition-all">

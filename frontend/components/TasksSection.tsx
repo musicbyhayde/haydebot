@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { CheckCircle2, Circle, Calendar, User, Plus, Trash2, ListTodo, Briefcase, Star } from 'lucide-react';
 import clsx from 'clsx';
 import { AppUser } from '@/lib/auth';
+import { formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
 
 interface TasksSectionProps {
     currentUser?: AppUser | null;
@@ -134,11 +135,11 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                     <div className="w-full md:w-32 flex items-center bg-white border border-slate-200 rounded px-2 py-1.5 focus-within:border-blue-400 transition-all">
                         <Calendar size={12} className="text-slate-400 ml-2 shrink-0" />
                         <input
-                            type="text"
-                            placeholder="תאריך יעד"
-                            value={newTaskDueDate}
-                            onChange={(e) => setNewTaskDueDate(e.target.value)}
+                            type="date"
+                            value={formatDateForInput(newTaskDueDate)}
+                            onChange={(e) => setNewTaskDueDate(formatInputDateToDisplay(e.target.value))}
                             className="w-full bg-transparent text-xs outline-none placeholder:text-slate-400"
+                            dir="ltr"
                         />
                     </div>
                     {leads && leads.length > 0 && (
