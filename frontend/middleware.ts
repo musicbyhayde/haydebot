@@ -5,6 +5,7 @@ export async function middleware(request: NextRequest) {
     // Skip auth check for login page and static assets
     if (
         request.nextUrl.pathname.startsWith('/login') ||
+        request.nextUrl.pathname.startsWith('/quote/') ||
         request.nextUrl.pathname.startsWith('/_next') ||
         request.nextUrl.pathname.startsWith('/favicon')
     ) {
@@ -46,5 +47,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico|login).*)'],
+    matcher: ['/((?!_next/static|_next/image|favicon.ico|login|quote).*)'],
 };
