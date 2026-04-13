@@ -85,7 +85,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [existingCalendarData, setExistingCalendarData] = useState<{ summary: string; location: string; description: string; date: string; attendees: string[] } | null>(null);
     
     // Team State
-    const [poolMusicians, setPoolMusicians] = useState<Musician[]>([]);
+    const [availableTeamMusicians, setAvailableTeamMusicians] = useState<Musician[]>([]);
     const [loadingTeam, setLoadingTeam] = useState(false);
     const [savingTeam, setSavingTeam] = useState(false);
     const [syncingCalendar, setSyncingCalendar] = useState(false);
@@ -121,7 +121,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         fetchNotes();
         fetchFinances();
         fetchTasks();
-        if (tab === 'team') fetchPoolMusicians();
+        if (tab === 'team') fetchAvailableTeamMusicians();
     }, [lead.id, tab]);
 
 
@@ -155,12 +155,12 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         }
     };
 
-    const fetchPoolMusicians = async () => {
+    const fetchAvailableTeamMusicians = async () => {
         setLoadingTeam(true);
         try {
             const data = await api.getMusicians();
-            // Filter to only POOL musicians
-            setPoolMusicians(data.filter(m => m.fields.Type === 'POOL' && m.fields.Is_Active !== false));
+            // Filter to include both POOL and REFERRER musicians
+            setAvailableTeamMusicians(data.filter(m => (m.fields.Type === 'POOL' || m.fields.Type === 'REFERRER') && m.fields.Is_Active !== false));
         } catch (e) {
             console.error(e);
         } finally {
@@ -1099,7 +1099,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         <div className="flex flex-col h-full bg-slate-50">
                             {/* Selector Header */}
                             <div className="p-4 bg-white border-b border-slate-200">
-                                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">הוסף נגן לצוות (ממאגר הנגנים)</label>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">הוסף נגן לצוות (ממאגר הנגנים וההפניות)</label>
                                 <div className="flex gap-2">
                                     <div className="flex-1 relative">
                                         <select 
@@ -1129,7 +1129,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                             disabled={savingTeam}
                                         >
                                             <option value="">בחר נגן להוספה...</option>
-                                            {poolMusicians
+                                            {availableTeamMusicians
                                                 .filter(m => !(lead.fields.Musician_Team || []).includes(m.id))
                                                 .map(m => (
                                                     <option key={m.id} value={m.id}>{m.fields.Name} ({m.fields.Phone})</option>
@@ -1468,7 +1468,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     leadName={lead.fields.Name || lead.fields.Phone}
                     initialLocation={lead.fields.Location || ''}
                     initialDate={lead.fields.Event_Date || ''}
-                    teamEmails={(poolMusicians.filter(m => (lead.fields.Musician_Team || []).includes(m.id)).map(m => m.fields.Email)).filter((e): e is string => !!e)}
+                    teamEmails={(availableTeamMusicians.filter(m => (lead.fields.Musician_Team || []).includes(m.id)).map(m => m.fields.Email)).filter((e): e is string => !!e)}
                     isUpdate={isCalendarUpdate}
                     existingEventData={existingCalendarData}
                 />
