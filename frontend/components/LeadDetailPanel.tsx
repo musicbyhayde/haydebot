@@ -1166,7 +1166,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 ) : (
                                     <div className="border border-slate-200 rounded-lg overflow-hidden">
                                         {(lead.fields.Musician_Team || []).map((mId, idx) => {
-                                            const m = poolMusicians.find(pm => pm.id === mId) || { fields: { Name: 'טוען...', Phone: '' } };
+                                            const m = availableTeamMusicians.find(pm => pm.id === mId) || { fields: { Name: 'טוען...', Phone: '' } };
                                             const rsvps = lead.fields.Musician_RSVPs || {};
                                             const status = rsvps[mId];
                                             return (
