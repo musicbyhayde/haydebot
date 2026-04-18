@@ -29,6 +29,7 @@ const STATUS_MAP: Record<string, { label: string; class: string }> = {
     'Assigned': { label: 'שובץ', class: 'bg-green-100 text-green-800' },
     'Closed': { label: 'נסגר', class: 'bg-emerald-100 text-emerald-800' },
     'Lost': { label: 'אבוד', class: 'bg-red-100 text-red-800' },
+    'Completed': { label: 'הושלם', class: 'bg-slate-200 text-slate-700' },
 };
 
 export default function Sidebar({ leads, musicians, activeId, onSelect, currentView, onViewChange, currentUser, onSignOut, unreadStatus = {}, isCollapsed = false, onToggleCollapse }: SidebarProps) {

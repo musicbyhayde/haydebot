@@ -18,6 +18,7 @@ class LeadStatus(str, Enum):
     QUOTE_SENT = "Quote_Sent"
     WAITING_PAYMENT = "Waiting_Payment"
     TALKING = "Talking"
+    COMPLETED = "Completed"
 
 class MusicianType(str, Enum):
     REFERRER = "REFERRER"

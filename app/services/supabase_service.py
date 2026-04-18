@@ -101,9 +101,9 @@ class SupabaseService:
         self.client.table("leads").delete().eq("id", record_id).execute()
 
     def get_active_leads(self) -> List[dict]:
-        """Fetch leads that are not Closed or Lost."""
+        """Fetch leads that are not Closed, Lost, or Completed."""
         if not self.client: return []
-        response = self.client.table("leads").select("*").neq("Status", "Closed").neq("Status", "Lost").order("Last_Interaction", desc=True).execute()
+        response = self.client.table("leads").select("*").neq("Status", "Closed").neq("Status", "Lost").neq("Status", "Completed").order("Last_Interaction", desc=True).execute()
         return self._to_airtable_list(response.data)
 
     def get_all_leads(self) -> List[dict]:
@@ -127,7 +127,7 @@ class SupabaseService:
         if not self.client: return {}
         try:
             # Get all leads with their Last_Read_At
-            leads_resp = self.client.table("leads").select("id, Last_Read_At").neq("Status", "Closed").neq("Status", "Lost").execute()
+            leads_resp = self.client.table("leads").select("id, Last_Read_At").neq("Status", "Closed").neq("Status", "Lost").neq("Status", "Completed").execute()
             
             # Use 30 days as a reasonable cutoff to not fetch the entire DB
             cutoff = (datetime.now() - timedelta(days=30)).isoformat()

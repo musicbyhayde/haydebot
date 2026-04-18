@@ -31,6 +31,7 @@ const STATUS_MAP: Record<string, { label: string; class: string }> = {
     'Assigned': { label: 'שובץ', class: 'bg-green-50 text-green-700 border-green-200' },
     'Closed': { label: 'נסגר', class: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     'Lost': { label: 'אבוד', class: 'bg-red-50 text-red-700 border-red-200' },
+    'Completed': { label: 'הושלם', class: 'bg-slate-100 text-slate-600 border-slate-300' },
 };
 
 const OWNER_COLORS: Record<string, string> = {
@@ -43,6 +44,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [showClosed, setShowClosed] = useState(false);
     const [showLost, setShowLost] = useState(false);
     const [showWaitingPayment, setShowWaitingPayment] = useState(false);
+    const [showCompleted, setShowCompleted] = useState(false);
     const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
     const detailLead = useMemo(() => {
         return detailLeadId ? leads.find(l => l.id === detailLeadId) || null : null;
@@ -119,10 +121,11 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         assigned: leads.filter(l => ['Assigned', 'Closed', 'Waiting_Payment'].includes(l.fields.Status)).length,
     };
 
-    const activeLeads = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment'].includes(l.fields.Status));
+    const activeLeads = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment', 'Completed'].includes(l.fields.Status));
     const closedLeads = filteredLeads.filter(l => l.fields.Status === 'Closed');
     const lostLeads = filteredLeads.filter(l => l.fields.Status === 'Lost');
     const waitingPaymentLeads = filteredLeads.filter(l => l.fields.Status === 'Waiting_Payment');
+    const completedLeads = filteredLeads.filter(l => l.fields.Status === 'Completed');
 
     const renderArchiveTable = (items: Lead[], isOpen: boolean, toggle: () => void, title: string, emoji: string, badgeColor: string) => {
         if (items.length === 0) return null;
@@ -464,6 +467,12 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 {renderArchiveTable(
                     lostLeads, showLost, () => setShowLost(!showLost),
                     'לידים אבודים', '❌', 'bg-red-100 text-red-700'
+                )}
+
+                {/* Completed Leads (Archive) */}
+                {renderArchiveTable(
+                    completedLeads, showCompleted, () => setShowCompleted(!showCompleted),
+                    'הושלמו (ארכיון)', '🏆', 'bg-slate-200 text-slate-600'
                 )}
             </div>
 

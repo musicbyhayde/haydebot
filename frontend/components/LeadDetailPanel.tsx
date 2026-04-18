@@ -25,6 +25,7 @@ const BOUZOUKI_STATUSES = [
     { value: 'Assigned', label: 'שובץ נגן', color: 'bg-indigo-100 text-indigo-800' },
     { value: 'Closed', label: 'נסגר', color: 'bg-green-100 text-green-800' },
     { value: 'Lost', label: 'אבוד', color: 'bg-red-100 text-red-800' },
+    { value: 'Completed', label: 'הושלם', color: 'bg-slate-200 text-slate-700' },
 ];
 
 const MANUAL_STATUSES = [
@@ -35,6 +36,7 @@ const MANUAL_STATUSES = [
     { value: 'Waiting_Payment', label: 'מחכה לתשלום', color: 'bg-orange-100 text-orange-800' },
     { value: 'Closed', label: 'נסגר', color: 'bg-green-100 text-green-800' },
     { value: 'Lost', label: 'אבוד', color: 'bg-red-100 text-red-800' },
+    { value: 'Completed', label: 'הושלם', color: 'bg-slate-200 text-slate-700' },
 ];
 
 export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false, onClose, onStatusChange }: LeadDetailPanelProps) {
@@ -66,6 +68,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [financeSubmitting, setFinanceSubmitting] = useState(false);
     const [financeModalOpen, setFinanceModalOpen] = useState(false);
     const [financeEditId, setFinanceEditId] = useState<string | null>(null);
+    const [financeOwner, setFinanceOwner] = useState('');
 
     // Intro/Materials Modal State
     const [isIntroModalOpen, setIsIntroModalOpen] = useState(false);
@@ -314,11 +317,12 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     };
 
     const handleSaveFinance = async () => {
-        if (!financeAmount || !financeDesc) return;
+        if (!financeAmount || !financeDesc || !financeOwner) return;
         setFinanceSubmitting(true);
         try {
             if (financeEditId) {
                 await api.updateFinanceEntry(financeEditId, {
+                    Owner: financeOwner,
                     Type: financeType,
                     Description: financeDesc,
                     Amount: parseFloat(financeAmount),
@@ -326,7 +330,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 });
             } else {
                 await api.createFinanceEntry({
-                    Owner: currentUserName,
+                    Owner: financeOwner,
                     Type: financeType,
                     Date: new Date().toISOString().split('T')[0],
                     Description: financeDesc,
@@ -339,6 +343,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             }
             setFinanceAmount('');
             setFinanceDesc('');
+            setFinanceOwner('');
             setFinanceEditId(null);
             setFinanceModalOpen(false);
             fetchFinances(); // Refresh the list
@@ -451,6 +456,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         setFinanceType(type);
         setFinanceAmount('');
         setFinanceDesc('');
+        setFinanceOwner(currentUserName);
         setFinanceEditId(null);
         setFinancePaymentMethod('חשבון');
         setFinanceModalOpen(true);
@@ -460,6 +466,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         setFinanceType(entry.fields.Type);
         setFinanceAmount(entry.fields.Amount.toString());
         setFinanceDesc(entry.fields.Description);
+        setFinanceOwner(entry.fields.Owner || currentUserName);
         setFinancePaymentMethod(entry.fields.Payment_Method || 'חשבון');
         setFinanceEditId(entry.id);
         setFinanceModalOpen(true);
@@ -976,7 +983,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                 <div className="w-16 text-[10px] text-slate-500">{new Date(entry.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
                                                 <div className="flex-1 flex flex-col justify-center">
                                                     <span className="font-semibold text-slate-700 truncate">{entry.fields.Description}</span>
-                                                    <span className="text-[9px] text-slate-400">{entry.fields.Payment_Method}</span>
+                                                    <div className="flex items-center gap-1.5 overflow-hidden">
+                                                        <span className="text-[9px] text-slate-400 whitespace-nowrap">{entry.fields.Payment_Method}</span>
+                                                        <span className="text-[9px] text-slate-300">•</span>
+                                                        <span className={`text-[9px] font-bold ${entry.fields.Owner === 'אילן' ? 'text-blue-600' : 'text-purple-600'}`}>{entry.fields.Owner}</span>
+                                                    </div>
                                                 </div>
                                                 <div className={clsx(
                                                     "w-20 text-left font-bold font-mono tracking-tighter",
@@ -1415,6 +1426,33 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <option value="חשבון">העברה / אשראי / ביט</option>
                                     <option value="מזומן">מזומן</option>
                                 </select>
+                                <div className="pt-1">
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-1.5">שיוך לשותף (לאיזה יומן?)</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFinanceOwner('אילן')}
+                                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all border ${
+                                                financeOwner === 'אילן'
+                                                    ? 'bg-blue-100 text-blue-700 border-blue-400 ring-2 ring-blue-200'
+                                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                            }`}
+                                        >
+                                            אילן
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFinanceOwner('קובי')}
+                                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all border ${
+                                                financeOwner === 'קובי'
+                                                    ? 'bg-purple-100 text-purple-700 border-purple-400 ring-2 ring-purple-200'
+                                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                            }`}
+                                        >
+                                            קובי
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
                                 <button
@@ -1425,7 +1463,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 </button>
                                 <button
                                     onClick={handleSaveFinance}
-                                    disabled={financeSubmitting || !financeAmount || !financeDesc}
+                                    disabled={financeSubmitting || !financeAmount || !financeDesc || !financeOwner}
                                     className="px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm"
                                 >
                                     {financeSubmitting ? 'שומר...' : 'שמור'}
