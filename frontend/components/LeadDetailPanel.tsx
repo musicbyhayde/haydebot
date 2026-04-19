@@ -334,7 +334,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     Type: financeType,
                     Date: new Date().toISOString().split('T')[0],
                     Description: financeDesc,
-                    Event_Name: lead.fields.Service || '',
+                    Event_Name: financeDesc,
                     Amount: parseFloat(financeAmount),
                     Payment_Status: 'שולם',
                     Payment_Method: financePaymentMethod,
