@@ -50,7 +50,7 @@ class GoogleCalendarService:
         start_date = self._parse_date(event_date_str)
         if not start_date:
             print(f"ERROR: Could not parse date {event_date_str}")
-            return None
+            raise ValueError(f"The date '{event_date_str}' is not in a valid format. Please use DD.MM.YY, DD.MM.YYYY, or YYYY-MM-DD.")
 
         summary = f'{lead_name} + {location}' if is_closed else f'(אופציה) - {lead_name} + {location}'
         event_body = {
@@ -76,7 +76,13 @@ class GoogleCalendarService:
             return event.get('id')
         except HttpError as error:
             print(f"An error occurred: {error}")
-            return None
+            import json
+            try:
+                error_details = json.loads(error.content.decode('utf-8'))
+                error_message = error_details.get('error', {}).get('message', str(error))
+            except Exception:
+                error_message = str(error)
+            raise ValueError(f"Google API Error: {error_message}")
 
     def update_event_closed(self, event_id: str) -> bool:
         if not self.service or not event_id:
