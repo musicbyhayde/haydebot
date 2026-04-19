@@ -153,6 +153,17 @@ export const api = {
         return res.json();
     },
 
+    async uploadFile(file: File): Promise<{ url: string; filename: string }> {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetchWithAuth(`${API_Base}/upload`, {
+            method: 'POST',
+            body: formData,
+        });
+        if (!res.ok) throw new Error('Failed to upload file');
+        return res.json();
+    },
+
     async updateNote(noteId: string, data: { content: string }): Promise<Note> {
         const res = await fetchWithAuth(`${API_Base}/notes/${noteId}`, {
             method: 'PATCH',

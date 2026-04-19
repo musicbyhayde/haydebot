@@ -209,16 +209,15 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
             // Upload file if attached
             if (attachedFile) {
-                const formData = new FormData();
-                formData.append('file', attachedFile.file);
-                const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/upload`, {
-                    method: 'POST',
-                    body: formData,
-                });
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
+                try {
+                    const uploadData = await api.uploadFile(attachedFile.file);
                     file_url = uploadData.url;
-                    file_name = attachedFile.file.name;
+                    file_name = uploadData.filename;
+                } catch (err) {
+                    console.error('File upload err:', err);
+                    alert('שגיאה בהעלאת הקובץ. אנא נסה שנית.');
+                    setSubmitting(false);
+                    return;
                 }
             }
 
