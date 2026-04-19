@@ -372,7 +372,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             setIsCalendarModalOpen(false);
         } catch (e) {
             console.error(e);
-            alert('שגיאה בסנכרון היומן');
+            alert(e instanceof Error ? e.message : 'שגיאה בסנכרון היומן');
         }
     };
 

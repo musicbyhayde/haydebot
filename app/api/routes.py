@@ -202,38 +202,54 @@ async def create_calendar_event(lead_id: str, payload: Optional[CalendarEventCre
     if lead["fields"].get("Google_Event_ID"):
         return {"status": "exists", "event_id": lead["fields"].get("Google_Event_ID")}
 
-    if payload:
-        # Use provided details from modal
-        name_to_use = payload.summary or lead["fields"].get("Name", "ללא שם")
-        loc_to_use = payload.location or lead["fields"].get("Location", "לא צוין")
-        date_to_use = payload.event_date
-        emails_to_use = payload.team_emails
-        desc_to_use = payload.description
-    else:
-        # Auto-detect from database
-        team_ids = lead["fields"].get("Musician_Team") or []
-        musicians = airtable_service.get_all_musicians()
-        emails_to_use = [m["fields"].get("Email") for m in musicians if m["id"] in team_ids and m["fields"].get("Email")]
-        name_to_use = lead["fields"].get("Name", "ללא שם")
-        loc_to_use = lead["fields"].get("Location", "לא צוין")
-        date_to_use = lead["fields"].get("Event_Date", "")
-        desc_to_use = None
+    try:
+        if payload:
+            # Use provided details from modal
+            name_to_use = payload.summary or lead["fields"].get("Name", "ללא שם")
+            loc_to_use = payload.location or lead["fields"].get("Location", "לא צוין")
+            date_to_use = payload.event_date
+            emails_to_use = payload.team_emails
+            desc_to_use = payload.description
+        else:
+            # Auto-detect from database
+            team_ids = lead["fields"].get("Musician_Team") or []
+            musicians = airtable_service.get_all_musicians()
+            emails_to_use = [m["fields"].get("Email") for m in musicians if m["id"] in team_ids and m["fields"].get("Email")]
+            name_to_use = lead["fields"].get("Name", "ללא שם")
+            loc_to_use = lead["fields"].get("Location", "לא צוין")
+            date_to_use = lead["fields"].get("Event_Date", "")
+            desc_to_use = None
 
-    is_closed = lead["fields"].get("Status") == "Closed"
-    event_id = google_calendar.create_event(
-        lead_name=name_to_use,
-        location=loc_to_use,
-        event_date_str=date_to_use,
-        musician_emails=emails_to_use,
-        custom_description=desc_to_use,
-        is_closed=is_closed
-    )
+        print(f"DEBUG create_calendar_event: name={name_to_use}, loc={loc_to_use}, date='{date_to_use}', emails={emails_to_use}")
 
-    if event_id:
-        airtable_service.update_lead(lead_id, LeadUpdate(google_event_id=event_id))
-        return {"status": "created", "event_id": event_id}
-    else:
-        raise HTTPException(status_code=500, detail="Failed to create calendar event")
+        if not date_to_use:
+            raise HTTPException(status_code=400, detail="יש להזין תאריך אירוע בכדי ליצור אירוע ביומן")
+
+        if not google_calendar.service:
+            raise HTTPException(status_code=500, detail="שירות Google Calendar לא מחובר. בדוק את הגדרות OAuth.")
+
+        is_closed = lead["fields"].get("Status") == "Closed"
+        event_id = google_calendar.create_event(
+            lead_name=name_to_use,
+            location=loc_to_use,
+            event_date_str=date_to_use,
+            musician_emails=emails_to_use,
+            custom_description=desc_to_use,
+            is_closed=is_closed
+        )
+
+        if event_id:
+            airtable_service.update_lead(lead_id, LeadUpdate(google_event_id=event_id))
+            return {"status": "created", "event_id": event_id}
+        else:
+            raise HTTPException(status_code=500, detail=f"יצירת אירוע נכשלה. בדוק שהתאריך '{date_to_use}' בפורמט תקין (DD.MM.YY או YYYY-MM-DD)")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERROR in create_calendar_event: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"שגיאה ביצירת אירוע ביומן: {str(e)}")
 
 @protected_router.get("/leads/{lead_id}/calendar-event")
 async def get_calendar_event(lead_id: str):

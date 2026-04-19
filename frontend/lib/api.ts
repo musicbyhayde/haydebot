@@ -313,7 +313,10 @@ export const api = {
             headers: payload ? { 'Content-Type': 'application/json' } : {},
             body: payload ? JSON.stringify(payload) : undefined,
         });
-        if (!res.ok) throw new Error('Failed to create calendar event');
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Failed to create calendar event');
+        }
         return res.json();
     },
 
@@ -323,7 +326,10 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error('Failed to update calendar event');
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Failed to update calendar event');
+        }
         return res.json();
     },
 
