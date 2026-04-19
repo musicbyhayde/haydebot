@@ -302,7 +302,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                 <div className="w-16 shrink-0 text-[10px] text-slate-500">{new Date(e.fields.Date).toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit', year:'2-digit'})}</div>
                 <div className="flex-1 min-w-[120px] flex flex-col justify-center">
                     <div className="flex items-center gap-1">
-                        <span className="font-semibold text-slate-700 truncate">{e.fields.Event_Name || e.fields.Description}</span>
+                        <span className="font-semibold text-slate-700 truncate">{e.fields.Description || e.fields.Event_Name}</span>
                         {linkedLead && (
                             <span className="text-[9px] text-blue-500 bg-blue-50 px-1 rounded-sm flex items-center gap-0.5 whitespace-nowrap">
                                 <Link size={8} /> <span className="truncate max-w-[80px] sm:max-w-[120px]">{linkedLead}</span>
