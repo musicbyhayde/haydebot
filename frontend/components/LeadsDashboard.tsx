@@ -164,7 +164,12 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             {items.map(lead => (
                                 <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
                                     <div className="flex-1 min-w-[120px] flex flex-col justify-center">
-                                        <span className="font-bold text-slate-600">{lead.fields.Name || 'ללא שם'}</span>
+                                        <button 
+                                            onClick={() => setDetailLeadId(lead.id)}
+                                            className="font-bold text-slate-600 text-right hover:text-blue-600 transition-colors"
+                                        >
+                                            {lead.fields.Name || 'ללא שם'}
+                                        </button>
                                         <span className="text-[10px] text-slate-400">{toDisplayPhone(lead.fields.Phone)}</span>
                                     </div>
                                     <div className="w-32 hidden md:flex items-center text-slate-500">
@@ -400,7 +405,13 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 <div key={lead.id} className="flex items-center px-4 md:px-6 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white group">
                                     <div className="flex-1 min-w-[100px] md:min-w-[120px] flex flex-col justify-center overflow-hidden pr-2">
                                         <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
-                                            <span className="font-bold text-slate-800 truncate">{lead.fields.Name || 'ללא שם'}</span>
+                                            <button 
+                                                onClick={() => setDetailLeadId(lead.id)}
+                                                className="font-bold text-slate-800 truncate text-right hover:text-blue-600 transition-colors cursor-pointer"
+                                                title="לחץ לפתיחת פרטי הליד"
+                                            >
+                                                {lead.fields.Name || 'ללא שם'}
+                                            </button>
                                             {(lead.fields.Starred_By || []).length > 0 && (
                                                 <Star size={12} className="text-amber-400 fill-amber-400 shrink-0" />
                                             )}
