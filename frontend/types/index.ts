@@ -18,6 +18,7 @@ export interface Lead {
         Musician_Team?: string[];
         Bot_Mute_Until?: string;
         Last_Read_At?: string;
+        Last_Interaction?: string;
         Starred_By?: string[];
         Google_Event_ID?: string;
         Quote_Data?: any;
