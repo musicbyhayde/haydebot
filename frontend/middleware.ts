@@ -7,7 +7,9 @@ export async function middleware(request: NextRequest) {
         request.nextUrl.pathname.startsWith('/login') ||
         request.nextUrl.pathname.startsWith('/quote/') ||
         request.nextUrl.pathname.startsWith('/_next') ||
-        request.nextUrl.pathname.startsWith('/favicon')
+        request.nextUrl.pathname.startsWith('/favicon') ||
+        request.nextUrl.pathname.startsWith('/logos/') ||
+        request.nextUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webp)$/)
     ) {
         return NextResponse.next();
     }
@@ -47,5 +49,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico|login|quote).*)'],
+    matcher: ['/((?!_next/static|_next/image|favicon.ico|login|quote|logos|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };
