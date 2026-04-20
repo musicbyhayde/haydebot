@@ -20,6 +20,9 @@ class SupabaseService:
         if not record:
             return None
         formatted = {"id": record.get("id"), "fields": {}}
+        if "created_at" in record:
+            formatted["createdTime"] = record.get("created_at")
+            
         for key, value in record.items():
             if key != "id" and key != "created_at":
                 formatted["fields"][key] = value

@@ -58,6 +58,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [filterStatus, setFilterStatus] = useState<string>('');
     const [filterStarred, setFilterStarred] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
+    const [sortBy, setSortBy] = useState<'interaction' | 'created'>('interaction');
 
     useEffect(() => {
         api.getTasks().then(setTasks).catch(console.error);
@@ -121,7 +122,14 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         assigned: leads.filter(l => ['Assigned', 'Closed', 'Waiting_Payment'].includes(l.fields.Status)).length,
     };
 
-    const activeLeads = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment', 'Completed'].includes(l.fields.Status));
+    const activeLeads = useMemo(() => {
+        const active = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment', 'Completed'].includes(l.fields.Status));
+        if (sortBy === 'created') {
+            return active.sort((a, b) => new Date(b.createdTime || 0).getTime() - new Date(a.createdTime || 0).getTime());
+        }
+        return active.sort((a, b) => new Date(b.fields.Last_Interaction || 0).getTime() - new Date(a.fields.Last_Interaction || 0).getTime());
+    }, [filteredLeads, sortBy]);
+
     const closedLeads = filteredLeads.filter(l => l.fields.Status === 'Closed');
     const lostLeads = filteredLeads.filter(l => l.fields.Status === 'Lost');
     const waitingPaymentLeads = filteredLeads.filter(l => l.fields.Status === 'Waiting_Payment');
@@ -321,6 +329,15 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 {Object.entries(STATUS_MAP).map(([key, val]) => (
                                     <option key={key} value={key}>{val.label}</option>
                                 ))}
+                            </select>
+
+                            <select
+                                value={sortBy}
+                                onChange={e => setSortBy(e.target.value as 'interaction' | 'created')}
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="interaction">מיון לפי: אינטראקציה אחרונה</option>
+                                <option value="created">מיון לפי: תאריך יצירה</option>
                             </select>
 
                             {hasActiveFilters && (
