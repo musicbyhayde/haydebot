@@ -50,6 +50,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [fileError, setFileError] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [closingAmount, setClosingAmount] = useState('');
+    const [referredTo, setReferredTo] = useState('');
+    const [commissionAmount, setCommissionAmount] = useState('');
     const [editData, setEditData] = useState<Partial<Lead['fields']>>({});
     const [savingInfo, setSavingInfo] = useState(false);
     const [isStarMenuOpen, setIsStarMenuOpen] = useState(false);
@@ -97,6 +99,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
     useEffect(() => {
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
+        setReferredTo(lead.fields.Referred_To || '');
+        setCommissionAmount(lead.fields.Commission_Amount?.toString() || '');
         setEditData({
             Name: lead.fields.Name,
             Phone: lead.fields.Phone,
@@ -763,6 +767,59 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         </button>
                     )}
                 </div>
+
+                {/* Referral Data (Only visible if status is Referred) */}
+                {lead.fields.Status === 'Referred' && (
+                    <div className="px-5 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2 bg-teal-50/30">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-teal-700">הופנה ל:</span>
+                                <input
+                                    type="text"
+                                    value={referredTo}
+                                    onChange={(e) => setReferredTo(e.target.value)}
+                                    className="px-2 py-1.5 border border-teal-200 rounded-lg text-sm w-40 focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                                    placeholder="שם חברה/להקה..."
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-teal-700">עמלה:</span>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        value={commissionAmount}
+                                        onChange={(e) => setCommissionAmount(e.target.value)}
+                                        className="pl-6 pr-2 py-1.5 border border-teal-200 rounded-lg text-sm w-24 focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                                        placeholder="0"
+                                        dir="ltr"
+                                    />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-teal-500">₪</span>
+                                </div>
+                            </div>
+                        </div>
+                        {(referredTo !== (lead.fields.Referred_To || '') || commissionAmount !== (lead.fields.Commission_Amount?.toString() || '')) && (
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const updateData: any = { Referred_To: referredTo };
+                                        if (commissionAmount) updateData.Commission_Amount = parseFloat(commissionAmount);
+                                        await api.updateLead(lead.id, updateData);
+                                        Object.assign(lead.fields, updateData);
+                                        // Trick to re-evaluate conditions
+                                        setReferredTo(updateData.Referred_To || '');
+                                        setCommissionAmount(updateData.Commission_Amount?.toString() || '');
+                                    } catch (e) {
+                                        console.error(e);
+                                        alert('שגיאה בשמירת נתוני ההפניה');
+                                    }
+                                }}
+                                className="text-[11px] font-bold bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700 transition-colors shadow-sm whitespace-nowrap"
+                            >
+                                שמור פרטים
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <div className="flex border-b border-slate-100">

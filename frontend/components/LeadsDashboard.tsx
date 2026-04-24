@@ -299,26 +299,13 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             </button>
                                             <span className="text-[10px] text-slate-400">{toDisplayPhone(lead.fields.Phone)}</span>
                                         </div>
-                                        <div className="w-32 hidden md:flex items-center">
-                                            <input
-                                                type="text"
-                                                value={lead.fields.Referred_To || ''}
-                                                onChange={(e) => handleReferredToUpdate(lead.id, e.target.value)}
-                                                placeholder="שם החברה..."
-                                                className="w-full bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none transition-colors text-slate-600 px-1 py-0.5"
-                                            />
+                                        <div className="w-32 hidden md:flex items-center text-slate-500">
+                                            {lead.fields.Referred_To || <span className="text-slate-300">—</span>}
                                         </div>
-                                        <div className="w-32 flex items-center relative">
-                                            <input
-                                                type="number"
-                                                value={lead.fields.Commission_Amount || ''}
-                                                onChange={(e) => handleCommissionUpdate(lead.id, e.target.value)}
-                                                placeholder="0"
-                                                className="w-20 pl-4 pr-1 py-0.5 bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none transition-colors text-slate-600 text-left"
-                                                dir="ltr"
-                                            />
-                                            <span className="absolute left-1 text-slate-400 text-[10px]">₪</span>
+                                        <div className="w-32 flex items-center font-medium text-slate-600">
+                                            {lead.fields.Commission_Amount ? `₪${lead.fields.Commission_Amount.toLocaleString()}` : <span className="text-slate-300">—</span>}
                                         </div>
+
                                         <div className="w-24 flex justify-center">
                                             <span className={clsx(
                                                 "px-2 py-0.5 rounded-full text-[10px] font-bold border",
