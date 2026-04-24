@@ -55,6 +55,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [commissionModalOpen, setCommissionModalOpen] = useState(false);
     const [collectLead, setCollectLead] = useState<Lead | null>(null);
     const [collectOwner, setCollectOwner] = useState<string>(currentUser?.displayName || 'אילן');
+    const [collectAmount, setCollectAmount] = useState<string>('');
 
     const [tasks, setTasks] = useState<Task[]>([]);
 
@@ -104,14 +105,15 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const handleCollectCommission = async () => {
         if (!collectLead) return;
         try {
+            const vatText = collectLead.fields.Commission_Includes_VAT ? ' (כולל מע"מ)' : ' (+ מע"מ)';
             // Create finance entry
             await api.createFinanceEntry({
                 Owner: collectOwner,
                 Type: 'income',
                 Date: new Date().toISOString().split('T')[0],
-                Description: `עמלת הפניה - ${collectLead.fields.Name || 'לקוח'}`,
-                Event_Name: `עמלת הפניה - ${collectLead.fields.Name || 'לקוח'}`,
-                Amount: collectLead.fields.Commission_Amount || 0,
+                Description: `עמלת הפניה - ${collectLead.fields.Name || 'לקוח'}${vatText}`,
+                Event_Name: `עמלת הפניה - ${collectLead.fields.Name || 'לקוח'}${vatText}`,
+                Amount: parseFloat(collectAmount) || 0,
                 Payment_Status: 'שולם',
                 Payment_Method: 'חשבון',
                 Lead_ID: collectLead.id
@@ -302,8 +304,13 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         <div className="w-32 hidden md:flex items-center text-slate-500">
                                             {lead.fields.Referred_To || <span className="text-slate-300">—</span>}
                                         </div>
-                                        <div className="w-32 flex items-center font-medium text-slate-600">
+                                        <div className="w-32 flex items-center font-medium text-slate-600 gap-1">
                                             {lead.fields.Commission_Amount ? `₪${lead.fields.Commission_Amount.toLocaleString()}` : <span className="text-slate-300">—</span>}
+                                            {lead.fields.Commission_Amount && (
+                                                <span className="text-[9px] text-slate-400 font-normal">
+                                                    {lead.fields.Commission_Includes_VAT ? '(כולל)' : '(לא כולל)'}
+                                                </span>
+                                            )}
                                         </div>
 
                                         <div className="w-24 flex justify-center">
@@ -320,7 +327,15 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             {lead.fields.Commission_Status !== 'נגבה' && lead.fields.Commission_Status !== 'בוטל' && (
                                                 <>
                                                     <button 
-                                                        onClick={() => { setCollectLead(lead); setCommissionModalOpen(true); }}
+                                                        onClick={() => {
+                                                            let amt = lead.fields.Commission_Amount || 0;
+                                                            if (lead.fields.Commission_Includes_VAT) {
+                                                                amt = amt / 1.18; // Subtract 18% VAT
+                                                            }
+                                                            setCollectAmount(Math.round(amt).toString());
+                                                            setCollectLead(lead); 
+                                                            setCommissionModalOpen(true); 
+                                                        }}
                                                         className="text-green-600 hover:text-green-700 hover:bg-green-50 p-1 rounded transition-colors" 
                                                         title="סמן כנגבה וצור פעולה כספית"
                                                     >
@@ -702,7 +717,16 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1">סכום לגבייה (₪)</label>
-                                <div className="p-2 bg-slate-50 rounded-lg text-sm text-slate-700">{collectLead.fields.Commission_Amount || 0}</div>
+                                <input
+                                    type="number"
+                                    value={collectAmount}
+                                    onChange={(e) => setCollectAmount(e.target.value)}
+                                    className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors"
+                                    dir="ltr"
+                                />
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                    הסכום המוצע הוא ללא מע"מ. ניתן לערוך.
+                                </p>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-2">לזכות את:</label>

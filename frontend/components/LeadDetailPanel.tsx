@@ -52,6 +52,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [closingAmount, setClosingAmount] = useState('');
     const [referredTo, setReferredTo] = useState('');
     const [commissionAmount, setCommissionAmount] = useState('');
+    const [commissionIncludesVat, setCommissionIncludesVat] = useState(false);
     const [editData, setEditData] = useState<Partial<Lead['fields']>>({});
     const [savingInfo, setSavingInfo] = useState(false);
     const [isStarMenuOpen, setIsStarMenuOpen] = useState(false);
@@ -101,6 +102,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
         setReferredTo(lead.fields.Referred_To || '');
         setCommissionAmount(lead.fields.Commission_Amount?.toString() || '');
+        setCommissionIncludesVat(!!lead.fields.Commission_Includes_VAT);
         setEditData({
             Name: lead.fields.Name,
             Phone: lead.fields.Phone,
@@ -795,19 +797,34 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     />
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-teal-500">₪</span>
                                 </div>
+                                <label className="flex items-center gap-1.5 cursor-pointer mr-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={commissionIncludesVat}
+                                        onChange={(e) => setCommissionIncludesVat(e.target.checked)}
+                                        className="w-3.5 h-3.5 rounded border-teal-300 text-teal-600 focus:ring-teal-500"
+                                    />
+                                    <span className="text-xs text-teal-700">כולל מע"מ</span>
+                                </label>
                             </div>
                         </div>
-                        {(referredTo !== (lead.fields.Referred_To || '') || commissionAmount !== (lead.fields.Commission_Amount?.toString() || '')) && (
+                        {(referredTo !== (lead.fields.Referred_To || '') || 
+                          commissionAmount !== (lead.fields.Commission_Amount?.toString() || '') ||
+                          commissionIncludesVat !== !!lead.fields.Commission_Includes_VAT) && (
                             <button
                                 onClick={async () => {
                                     try {
-                                        const updateData: any = { Referred_To: referredTo };
+                                        const updateData: any = { 
+                                            Referred_To: referredTo,
+                                            Commission_Includes_VAT: commissionIncludesVat 
+                                        };
                                         if (commissionAmount) updateData.Commission_Amount = parseFloat(commissionAmount);
                                         await api.updateLead(lead.id, updateData);
                                         Object.assign(lead.fields, updateData);
                                         // Trick to re-evaluate conditions
                                         setReferredTo(updateData.Referred_To || '');
                                         setCommissionAmount(updateData.Commission_Amount?.toString() || '');
+                                        setCommissionIncludesVat(!!updateData.Commission_Includes_VAT);
                                     } catch (e) {
                                         console.error(e);
                                         alert('שגיאה בשמירת נתוני ההפניה');

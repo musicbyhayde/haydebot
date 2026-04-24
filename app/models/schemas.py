@@ -65,6 +65,7 @@ class LeadBase(BaseSchema):
     referred_to: Optional[str] = Field(None, alias="Referred_To")
     commission_amount: Optional[float] = Field(None, alias="Commission_Amount")
     commission_status: Optional[str] = Field("ממתין", alias="Commission_Status")
+    commission_includes_vat: Optional[bool] = Field(None, alias="Commission_Includes_VAT")
 
 class LeadCreate(LeadBase):
     pass
@@ -94,6 +95,7 @@ class LeadUpdate(BaseSchema):
     referred_to: Optional[str] = Field(None, alias="Referred_To")
     commission_amount: Optional[float] = Field(None, alias="Commission_Amount")
     commission_status: Optional[str] = Field(None, alias="Commission_Status")
+    commission_includes_vat: Optional[bool] = Field(None, alias="Commission_Includes_VAT")
 
 class LeadResponse(LeadBase):
     id: str # Airtable Record ID

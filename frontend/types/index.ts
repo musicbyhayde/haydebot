@@ -26,6 +26,7 @@ export interface Lead {
         Referred_To?: string;
         Commission_Amount?: number;
         Commission_Status?: 'ממתין' | 'נגבה' | 'בוטל';
+        Commission_Includes_VAT?: boolean;
     };
 }
 
