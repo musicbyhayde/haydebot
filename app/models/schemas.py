@@ -19,6 +19,7 @@ class LeadStatus(str, Enum):
     WAITING_PAYMENT = "Waiting_Payment"
     TALKING = "Talking"
     COMPLETED = "Completed"
+    REFERRED = "Referred"
 
 class MusicianType(str, Enum):
     REFERRER = "REFERRER"
@@ -61,6 +62,9 @@ class LeadBase(BaseSchema):
     google_event_id: Optional[str] = Field(None, alias="Google_Event_ID")
     quote_data: Optional[dict] = Field(None, alias="Quote_Data")
     musician_rsvps: Optional[dict] = Field(None, alias="Musician_RSVPs")
+    referred_to: Optional[str] = Field(None, alias="Referred_To")
+    commission_amount: Optional[float] = Field(None, alias="Commission_Amount")
+    commission_status: Optional[str] = Field("ממתין", alias="Commission_Status")
 
 class LeadCreate(LeadBase):
     pass
@@ -87,6 +91,9 @@ class LeadUpdate(BaseSchema):
     google_event_id: Optional[str] = Field(None, alias="Google_Event_ID")
     quote_data: Optional[dict] = Field(None, alias="Quote_Data")
     musician_rsvps: Optional[dict] = Field(None, alias="Musician_RSVPs")
+    referred_to: Optional[str] = Field(None, alias="Referred_To")
+    commission_amount: Optional[float] = Field(None, alias="Commission_Amount")
+    commission_status: Optional[str] = Field(None, alias="Commission_Status")
 
 class LeadResponse(LeadBase):
     id: str # Airtable Record ID

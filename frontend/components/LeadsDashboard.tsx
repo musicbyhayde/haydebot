@@ -32,6 +32,7 @@ const STATUS_MAP: Record<string, { label: string; class: string }> = {
     'Assigned': { label: 'שובץ', class: 'bg-green-50 text-green-700 border-green-200' },
     'Closed': { label: 'נסגר', class: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     'Lost': { label: 'אבוד', class: 'bg-red-50 text-red-700 border-red-200' },
+    'Referred': { label: 'הופנה', class: 'bg-teal-50 text-teal-700 border-teal-200' },
     'Completed': { label: 'הושלם', class: 'bg-slate-100 text-slate-600 border-slate-300' },
 };
 
@@ -40,8 +41,8 @@ const OWNER_COLORS: Record<string, string> = {
     'קובי': 'bg-purple-100 text-purple-700',
 };
 
-const BOUZOUKI_STATUS_LIST = ['New', 'Processing', 'Distributed', 'Assigned', 'Closed', 'Lost', 'Completed'];
-const MANUAL_STATUS_LIST = ['New', 'Manual', 'Talking', 'Quote_Sent', 'Waiting_Payment', 'Closed', 'Lost', 'Completed'];
+const BOUZOUKI_STATUS_LIST = ['New', 'Processing', 'Distributed', 'Assigned', 'Closed', 'Lost', 'Referred', 'Completed'];
+const MANUAL_STATUS_LIST = ['New', 'Manual', 'Talking', 'Quote_Sent', 'Waiting_Payment', 'Closed', 'Lost', 'Referred', 'Completed'];
 
 export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh, onNavigateToTasks, unreadStatus = {}, onOpenDetails }: LeadsDashboardProps) {
     const [showAddModal, setShowAddModal] = useState(false);
@@ -49,6 +50,12 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [showLost, setShowLost] = useState(false);
     const [showWaitingPayment, setShowWaitingPayment] = useState(false);
     const [showCompleted, setShowCompleted] = useState(false);
+    const [showReferred, setShowReferred] = useState(true);
+
+    const [commissionModalOpen, setCommissionModalOpen] = useState(false);
+    const [collectLead, setCollectLead] = useState<Lead | null>(null);
+    const [collectOwner, setCollectOwner] = useState<string>(currentUser?.displayName || 'אילן');
+
     const [tasks, setTasks] = useState<Task[]>([]);
 
     // ─── Search & Filter State ──────────────────────────
@@ -71,6 +78,56 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         } catch (e) {
             console.error(e);
             alert('שגיאה בעדכון הסטטוס');
+        }
+    };
+
+    const handleCommissionUpdate = async (leadId: string, amount: string) => {
+        try {
+            await api.updateLead(leadId, { Commission_Amount: parseFloat(amount) || 0 });
+            onRefresh?.();
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בעדכון סכום העמלה');
+        }
+    };
+
+    const handleReferredToUpdate = async (leadId: string, to: string) => {
+        try {
+            await api.updateLead(leadId, { Referred_To: to });
+            onRefresh?.();
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בעדכון היעד');
+        }
+    };
+
+    const handleCollectCommission = async () => {
+        if (!collectLead) return;
+        try {
+            // Create finance entry
+            await api.createFinanceEntry({
+                Owner: collectOwner,
+                Type: 'income',
+                Date: new Date().toISOString().split('T')[0],
+                Description: `עמלת הפניה - ${collectLead.fields.Name || 'לקוח'}`,
+                Event_Name: `עמלת הפניה - ${collectLead.fields.Name || 'לקוח'}`,
+                Amount: collectLead.fields.Commission_Amount || 0,
+                Payment_Status: 'שולם',
+                Payment_Method: 'חשבון',
+                Lead_ID: collectLead.id
+            });
+            // Update lead status
+            await api.updateLead(collectLead.id, { 
+                Status: 'Completed', 
+                Commission_Status: 'נגבה'
+            });
+            setCommissionModalOpen(false);
+            setCollectLead(null);
+            onRefresh?.();
+            alert('העמלה נרשמה בהצלחה!');
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה ביצירת פעולה כספית');
         }
     };
 
@@ -133,7 +190,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     };
 
     const activeLeads = useMemo(() => {
-        const active = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment', 'Completed'].includes(l.fields.Status));
+        const active = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment', 'Completed', 'Referred'].includes(l.fields.Status));
         if (sortBy === 'created') {
             return active.sort((a, b) => new Date(b.createdTime || 0).getTime() - new Date(a.createdTime || 0).getTime());
         }
@@ -144,6 +201,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const lostLeads = filteredLeads.filter(l => l.fields.Status === 'Lost');
     const waitingPaymentLeads = filteredLeads.filter(l => l.fields.Status === 'Waiting_Payment');
     const completedLeads = filteredLeads.filter(l => l.fields.Status === 'Completed');
+    const referredLeads = filteredLeads.filter(l => l.fields.Status === 'Referred');
 
     const renderArchiveTable = (items: Lead[], isOpen: boolean, toggle: () => void, title: string, emoji: string, badgeColor: string) => {
         if (items.length === 0) return null;
@@ -202,6 +260,110 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             </div>
         );
     };
+
+    const renderReferredTable = (items: Lead[]) => {
+        if (items.length === 0) return null;
+        return (
+            <div className="mt-4">
+                <button
+                    onClick={() => setShowReferred(!showReferred)}
+                    className="w-full flex items-center justify-between px-5 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+                >
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-600">🤝 לידים שהופנו</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-teal-100 text-teal-700">{items.length}</span>
+                    </div>
+                    <ChevronDown size={18} className={clsx("text-slate-400 transition-transform", showReferred && "rotate-180")} />
+                </button>
+                {showReferred && (
+                    <div className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <div className="flex flex-col min-w-full md:min-w-[600px]">
+                                {/* Header Row */}
+                                <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
+                                    <div className="flex-1 min-w-[120px]">לקוח</div>
+                                    <div className="w-32 hidden md:block">הופנה ל...</div>
+                                    <div className="w-32">עמלה</div>
+                                    <div className="w-24 text-center">מצב עמלה</div>
+                                    <div className="w-24 text-center">פעולות</div>
+                                </div>
+                                {/* Rows */}
+                                {items.map(lead => (
+                                    <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
+                                        <div className="flex-1 min-w-[120px] flex flex-col justify-center">
+                                            <button 
+                                                onClick={() => onOpenDetails?.(lead.id)}
+                                                className="font-bold text-slate-600 text-right hover:text-blue-600 transition-colors"
+                                            >
+                                                {lead.fields.Name || 'ללא שם'}
+                                            </button>
+                                            <span className="text-[10px] text-slate-400">{toDisplayPhone(lead.fields.Phone)}</span>
+                                        </div>
+                                        <div className="w-32 hidden md:flex items-center">
+                                            <input
+                                                type="text"
+                                                value={lead.fields.Referred_To || ''}
+                                                onChange={(e) => handleReferredToUpdate(lead.id, e.target.value)}
+                                                placeholder="שם החברה..."
+                                                className="w-full bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none transition-colors text-slate-600 px-1 py-0.5"
+                                            />
+                                        </div>
+                                        <div className="w-32 flex items-center relative">
+                                            <input
+                                                type="number"
+                                                value={lead.fields.Commission_Amount || ''}
+                                                onChange={(e) => handleCommissionUpdate(lead.id, e.target.value)}
+                                                placeholder="0"
+                                                className="w-20 pl-4 pr-1 py-0.5 bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none transition-colors text-slate-600 text-left"
+                                                dir="ltr"
+                                            />
+                                            <span className="absolute left-1 text-slate-400 text-[10px]">₪</span>
+                                        </div>
+                                        <div className="w-24 flex justify-center">
+                                            <span className={clsx(
+                                                "px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                                                lead.fields.Commission_Status === 'נגבה' ? "bg-green-50 text-green-700 border-green-200" :
+                                                lead.fields.Commission_Status === 'בוטל' ? "bg-red-50 text-red-700 border-red-200" :
+                                                "bg-amber-50 text-amber-700 border-amber-200"
+                                            )}>
+                                                {lead.fields.Commission_Status || 'ממתין'}
+                                            </span>
+                                        </div>
+                                        <div className="w-24 flex justify-center gap-1.5">
+                                            {lead.fields.Commission_Status !== 'נגבה' && lead.fields.Commission_Status !== 'בוטל' && (
+                                                <>
+                                                    <button 
+                                                        onClick={() => { setCollectLead(lead); setCommissionModalOpen(true); }}
+                                                        className="text-green-600 hover:text-green-700 hover:bg-green-50 p-1 rounded transition-colors" 
+                                                        title="סמן כנגבה וצור פעולה כספית"
+                                                    >
+                                                        💰
+                                                    </button>
+                                                    <button 
+                                                        onClick={async () => {
+                                                            if (confirm('לבטל את העמלה ולהעביר לאבוד?')) {
+                                                                await api.updateLead(lead.id, { Status: 'Lost', Commission_Status: 'בוטל' });
+                                                                onRefresh?.();
+                                                            }
+                                                        }}
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors" 
+                                                        title="בטל הפניה"
+                                                    >
+                                                        ❌
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
 
     return (
         <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" dir="rtl">
@@ -501,6 +663,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                         </div>
                     </div>
                 </div>
+                {/* Referred Leads */}
+                {renderReferredTable(referredLeads)}
 
                 {/* Waiting Payment Leads */}
                 {renderArchiveTable(
@@ -534,6 +698,57 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 onCreated={() => onRefresh?.()}
                 currentUserName={currentUser?.displayName}
             />
+
+            {/* Commission Modal */}
+            {commissionModalOpen && collectLead && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" dir="rtl">
+                    <div className="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm">
+                        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <span className="text-2xl">💰</span>
+                            גביית עמלת הפניה
+                        </h3>
+                        
+                        <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1">לקוח</label>
+                                <div className="p-2 bg-slate-50 rounded-lg text-sm text-slate-700">{collectLead.fields.Name || 'ללא שם'}</div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1">סכום לגבייה (₪)</label>
+                                <div className="p-2 bg-slate-50 rounded-lg text-sm text-slate-700">{collectLead.fields.Commission_Amount || 0}</div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-2">לזכות את:</label>
+                                <select 
+                                    value={collectOwner}
+                                    onChange={(e) => setCollectOwner(e.target.value)}
+                                    className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors"
+                                >
+                                    <option value="אילן">אילן</option>
+                                    <option value="קובי">קובי</option>
+                                    <option value="עסק">עסק (כללי)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={handleCollectCommission}
+                                className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-xl transition-colors"
+                            >
+                                אישור וסיום
+                            </button>
+                            <button 
+                                onClick={() => { setCommissionModalOpen(false); setCollectLead(null); }}
+                                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 rounded-xl transition-colors"
+                            >
+                                ביטול
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+

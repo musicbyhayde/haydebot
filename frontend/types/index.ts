@@ -23,6 +23,9 @@ export interface Lead {
         Google_Event_ID?: string;
         Quote_Data?: any;
         Musician_RSVPs?: any;
+        Referred_To?: string;
+        Commission_Amount?: number;
+        Commission_Status?: 'ממתין' | 'נגבה' | 'בוטל';
     };
 }
 
