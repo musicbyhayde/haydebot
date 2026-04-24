@@ -10,10 +10,12 @@ import MusiciansPage from "@/components/MusiciansPage";
 import AnalyticsPage from "@/components/AnalyticsPage";
 import HistoryPage from "@/components/HistoryPage";
 import VideosPage from "@/components/VideosPage";
+import LeadDetailPanel from "@/components/LeadDetailPanel";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
 import { getCurrentUser, signOut, AppUser, createSupabaseClient } from "@/lib/auth";
 import clsx from "clsx";
+import { useMemo } from "react";
 
 export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -26,6 +28,11 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [unreadStatus, setUnreadStatus] = useState<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
+  
+  const detailLead = useMemo(() => {
+    return detailLeadId ? leads.find(l => l.id === detailLeadId) || null : null;
+  }, [leads, detailLeadId]);
   
   // Track activeId in a ref for use inside closure callbacks (like Supabase Realtime subscriptions)
   const activeIdRef = useRef<string | null>(null);
@@ -234,6 +241,7 @@ export default function Home() {
           <LeadsDashboard
             leads={leads}
             onSelectLead={handleSelect}
+            onOpenDetails={(id) => setDetailLeadId(id)}
             onMenuClick={() => setMobileMenuOpen(true)}
             currentUser={currentUser}
             onRefresh={fetchData}
@@ -289,10 +297,23 @@ export default function Home() {
             item={activeItem}
             messages={messages}
             onSend={handleSendMessage}
+            onOpenDetails={(id) => setDetailLeadId(id)}
             onBack={() => setActiveId(null)}
           />
         )}
       </div>
+
+      {detailLead && (
+        <LeadDetailPanel
+          lead={detailLead}
+          currentUserName={currentUser?.displayName || ''}
+          isAdmin={currentUser?.role === 'admin' || currentUser?.role === 'partner'}
+          onClose={() => setDetailLeadId(null)}
+          onStatusChange={() => { 
+            fetchData(); 
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -9,10 +9,11 @@ interface ChatWindowProps {
     item: Lead | Musician | null;
     messages: Message[];
     onSend: (text: string) => Promise<void>;
+    onOpenDetails?: (id: string) => void;
     onBack?: () => void;
 }
 
-export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindowProps) {
+export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBack }: ChatWindowProps) {
     const [inputText, setInputText] = useState("");
     const [sending, setSending] = useState(false);
     const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -131,7 +132,15 @@ export default function ChatWindow({ item, messages, onSend, onBack }: ChatWindo
                         {name.substring(0, 1)}
                     </div>
                     <div>
-                        <h3 className="font-extrabold text-lg text-slate-800 tracking-tight leading-tight">{name}</h3>
+                        <h3 
+                            className={clsx(
+                                "font-extrabold text-lg text-slate-800 tracking-tight leading-tight",
+                                !isMusician && onOpenDetails && "cursor-pointer hover:text-blue-600 transition-colors"
+                            )}
+                            onClick={() => !isMusician && onOpenDetails && item && onOpenDetails(item.id)}
+                        >
+                            {name}
+                        </h3>
                         <div className="flex items-center gap-2 mt-0.5">
                             <span className={clsx(
                                 "text-xs font-bold px-2 py-0.5 rounded-full inline-block",

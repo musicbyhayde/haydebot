@@ -18,6 +18,7 @@ interface LeadsDashboardProps {
     onRefresh?: () => void;
     onNavigateToTasks?: () => void;
     unreadStatus?: Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>;
+    onOpenDetails?: (id: string) => void;
 }
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
@@ -39,16 +40,15 @@ const OWNER_COLORS: Record<string, string> = {
     'קובי': 'bg-purple-100 text-purple-700',
 };
 
-export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh, onNavigateToTasks, unreadStatus = {} }: LeadsDashboardProps) {
+const BOUZOUKI_STATUS_LIST = ['New', 'Processing', 'Distributed', 'Assigned', 'Closed', 'Lost', 'Completed'];
+const MANUAL_STATUS_LIST = ['New', 'Manual', 'Talking', 'Quote_Sent', 'Waiting_Payment', 'Closed', 'Lost', 'Completed'];
+
+export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh, onNavigateToTasks, unreadStatus = {}, onOpenDetails }: LeadsDashboardProps) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showClosed, setShowClosed] = useState(false);
     const [showLost, setShowLost] = useState(false);
     const [showWaitingPayment, setShowWaitingPayment] = useState(false);
     const [showCompleted, setShowCompleted] = useState(false);
-    const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
-    const detailLead = useMemo(() => {
-        return detailLeadId ? leads.find(l => l.id === detailLeadId) || null : null;
-    }, [leads, detailLeadId]);
     const [tasks, setTasks] = useState<Task[]>([]);
 
     // ─── Search & Filter State ──────────────────────────
@@ -63,6 +63,16 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     useEffect(() => {
         api.getTasks().then(setTasks).catch(console.error);
     }, []);
+
+    const handleStatusUpdate = async (leadId: string, newStatus: string) => {
+        try {
+            await api.updateLead(leadId, { Status: newStatus });
+            onRefresh?.();
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בעדכון הסטטוס');
+        }
+    };
 
     // Sync detailLead with updated data from props when leads list changes
     // Replaced synchronous setState effect with useMemo derived state
@@ -165,7 +175,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
                                     <div className="flex-1 min-w-[120px] flex flex-col justify-center">
                                         <button 
-                                            onClick={() => setDetailLeadId(lead.id)}
+                                            onClick={() => onOpenDetails?.(lead.id)}
                                             className="font-bold text-slate-600 text-right hover:text-blue-600 transition-colors"
                                         >
                                             {lead.fields.Name || 'ללא שם'}
@@ -179,7 +189,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         {lead.fields.Closing_Amount ? `₪${lead.fields.Closing_Amount.toLocaleString()}` : (lead.fields.Lost_Reason || '—')}
                                     </div>
                                     <div className="w-12 flex justify-center">
-                                        <button onClick={() => setDetailLeadId(lead.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title="פרטים">
+                                        <button onClick={() => onOpenDetails?.(lead.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title="פרטים">
                                             <FileText size={14} />
                                         </button>
                                     </div>
@@ -406,7 +416,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     <div className="flex-1 min-w-[100px] md:min-w-[120px] flex flex-col justify-center overflow-hidden pr-2">
                                         <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
                                             <button 
-                                                onClick={() => setDetailLeadId(lead.id)}
+                                                onClick={() => onOpenDetails?.(lead.id)}
                                                 className="font-bold text-slate-800 truncate text-right hover:text-blue-600 transition-colors cursor-pointer"
                                                 title="לחץ לפתיחת פרטי הליד"
                                             >
@@ -424,9 +434,22 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         <span className="text-[10px] text-slate-400 truncate">{toDisplayPhone(lead.fields.Phone)}</span>
                                     </div>
                                     <div className="w-20 md:w-24 shrink-0 flex items-center">
-                                        <span className={clsx("inline-flex items-center px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold border", statusInfo.class)}>
-                                            {statusInfo.label}
-                                        </span>
+                                        <select
+                                            value={lead.fields.Status}
+                                            onChange={(e) => handleStatusUpdate(lead.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className={clsx(
+                                                "appearance-none inline-flex items-center px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold border cursor-pointer hover:shadow-sm transition-all focus:outline-none focus:ring-1 focus:ring-blue-400",
+                                                statusInfo.class
+                                            )}
+                                            style={{ textAlignLast: 'center' }}
+                                        >
+                                            {(lead.fields.Service === 'Bouzouki' ? BOUZOUKI_STATUS_LIST : MANUAL_STATUS_LIST).map(s => (
+                                                <option key={s} value={s} className="bg-white text-slate-800">
+                                                    {STATUS_MAP[s]?.label || s}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="w-16 shrink-0 hidden md:flex items-center">
                                         {lead.fields.Owner ? (
@@ -453,7 +476,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     </div>
                                     <div className="w-24 md:w-28 shrink-0 flex items-center justify-end gap-1 md:gap-1.5">
                                         <button
-                                            onClick={() => setDetailLeadId(lead.id)}
+                                            onClick={() => onOpenDetails?.(lead.id)}
                                             className="text-slate-400 hover:text-blue-600 transition-colors p-1"
                                             title="פרטים ועדכונים"
                                         >
@@ -511,20 +534,6 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 onCreated={() => onRefresh?.()}
                 currentUserName={currentUser?.displayName}
             />
-
-            {detailLead && (
-                <LeadDetailPanel
-                    lead={detailLead}
-                    currentUserName={currentUser?.displayName || ''}
-                    isAdmin={currentUser?.role === 'admin' || currentUser?.role === 'partner'}
-                    onClose={() => setDetailLeadId(null)}
-                    onStatusChange={() => { 
-                        // Instead of closing, we just refresh. 
-                        // The useEffect above will update detailLead state when prop updates.
-                        onRefresh?.(); 
-                    }}
-                />
-            )}
         </div>
     );
 }
