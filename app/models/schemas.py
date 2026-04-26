@@ -183,6 +183,7 @@ class TaskCreate(BaseSchema):
     is_completed: bool = Field(False, alias="Is_Completed")
     lead_id: Optional[str] = Field(None, alias="Lead_ID")
     starred_by: Optional[List[str]] = Field(default_factory=list, alias="Starred_By")
+    pinned_by: Optional[List[str]] = Field(default_factory=list, alias="Pinned_By")
 
 class TaskUpdate(BaseSchema):
     title: Optional[str] = Field(None, alias="Title")
@@ -191,6 +192,7 @@ class TaskUpdate(BaseSchema):
     is_completed: Optional[bool] = Field(None, alias="Is_Completed")
     lead_id: Optional[str] = Field(None, alias="Lead_ID")
     starred_by: Optional[List[str]] = Field(None, alias="Starred_By")
+    pinned_by: Optional[List[str]] = Field(None, alias="Pinned_By")
 
 class ActivityCreate(BaseModel):
     actor: str

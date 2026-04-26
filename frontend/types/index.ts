@@ -96,6 +96,7 @@ export interface Task {
         Lead_ID?: string;
         Created_At?: string;
         Starred_By?: string[];
+        Pinned_By?: string[];
     };
 }
 

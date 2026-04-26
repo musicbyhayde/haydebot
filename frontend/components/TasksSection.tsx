@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Task, Lead } from '@/types';
 import { api } from '@/lib/api';
-import { CheckCircle2, Circle, Calendar, User, Plus, Trash2, ListTodo, Briefcase, Star } from 'lucide-react';
+import { CheckCircle2, Circle, Calendar, User, Plus, Trash2, ListTodo, Briefcase, Star, Pin, PinOff } from 'lucide-react';
 import clsx from 'clsx';
 import { AppUser } from '@/lib/auth';
 import { formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
@@ -85,14 +85,50 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
         }
     };
 
+    const togglePin = async (task: Task) => {
+        const userName = currentUser?.displayName || '';
+        const currentPins = task.fields.Pinned_By || [];
+        const isPinned = currentPins.includes(userName);
+
+        if (!isPinned) {
+            // Check if user already has 3 pinned tasks
+            const userPinnedCount = tasks.filter(t =>
+                !t.fields.Is_Completed && (t.fields.Pinned_By || []).includes(userName)
+            ).length;
+            if (userPinnedCount >= 3) {
+                alert('ניתן להצמיד עד 3 משימות בלבד');
+                return;
+            }
+        }
+
+        const newPins = isPinned
+            ? currentPins.filter(n => n !== userName)
+            : [...currentPins, userName];
+
+        // Optimistic update
+        setTasks(tasks.map(t => t.id === task.id ? { ...t, fields: { ...t.fields, Pinned_By: newPins } } : t));
+        try {
+            await api.updateTask(task.id, { Pinned_By: newPins });
+        } catch (e) {
+            console.error('Failed to update pin:', e);
+            // Revert on failure
+            setTasks(tasks.map(t => t.id === task.id ? { ...t, fields: { ...t.fields, Pinned_By: currentPins } } : t));
+        }
+    };
+
     const matchesStarFilter = (t: Task) => {
         if (!filterStarred) return true;
         const stars = t.fields.Starred_By || [];
         return stars.includes(currentUser?.displayName || '') || stars.includes('כולם');
     };
 
+    const userName = currentUser?.displayName || '';
     const activeTasks = tasks.filter(t => !t.fields.Is_Completed && matchesStarFilter(t));
     const completedTasks = tasks.filter(t => t.fields.Is_Completed && matchesStarFilter(t));
+
+    // Pinned tasks: only active (non-completed) tasks pinned by current user
+    const pinnedTasks = activeTasks.filter(t => (t.fields.Pinned_By || []).includes(userName));
+    const unpinnedActiveTasks = activeTasks.filter(t => !(t.fields.Pinned_By || []).includes(userName));
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6 md:mt-8">
@@ -174,7 +210,34 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                     <div className="p-8 text-center text-slate-400 text-sm">אין משימות כרגע. איזה כיף! 🎉</div>
                 ) : (
                     <>
-                        {activeTasks.map(task => (
+                        {/* Pinned Tasks Section */}
+                        {pinnedTasks.length > 0 && (
+                            <div className="mb-2">
+                                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-100">
+                                    <Pin size={13} className="text-amber-500" />
+                                    <span className="text-[11px] font-bold text-amber-700">משימות מוצמדות ({pinnedTasks.length}/3)</span>
+                                </div>
+                                {pinnedTasks.map(task => (
+                                    <TaskRow
+                                        key={task.id}
+                                        task={task}
+                                        leads={leads}
+                                        currentUserName={currentUser?.displayName}
+                                        onToggle={() => handleToggleComplete(task)}
+                                        onDelete={() => handleDeleteTask(task.id)}
+                                        onStar={(newStars) => {
+                                            api.updateTask(task.id, { Starred_By: newStars });
+                                            setTasks(tasks.map(t => t.id === task.id ? { ...t, fields: { ...t.fields, Starred_By: newStars } } : t));
+                                        }}
+                                        isPinned={true}
+                                        onTogglePin={() => togglePin(task)}
+                                    />
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Regular Active Tasks */}
+                        {unpinnedActiveTasks.map(task => (
                             <TaskRow
                                 key={task.id}
                                 task={task}
@@ -186,6 +249,8 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                                     api.updateTask(task.id, { Starred_By: newStars });
                                     setTasks(tasks.map(t => t.id === task.id ? { ...t, fields: { ...t.fields, Starred_By: newStars } } : t));
                                 }}
+                                isPinned={false}
+                                onTogglePin={() => togglePin(task)}
                             />
                         ))}
                         {completedTasks.length > 0 && (
@@ -212,7 +277,7 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
     );
 }
 
-function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar }: { task: Task; leads?: Lead[]; currentUserName?: string; onToggle: () => void; onDelete: () => void; onStar: (stars: string[]) => void }) {
+function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar, isPinned, onTogglePin }: { task: Task; leads?: Lead[]; currentUserName?: string; onToggle: () => void; onDelete: () => void; onStar: (stars: string[]) => void; isPinned?: boolean; onTogglePin?: () => void }) {
     const isCompleted = task.fields.Is_Completed;
     const linkedLead = task.fields.Lead_ID && leads ? leads.find(l => l.id === task.fields.Lead_ID) : null;
     const [isStarMenuOpen, setIsStarMenuOpen] = useState(false);
@@ -263,7 +328,21 @@ function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar }: {
                 ) : <span className="text-slate-300">—</span>}
             </div>
             
-            <div className="w-16 shrink-0 flex items-center justify-end gap-1 relative">
+            <div className="w-20 shrink-0 flex items-center justify-end gap-0.5 relative">
+                {onTogglePin && !task.fields.Is_Completed && (
+                    <button
+                        onClick={onTogglePin}
+                        className={clsx(
+                            "transition-all p-1 rounded focus:opacity-100",
+                            isPinned
+                                ? "text-amber-500 hover:text-amber-600 opacity-100 hover:bg-amber-50"
+                                : "text-slate-300 hover:text-amber-400 opacity-0 group-hover:opacity-100 hover:bg-amber-50"
+                        )}
+                        title={isPinned ? 'הסר הצמדה' : 'הצמד למעלה'}
+                    >
+                        {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+                    </button>
+                )}
                 <button 
                     onClick={() => setIsStarMenuOpen(!isStarMenuOpen)} 
                     className="text-slate-300 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-all p-1 rounded hover:bg-amber-50 focus:opacity-100" 
