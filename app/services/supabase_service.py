@@ -178,10 +178,18 @@ class SupabaseService:
     def get_active_musicians(self, musician_type: Optional[str] = None) -> List[dict]:
         """Get all musicians marked as Is_Active."""
         if not self.client: return []
+        
+        # DEBUG: First check what's in the table at all
+        all_response = self.client.table("musicians").select("*").execute()
+        print(f"DEBUG get_active_musicians: Total musicians in DB: {len(all_response.data)}")
+        for m in all_response.data:
+            print(f"  DEBUG musician: Name={m.get('Name')}, Is_Active={m.get('Is_Active')} (type={type(m.get('Is_Active')).__name__}), Type={m.get('Type')}")
+        
         query = self.client.table("musicians").select("*").eq("Is_Active", True)
         if musician_type:
             query = query.eq("Type", musician_type)
         response = query.execute()
+        print(f"DEBUG get_active_musicians: Filtered result count: {len(response.data)} (musician_type={musician_type})")
         return self._to_airtable_list(response.data)
 
     def get_all_musicians(self) -> List[dict]:

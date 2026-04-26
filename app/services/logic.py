@@ -872,6 +872,19 @@ class HaydeBotLogic:
         ))
         await self.send_welcome_menu(phone)
 
+    @staticmethod
+    def _sanitize_template_param(text: str) -> str:
+        """Sanitize text for use as a WhatsApp template parameter.
+        Meta rejects params with newlines, tabs, or 4+ consecutive spaces."""
+        import re
+        if not text:
+            return text
+        # Replace newlines and tabs with a single space
+        text = text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+        # Collapse any run of 4+ spaces down to 3
+        text = re.sub(r' {4,}', '   ', text)
+        return text.strip()
+
     async def notify_admins(self, lead_fields: dict, custom_msg: str = None):
         """Send notification to admins about a new non-bouzouki lead."""
         print(f"DEBUG: notify_admins called for {lead_fields.get('Phone')}")
@@ -891,15 +904,16 @@ class HaydeBotLogic:
                         # Assuming admin_system_alert has 2 params: Subject and Message
                         # We pass a generic subject and the custom message
                         # Using 'en' language code as shown in the screenshot for admin_system_alert
-                        whatsapp_service.send_template(num, "admin_system_alert", "en", parameters=["עדכון אוטומטי", custom_msg])
+                        sanitized_msg = self._sanitize_template_param(custom_msg)
+                        whatsapp_service.send_template(num, "admin_system_alert", "en", parameters=["עדכון אוטומטי", sanitized_msg])
                     else:
                         params = [
-                            lead_fields.get('Name', 'לא תועד'),
-                            lead_fields.get('Phone', 'לא תועד'),
-                            lead_fields.get('Service', 'לא תועד'),
-                            _get_display_val('Event_Date'),
-                            _get_display_val('Location'),
-                            _get_display_val('Guests')
+                            self._sanitize_template_param(lead_fields.get('Name', 'לא תועד')),
+                            self._sanitize_template_param(lead_fields.get('Phone', 'לא תועד')),
+                            self._sanitize_template_param(lead_fields.get('Service', 'לא תועד')),
+                            self._sanitize_template_param(_get_display_val('Event_Date')),
+                            self._sanitize_template_param(_get_display_val('Location')),
+                            self._sanitize_template_param(_get_display_val('Guests'))
                         ]
                         whatsapp_service.send_template(num, "admin_new_lead", "he", parameters=params)
 
@@ -935,7 +949,8 @@ class HaydeBotLogic:
             for num in admin_numbers.split(","):
                 num = num.strip()
                 if num:
-                    whatsapp_service.send_template(num, "admin_system_alert", "en", parameters=["ליד חדש הגיע", arrival_msg])
+                    sanitized_arrival = self._sanitize_template_param(arrival_msg)
+                    whatsapp_service.send_template(num, "admin_system_alert", "en", parameters=["ליד חדש הגיע", sanitized_arrival])
 
         # Email Notification
         email_subject = f"📩 ליד חדש הגיע לווטסאפ: {name or 'לא ידוע'} ({phone})"
