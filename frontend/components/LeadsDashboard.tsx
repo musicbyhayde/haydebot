@@ -36,6 +36,13 @@ const STATUS_MAP: Record<string, { label: string; class: string }> = {
     'Completed': { label: 'הושלם', class: 'bg-slate-100 text-slate-600 border-slate-300' },
 };
 
+// Pipeline stage order for sorting statuses logically
+const STATUS_ORDER: Record<string, number> = {
+    'New': 0, 'Processing': 1, 'Manual': 2, 'Talking': 3, 'Quote_Sent': 4,
+    'Distributed': 5, 'Assigned': 6, 'Waiting_Payment': 7, 'Closed': 8,
+    'Lost': 9, 'Referred': 10, 'Completed': 11,
+};
+
 const OWNER_COLORS: Record<string, string> = {
     'אילן': 'bg-blue-100 text-blue-700',
     'קובי': 'bg-purple-100 text-purple-700',
@@ -68,6 +75,26 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [showFilters, setShowFilters] = useState(false);
     const [sortBy, setSortBy] = useState<'interaction' | 'created'>('interaction');
     const [dateSortOrder, setDateSortOrder] = useState<'asc' | 'desc' | null>(null);
+    const [statusSortOrder, setStatusSortOrder] = useState<'asc' | 'desc' | null>(null);
+    const [serviceSortOrder, setServiceSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+    // Toggle a column sort and clear the others so only one is active at a time
+    const toggleColumnSort = (column: 'date' | 'status' | 'service') => {
+        const cycle = (prev: 'asc' | 'desc' | null) => prev === null ? 'asc' : prev === 'asc' ? 'desc' : null;
+        if (column === 'date') {
+            setDateSortOrder(cycle);
+            setStatusSortOrder(null);
+            setServiceSortOrder(null);
+        } else if (column === 'status') {
+            setStatusSortOrder(cycle);
+            setDateSortOrder(null);
+            setServiceSortOrder(null);
+        } else {
+            setServiceSortOrder(cycle);
+            setDateSortOrder(null);
+            setStatusSortOrder(null);
+        }
+    };
 
     useEffect(() => {
         api.getTasks().then(setTasks).catch(console.error);
@@ -195,12 +222,11 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const activeLeads = useMemo(() => {
         const active = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment', 'Completed', 'Referred'].includes(l.fields.Status));
         
-        // If date sort is active, sort by Event_Date
+        // Column sort: only one can be active at a time
         if (dateSortOrder) {
             return active.sort((a, b) => {
                 const dateA = parseDateToSortable(a.fields.Event_Date);
                 const dateB = parseDateToSortable(b.fields.Event_Date);
-                // Empty dates go to end regardless of direction
                 if (!dateA && !dateB) return 0;
                 if (!dateA) return 1;
                 if (!dateB) return -1;
@@ -209,11 +235,31 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             });
         }
         
+        if (statusSortOrder) {
+            return active.sort((a, b) => {
+                const orderA = STATUS_ORDER[a.fields.Status] ?? 99;
+                const orderB = STATUS_ORDER[b.fields.Status] ?? 99;
+                return statusSortOrder === 'asc' ? orderA - orderB : orderB - orderA;
+            });
+        }
+        
+        if (serviceSortOrder) {
+            return active.sort((a, b) => {
+                const svcA = (a.fields.Service || '').toLowerCase();
+                const svcB = (b.fields.Service || '').toLowerCase();
+                if (!svcA && !svcB) return 0;
+                if (!svcA) return 1;
+                if (!svcB) return -1;
+                const cmp = svcA.localeCompare(svcB);
+                return serviceSortOrder === 'asc' ? cmp : -cmp;
+            });
+        }
+        
         if (sortBy === 'created') {
             return active.sort((a, b) => new Date(b.createdTime || 0).getTime() - new Date(a.createdTime || 0).getTime());
         }
         return active.sort((a, b) => new Date(b.fields.Last_Interaction || 0).getTime() - new Date(a.fields.Last_Interaction || 0).getTime());
-    }, [filteredLeads, sortBy, dateSortOrder]);
+    }, [filteredLeads, sortBy, dateSortOrder, statusSortOrder, serviceSortOrder]);
 
     const closedLeads = filteredLeads.filter(l => l.fields.Status === 'Closed');
     const lostLeads = filteredLeads.filter(l => l.fields.Status === 'Lost');
@@ -571,12 +617,34 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             {/* Header Row */}
                             <div className="flex items-center px-4 md:px-6 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
                                 <div className="flex-1 min-w-[100px] md:min-w-[120px]">לקוח</div>
-                            <div className="w-20 md:w-24 shrink-0">סטטוס</div>
+                            <div className="w-20 md:w-24 shrink-0">
+                                <button
+                                    onClick={() => toggleColumnSort('status')}
+                                    className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
+                                    title="מיין לפי סטטוס"
+                                >
+                                    סטטוס
+                                    {statusSortOrder === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                     statusSortOrder === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                     <ChevronsUpDown size={12} className="text-slate-300" />}
+                                </button>
+                            </div>
                             <div className="w-16 shrink-0 hidden md:block">מוביל</div>
-                            <div className="w-28 shrink-0 hidden md:block">שירות</div>
+                            <div className="w-28 shrink-0 hidden md:block">
+                                <button
+                                    onClick={() => toggleColumnSort('service')}
+                                    className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
+                                    title="מיין לפי שירות"
+                                >
+                                    שירות
+                                    {serviceSortOrder === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                     serviceSortOrder === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                     <ChevronsUpDown size={12} className="text-slate-300" />}
+                                </button>
+                            </div>
                             <div className="w-24 shrink-0 hidden md:block">
                                 <button
-                                    onClick={() => setDateSortOrder(prev => prev === null ? 'asc' : prev === 'asc' ? 'desc' : null)}
+                                    onClick={() => toggleColumnSort('date')}
                                     className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
                                     title="מיין לפי תאריך"
                                 >
