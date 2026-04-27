@@ -57,3 +57,78 @@ export function formatInputDateToDisplay(dateStr: string | undefined | null): st
     }
     return dateStr;
 }
+
+/**
+ * Normalizes Event_Date values from various formats to a consistent DD.MM.YYYY display.
+ * Handles: "DD.MM.YYYY (original text)", "YYYY-MM-DD", "DD/MM/YYYY", "DD.MM.YY",
+ * "(6/5) 06.05.2025", "28.5.26", "01.01.0001", etc.
+ */
+export function normalizeEventDate(dateStr: string | undefined | null): string {
+    if (!dateStr) return '';
+    
+    let cleaned = dateStr.trim();
+    
+    // Strip leading parenthetical like "(6/5) " or "(6/5)"
+    cleaned = cleaned.replace(/^\([^)]*\)\s*/, '');
+    
+    // Extract the core date part (before any parenthetical annotation from AI)
+    // e.g. "28.05.2026 (28.5.26)" → "28.05.2026"
+    const parenIdx = cleaned.indexOf('(');
+    if (parenIdx > 0) {
+        cleaned = cleaned.substring(0, parenIdx).trim();
+    }
+    
+    // Try YYYY-MM-DD format
+    const isoMatch = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (isoMatch) {
+        const [, y, m, d] = isoMatch;
+        return `${d.padStart(2, '0')}.${m.padStart(2, '0')}.${y}`;
+    }
+    
+    // Try DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY (also DD.M.YY etc.)
+    const dmyMatch = cleaned.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$/);
+    if (dmyMatch) {
+        let [, d, m, y] = dmyMatch;
+        if (y.length === 2) y = '20' + y;
+        return `${d.padStart(2, '0')}.${m.padStart(2, '0')}.${y}`;
+    }
+    
+    // Fallback: return as-is
+    return dateStr.trim();
+}
+
+/**
+ * Parses any Event_Date format into a sortable YYYY-MM-DD string.
+ * Returns '' for unparseable dates (sorts to end).
+ */
+export function parseDateToSortable(dateStr: string | undefined | null): string {
+    if (!dateStr) return '';
+    
+    let cleaned = dateStr.trim();
+    
+    // Strip leading parenthetical
+    cleaned = cleaned.replace(/^\([^)]*\)\s*/, '');
+    
+    // Extract core date (before parenthetical annotation)
+    const parenIdx = cleaned.indexOf('(');
+    if (parenIdx > 0) {
+        cleaned = cleaned.substring(0, parenIdx).trim();
+    }
+    
+    // Try YYYY-MM-DD
+    const isoMatch = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (isoMatch) {
+        const [, y, m, d] = isoMatch;
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+    
+    // Try DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY
+    const dmyMatch = cleaned.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$/);
+    if (dmyMatch) {
+        let [, d, m, y] = dmyMatch;
+        if (y.length === 2) y = '20' + y;
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+    
+    return '';
+}

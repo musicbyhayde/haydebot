@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Lead, Task } from '@/types';
-import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, Search, X, Filter, Star } from 'lucide-react';
+import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, ChevronUp, ChevronsUpDown, Search, X, Filter, Star } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import AddLeadModal from './AddLeadModal';
 import LeadDetailPanel from './LeadDetailPanel';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
-import { toDisplayPhone } from '@/lib/formatters';
+import { toDisplayPhone, normalizeEventDate, parseDateToSortable } from '@/lib/formatters';
 
 interface LeadsDashboardProps {
     leads: Lead[];
@@ -67,6 +67,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [filterStarred, setFilterStarred] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [sortBy, setSortBy] = useState<'interaction' | 'created'>('interaction');
+    const [dateSortOrder, setDateSortOrder] = useState<'asc' | 'desc' | null>(null);
 
     useEffect(() => {
         api.getTasks().then(setTasks).catch(console.error);
@@ -193,11 +194,26 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
     const activeLeads = useMemo(() => {
         const active = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment', 'Completed', 'Referred'].includes(l.fields.Status));
+        
+        // If date sort is active, sort by Event_Date
+        if (dateSortOrder) {
+            return active.sort((a, b) => {
+                const dateA = parseDateToSortable(a.fields.Event_Date);
+                const dateB = parseDateToSortable(b.fields.Event_Date);
+                // Empty dates go to end regardless of direction
+                if (!dateA && !dateB) return 0;
+                if (!dateA) return 1;
+                if (!dateB) return -1;
+                const cmp = dateA.localeCompare(dateB);
+                return dateSortOrder === 'asc' ? cmp : -cmp;
+            });
+        }
+        
         if (sortBy === 'created') {
             return active.sort((a, b) => new Date(b.createdTime || 0).getTime() - new Date(a.createdTime || 0).getTime());
         }
         return active.sort((a, b) => new Date(b.fields.Last_Interaction || 0).getTime() - new Date(a.fields.Last_Interaction || 0).getTime());
-    }, [filteredLeads, sortBy]);
+    }, [filteredLeads, sortBy, dateSortOrder]);
 
     const closedLeads = filteredLeads.filter(l => l.fields.Status === 'Closed');
     const lostLeads = filteredLeads.filter(l => l.fields.Status === 'Lost');
@@ -558,7 +574,18 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             <div className="w-20 md:w-24 shrink-0">סטטוס</div>
                             <div className="w-16 shrink-0 hidden md:block">מוביל</div>
                             <div className="w-28 shrink-0 hidden md:block">שירות</div>
-                            <div className="w-24 shrink-0 hidden md:block">תאריך</div>
+                            <div className="w-24 shrink-0 hidden md:block">
+                                <button
+                                    onClick={() => setDateSortOrder(prev => prev === null ? 'asc' : prev === 'asc' ? 'desc' : null)}
+                                    className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
+                                    title="מיין לפי תאריך"
+                                >
+                                    תאריך
+                                    {dateSortOrder === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                     dateSortOrder === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                     <ChevronsUpDown size={12} className="text-slate-300" />}
+                                </button>
+                            </div>
                             <div className="w-24 shrink-0 hidden lg:block">מיקום</div>
                             <div className="w-24 md:w-28 shrink-0 flex justify-end">פעולות</div>
                         </div>
@@ -631,7 +658,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         ) : <span className="text-slate-300">—</span>}
                                     </div>
                                     <div className="w-24 shrink-0 hidden md:flex items-center text-slate-500 font-medium">
-                                        {lead.fields.Event_Date ? lead.fields.Event_Date : <span className="text-slate-300">—</span>}
+                                        {lead.fields.Event_Date ? normalizeEventDate(lead.fields.Event_Date) : <span className="text-slate-300">—</span>}
                                     </div>
                                     <div className="w-24 shrink-0 hidden lg:flex items-center text-slate-500 pr-1">
                                         {lead.fields.Location ? (
