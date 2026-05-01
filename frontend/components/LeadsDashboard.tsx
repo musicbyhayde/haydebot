@@ -296,12 +296,19 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             {items.map(lead => (
                                 <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
                                     <div className="flex-1 min-w-[120px] flex flex-col justify-center">
-                                        <button 
-                                            onClick={() => onOpenDetails?.(lead.id)}
-                                            className="font-bold text-slate-600 text-right hover:text-blue-600 transition-colors"
-                                        >
-                                            {lead.fields.Name || 'ללא שם'}
-                                        </button>
+                                        <div className="flex items-center gap-1.5">
+                                            <button 
+                                                onClick={() => onOpenDetails?.(lead.id)}
+                                                className="font-bold text-slate-600 text-right hover:text-blue-600 transition-colors"
+                                            >
+                                                {lead.fields.Name || 'ללא שם'}
+                                            </button>
+                                            {lead.fields.Referred_To && (
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200 font-bold shrink-0" title={`הופנה ל: ${lead.fields.Referred_To}`}>
+                                                    🤝 הפניה
+                                                </span>
+                                            )}
+                                        </div>
                                         <span className="text-[10px] text-slate-400">{toDisplayPhone(lead.fields.Phone)}</span>
                                     </div>
                                     <div className="w-32 hidden md:flex items-center text-slate-500">
