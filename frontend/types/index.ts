@@ -25,7 +25,7 @@ export interface Lead {
         Musician_RSVPs?: any;
         Referred_To?: string;
         Commission_Amount?: number;
-        Commission_Status?: 'ממתין' | 'נגבה' | 'בוטל';
+        Commission_Status?: 'ממתין לאישור' | 'ממתין לגבייה' | 'נגבה' | 'בוטל';
         Commission_Includes_VAT?: boolean;
     };
 }

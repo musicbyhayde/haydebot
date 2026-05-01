@@ -327,6 +327,27 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
     const renderReferredTable = (items: Lead[]) => {
         if (items.length === 0) return null;
+
+        const getCommissionBadge = (status: string | undefined) => {
+            // Handle legacy 'ממתין' as 'ממתין לאישור'
+            const s = (!status || status === 'ממתין') ? 'ממתין לאישור' : status;
+            switch (s) {
+                case 'ממתין לאישור':
+                    return { label: 'ממתין לאישור', class: 'bg-amber-50 text-amber-700 border-amber-200' };
+                case 'ממתין לגבייה':
+                    return { label: 'ממתין לגבייה', class: 'bg-blue-50 text-blue-700 border-blue-200' };
+                case 'נגבה':
+                    return { label: 'נגבה', class: 'bg-green-50 text-green-700 border-green-200' };
+                case 'בוטל':
+                    return { label: 'בוטל', class: 'bg-red-50 text-red-700 border-red-200' };
+                default:
+                    return { label: s, class: 'bg-slate-50 text-slate-600 border-slate-200' };
+            }
+        };
+
+        const getEffectiveStatus = (status: string | undefined) =>
+            (!status || status === 'ממתין') ? 'ממתין לאישור' : status;
+
         return (
             <div className="mt-4">
                 <button
@@ -348,11 +369,15 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     <div className="flex-1 min-w-[120px]">לקוח</div>
                                     <div className="w-32 hidden md:block">הופנה ל...</div>
                                     <div className="w-32">עמלה</div>
-                                    <div className="w-24 text-center">מצב עמלה</div>
-                                    <div className="w-24 text-center">פעולות</div>
+                                    <div className="w-28 text-center">מצב</div>
+                                    <div className="w-28 text-center">פעולות</div>
                                 </div>
                                 {/* Rows */}
-                                {items.map(lead => (
+                                {items.map(lead => {
+                                    const effectiveStatus = getEffectiveStatus(lead.fields.Commission_Status);
+                                    const badge = getCommissionBadge(lead.fields.Commission_Status);
+
+                                    return (
                                     <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
                                         <div className="flex-1 min-w-[120px] flex flex-col justify-center">
                                             <button 
@@ -375,18 +400,44 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             )}
                                         </div>
 
-                                        <div className="w-24 flex justify-center">
+                                        <div className="w-28 flex justify-center">
                                             <span className={clsx(
                                                 "px-2 py-0.5 rounded-full text-[10px] font-bold border",
-                                                lead.fields.Commission_Status === 'נגבה' ? "bg-green-50 text-green-700 border-green-200" :
-                                                lead.fields.Commission_Status === 'בוטל' ? "bg-red-50 text-red-700 border-red-200" :
-                                                "bg-amber-50 text-amber-700 border-amber-200"
+                                                badge.class
                                             )}>
-                                                {lead.fields.Commission_Status || 'ממתין'}
+                                                {badge.label}
                                             </span>
                                         </div>
-                                        <div className="w-24 flex justify-center gap-1.5">
-                                            {lead.fields.Commission_Status !== 'נגבה' && lead.fields.Commission_Status !== 'בוטל' && (
+                                        <div className="w-28 flex justify-center gap-1">
+                                            {/* ממתין לאישור: show "confirm closed" + "cancel" */}
+                                            {effectiveStatus === 'ממתין לאישור' && (
+                                                <>
+                                                    <button 
+                                                        onClick={async () => {
+                                                            await api.updateLead(lead.id, { Commission_Status: 'ממתין לגבייה' });
+                                                            onRefresh?.();
+                                                        }}
+                                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1 rounded transition-colors text-[10px] font-bold flex items-center gap-0.5" 
+                                                        title="אשר שהעסקה נסגרה — מחכה לגביית עמלה"
+                                                    >
+                                                        ✅ נסגר
+                                                    </button>
+                                                    <button 
+                                                        onClick={async () => {
+                                                            if (confirm('לבטל את ההפניה ולהעביר לאבוד?')) {
+                                                                await api.updateLead(lead.id, { Status: 'Lost', Commission_Status: 'בוטל' });
+                                                                onRefresh?.();
+                                                            }
+                                                        }}
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors" 
+                                                        title="בטל הפניה"
+                                                    >
+                                                        ❌
+                                                    </button>
+                                                </>
+                                            )}
+                                            {/* ממתין לגבייה: show "collect" + "cancel" */}
+                                            {effectiveStatus === 'ממתין לגבייה' && (
                                                 <>
                                                     <button 
                                                         onClick={() => {
@@ -419,7 +470,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             )}
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
