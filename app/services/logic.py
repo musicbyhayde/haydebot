@@ -901,11 +901,11 @@ class HaydeBotLogic:
                 num = num.strip()
                 if num:
                     if custom_msg:
-                        # Assuming admin_system_alert has 2 params: Subject and Message
+                        # Assuming admin_system_alert_v2 has 2 params: Subject and Message
                         # We pass a generic subject and the custom message
-                        # Using 'en' language code as shown in the screenshot for admin_system_alert
+                        # Using 'he' language code
                         sanitized_msg = self._sanitize_template_param(custom_msg)
-                        whatsapp_service.send_template(num, "admin_system_alert", "en", parameters=["עדכון אוטומטי", sanitized_msg])
+                        whatsapp_service.send_template(num, "admin_system_alert_v2", "he", parameters=["עדכון אוטומטי", sanitized_msg])
                     else:
                         params = [
                             self._sanitize_template_param(lead_fields.get('Name', 'לא תועד')),
@@ -950,7 +950,7 @@ class HaydeBotLogic:
                 num = num.strip()
                 if num:
                     sanitized_arrival = self._sanitize_template_param(arrival_msg)
-                    whatsapp_service.send_template(num, "admin_system_alert", "en", parameters=["ליד חדש הגיע", sanitized_arrival])
+                    whatsapp_service.send_template(num, "admin_system_alert_v2", "he", parameters=["ליד חדש הגיע", sanitized_arrival])
 
         # Email Notification
         email_subject = f"📩 ליד חדש הגיע לווטסאפ: {name or 'לא ידוע'} ({phone})"

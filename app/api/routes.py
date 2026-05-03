@@ -981,7 +981,10 @@ async def send_daily_reminders(request: Request):
         if len(final_text) > 500:
             final_text = final_text[:497] + "..."
             
-        res = whatsapp_service.send_template(phone, "admin_system_alert", "en", ["תזכורת פריטים מסומנים", final_text])
+        from app.services.logic import HaydeBotLogic
+        sanitized_text = HaydeBotLogic._sanitize_template_param(final_text)
+            
+        res = whatsapp_service.send_template(phone, "admin_system_alert_v2", "he", ["תזכורת פריטים מסומנים", sanitized_text])
         send_results.append({"phone": phone, "user": user_name, "result": res})
             
     return {
