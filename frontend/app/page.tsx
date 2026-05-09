@@ -10,6 +10,7 @@ import MusiciansPage from "@/components/MusiciansPage";
 import AnalyticsPage from "@/components/AnalyticsPage";
 import HistoryPage from "@/components/HistoryPage";
 import VideosPage from "@/components/VideosPage";
+import AdminDashboard from "@/components/AdminDashboard";
 import LeadDetailPanel from "@/components/LeadDetailPanel";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
@@ -23,7 +24,7 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos'>('dashboard');
+  const [view, setView] = useState<'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos'>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [unreadStatus, setUnreadStatus] = useState<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>>({});
@@ -209,7 +210,7 @@ export default function Home() {
     return <div className="h-screen w-screen flex items-center justify-center font-bold text-slate-400 italic">Hayde is Warming Up... 🎸</div>;
   }
 
-  const showSidebar = mobileMenuOpen || (view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && view !== 'history' && activeId === null);
+  const showSidebar = mobileMenuOpen || (view !== 'home' && view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && view !== 'history' && activeId === null);
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
@@ -237,7 +238,18 @@ export default function Home() {
         "flex-1 h-full w-full",
         showSidebar ? "hidden md:flex" : "flex"
       )}>
-        {view === 'dashboard' ? (
+        {view === 'home' ? (
+          <AdminDashboard
+            leads={leads}
+            currentUser={currentUser}
+            onMenuClick={() => setMobileMenuOpen(true)}
+            onRefresh={fetchData}
+            unreadStatus={unreadStatus}
+            onNavigateToTasks={() => { setView('tasks'); setActiveId(null); }}
+            onNavigateToLeads={() => { setView('dashboard'); setActiveId(null); }}
+            onOpenDetails={(id) => setDetailLeadId(id)}
+          />
+        ) : view === 'dashboard' ? (
           <LeadsDashboard
             leads={leads}
             onSelectLead={handleSelect}

@@ -1,5 +1,5 @@
 import { Lead, Musician } from '@/types';
-import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo, BarChart3, Film } from 'lucide-react';
+import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo, BarChart3, Film, LayoutDashboard } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
@@ -9,8 +9,8 @@ interface SidebarProps {
     musicians: Musician[];
     activeId: string | null;
     onSelect: (id: string) => void;
-    currentView: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos';
-    onViewChange: (view: 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos') => void;
+    currentView: 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos';
+    onViewChange: (view: 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos') => void;
     currentUser?: AppUser | null;
     onSignOut?: () => void;
     unreadStatus?: Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>;
@@ -71,27 +71,28 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
             {/* Navigation */}
             <div className="p-4 space-y-2 border-b border-gray-200 bg-white">
                 <button
+                    onClick={() => onViewChange('home')}
+                    className={clsx(
+                        "flex items-center rounded-xl text-sm font-bold transition-all",
+                        isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
+                        currentView === 'home' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                    title={isCollapsed ? "דשבורד ניהול" : undefined}
+                >
+                    <LayoutDashboard size={18} /> {!isCollapsed && "דשבורד ניהול"}
+                </button>
+                <button
                     onClick={() => onViewChange('dashboard')}
                     className={clsx(
                         "flex items-center rounded-xl text-sm font-bold transition-all",
                         isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
                         currentView === 'dashboard' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-600 hover:bg-slate-50"
                     )}
-                    title={isCollapsed ? "דשבורד ניהול" : undefined}
+                    title={isCollapsed ? "לידים" : undefined}
                 >
-                    <Music size={18} /> {!isCollapsed && "דשבורד ניהול"}
+                    <Users size={18} /> {!isCollapsed && "📋 לידים"}
                 </button>
-                <button
-                    onClick={() => onViewChange('inbox')}
-                    className={clsx(
-                        "flex items-center rounded-xl text-sm font-bold transition-all",
-                        isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
-                        currentView === 'inbox' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "text-slate-600 hover:bg-slate-50"
-                    )}
-                    title={isCollapsed ? "לקוחות" : undefined}
-                >
-                    <Users size={18} /> {!isCollapsed && "לקוחות"}
-                </button>
+
                 <button
                     onClick={() => onViewChange('musicians')}
                     className={clsx(
@@ -162,80 +163,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 */}
             </div>
 
-            {currentView !== 'finance' && currentView !== 'tasks' && currentView !== 'history' && currentView !== 'musicians' && currentView !== 'analytics' && !isCollapsed && (
-                <>
-                    <div className="p-4 border-b border-gray-200">
-                        <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                            {'לידים אחרונים (' + leads.length + ')'}
-                        </h2>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                        {leads.map((lead) => {
-                            const isActive = lead.id === activeId;
-                            const statusInfo = STATUS_MAP[lead.fields.Status] || { label: lead.fields.Status, class: 'bg-gray-100 text-gray-800' };
-                            const unreadInfo = unreadStatus[lead.id];
-                            const hasUnread = unreadInfo && unreadInfo.count > 0;
 
-                            return (
-                                <div
-                                    key={lead.id}
-                                    onClick={() => onSelect(lead.id)}
-                                    className={clsx(
-                                        "p-4 border-b border-gray-100 cursor-pointer transition-colors relative group",
-                                        isActive ? "bg-blue-50 border-l-4 border-l-blue-500" : "hover:bg-gray-50",
-                                        hasUnread && !isActive && "bg-emerald-50/30"
-                                    )}
-                                >
-                                    <div className="flex justify-between items-start mb-1">
-                                        <div className="flex items-center gap-2 max-w-[70%]">
-                                            <span className={clsx(
-                                                "font-semibold truncate",
-                                                hasUnread && !isActive ? "text-emerald-900" : "text-gray-900"
-                                            )}>{lead.fields.Name || lead.fields.Phone}</span>
-                                            {hasUnread && !isActive && (
-                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white animate-in zoom-in spin-in-12 duration-300">
-                                                    {unreadInfo.count}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-bold", statusInfo.class)}>
-                                            {statusInfo.label}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-end">
-                                        <div className="flex flex-col gap-1">
-                                            {hasUnread && unreadInfo.lastMessage ? (
-                                                <div className="text-xs font-medium text-emerald-600 line-clamp-1 max-w-[180px] bg-emerald-100/50 px-1.5 py-0.5 rounded">
-                                                    {unreadInfo.lastMessage}
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div className="text-[11px] text-gray-500 flex items-center gap-1 font-medium">
-                                                        <Phone size={11} className="opacity-70" />
-                                                        {lead.fields.Phone}
-                                                    </div>
-                                                    {lead.fields.Service && (
-                                                        <div className="text-[11px] text-gray-400 flex items-center gap-1">
-                                                            <Music size={11} className="opacity-70" />
-                                                            {lead.fields.Service}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                        
-                                        {hasUnread && unreadInfo.lastTime && !isActive && (
-                                            <span className="text-[10px] font-bold text-emerald-500 bg-white px-1 rounded-sm">
-                                                {new Date(unreadInfo.lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </>
-            )}
         </div>
     );
 }
