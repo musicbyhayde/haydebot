@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Task, Lead } from '@/types';
 import { api } from '@/lib/api';
-import { CheckCircle2, Circle, Calendar, User, Plus, Trash2, ListTodo, Briefcase, Star, Pin, PinOff } from 'lucide-react';
+import { CheckCircle2, Circle, Calendar, User, Plus, Trash2, ListTodo, Briefcase, Star, Pin, PinOff, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 import { AppUser } from '@/lib/auth';
 import { formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
@@ -138,6 +138,27 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                     <h2 className="font-bold text-base md:text-lg text-slate-800">משימות לביצוע</h2>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={async () => {
+                            if (!confirm('לנקות משימות מיותמות?\n(משימות של לידים שנמחקו או סומנו כאבודים)')) return;
+                            try {
+                                const result = await api.cleanupOrphanedTasks();
+                                if (result.deleted === 0 && result.completed === 0) {
+                                    alert('לא נמצאו משימות מיותמות 👍');
+                                } else {
+                                    alert(`ניקוי הושלם:\n• ${result.deleted} משימות נמחקו (ליד לא קיים)\n• ${result.completed} משימות סומנו כבוצעו (ליד אבוד)`);
+                                    fetchTasks();
+                                }
+                            } catch (e) {
+                                console.error(e);
+                                alert('שגיאה בניקוי משימות');
+                            }
+                        }}
+                        className="text-[10px] font-bold px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all flex items-center gap-1"
+                        title="נקה משימות של לידים שנמחקו או סומנו כאבודים"
+                    >
+                        <Sparkles size={12} /> ניקוי משימות
+                    </button>
                     <div className="text-xs font-bold px-2.5 py-1 bg-slate-200 text-slate-600 rounded-full">
                         {activeTasks.length} פתוחות
                     </div>

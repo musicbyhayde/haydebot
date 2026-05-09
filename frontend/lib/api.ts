@@ -253,6 +253,12 @@ export const api = {
         const res = await fetchWithAuth(`${API_Base}/tasks/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete task');
     },
+
+    async cleanupOrphanedTasks(): Promise<{ deleted: number; completed: number; details: string[] }> {
+        const res = await fetchWithAuth(`${API_Base}/tasks/cleanup-orphaned`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to cleanup orphaned tasks');
+        return res.json();
+    },
     // ── Activities ────────────────────────────────────
 
     async getActivities(): Promise<Activity[]> {

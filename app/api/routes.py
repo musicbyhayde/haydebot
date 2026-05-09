@@ -800,6 +800,15 @@ async def handle_lead_tasks(lead_id: str, request: Request):
     
     return {"status": "success", "action": action, "affected_count": count}
 
+@protected_router.post("/tasks/cleanup-orphaned")
+async def cleanup_orphaned_tasks():
+    """Find and handle tasks linked to deleted or Lost leads.
+    - Tasks linked to a deleted lead → deleted
+    - Incomplete tasks linked to a Lost lead → marked as completed
+    """
+    result = airtable_service.cleanup_orphaned_tasks()
+    return result
+
 # ─── Analytics ───────────────────────────────────────
 
 @protected_router.get("/analytics")

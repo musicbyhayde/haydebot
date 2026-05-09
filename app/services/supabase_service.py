@@ -412,6 +412,72 @@ class SupabaseService:
             print(f"Error completing tasks for lead {lead_id}: {e}")
             return 0
 
+    def cleanup_orphaned_tasks(self) -> dict:
+        """Find and handle tasks linked to deleted or Lost leads.
+        - Tasks linked to a deleted lead → deleted
+        - Incomplete tasks linked to a Lost lead → marked as completed
+        Returns a summary dict with counts.
+        """
+        if not self.client: return {"deleted": 0, "completed": 0}
+
+        result = {"deleted": 0, "completed": 0, "details": []}
+
+        try:
+            # Get all tasks that have a Lead_ID
+            tasks_resp = self.client.table("tasks").select("id, Lead_ID, Is_Completed").not_.is_("Lead_ID", "null").execute()
+            all_tasks = tasks_resp.data or []
+
+            if not all_tasks:
+                return result
+
+            # Get unique lead IDs from tasks
+            task_lead_ids = set(t["Lead_ID"] for t in all_tasks if t.get("Lead_ID"))
+
+            # Fetch those leads to check their existence and status
+            leads_resp = self.client.table("leads").select("id, Status").execute()
+            leads_map = {l["id"]: l.get("Status", "") for l in (leads_resp.data or [])}
+
+            # Categorize orphaned tasks
+            tasks_to_delete = []  # linked to deleted leads
+            tasks_to_complete = []  # incomplete tasks linked to Lost leads
+
+            for task in all_tasks:
+                lead_id = task.get("Lead_ID")
+                if not lead_id:
+                    continue
+
+                if lead_id not in leads_map:
+                    # Lead was deleted
+                    tasks_to_delete.append(task["id"])
+                    result["details"].append(f"Task {task['id']} → deleted (lead {lead_id} no longer exists)")
+                elif leads_map[lead_id] == "Lost" and not task.get("Is_Completed"):
+                    # Lead is Lost and task is incomplete
+                    tasks_to_complete.append(task["id"])
+                    result["details"].append(f"Task {task['id']} → completed (lead {lead_id} is Lost)")
+
+            # Execute deletions
+            for task_id in tasks_to_delete:
+                try:
+                    self.client.table("tasks").delete().eq("id", task_id).execute()
+                    result["deleted"] += 1
+                except Exception as e:
+                    print(f"Error deleting orphaned task {task_id}: {e}")
+
+            # Execute completions
+            for task_id in tasks_to_complete:
+                try:
+                    self.client.table("tasks").update({"Is_Completed": True}).eq("id", task_id).execute()
+                    result["completed"] += 1
+                except Exception as e:
+                    print(f"Error completing orphaned task {task_id}: {e}")
+
+            print(f"Orphaned task cleanup: deleted={result['deleted']}, completed={result['completed']}")
+
+        except Exception as e:
+            print(f"Error during orphaned task cleanup: {e}")
+
+        return result
+
     # ─── Activities CRUD ─────────────────────────────────────
 
     def get_activities(self) -> List[dict]:
