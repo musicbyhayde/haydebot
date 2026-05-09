@@ -323,6 +323,7 @@ export default function AdminDashboard({
                             <div className="divide-y divide-slate-50">
                                 {urgentTasks.map(task => {
                                     const isOverdue = task.fields.Due_Date && task.fields.Due_Date < todayStr;
+                                    const linkedLead = task.fields.Lead_ID ? leads.find(l => l.id === task.fields.Lead_ID) : null;
                                     return (
                                         <div key={task.id} className="flex items-center gap-3 px-5 py-3 group">
                                             <button
@@ -334,9 +335,23 @@ export default function AdminDashboard({
                                             </button>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-bold text-slate-700 truncate">{task.fields.Title}</p>
-                                                {task.fields.Assignee && (
-                                                    <span className="text-[10px] text-slate-400">{task.fields.Assignee}</span>
-                                                )}
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    {task.fields.Assignee && (
+                                                        <span className="text-[10px] text-slate-400">{task.fields.Assignee}</span>
+                                                    )}
+                                                    {linkedLead && (
+                                                        <>
+                                                            {task.fields.Assignee && <span className="text-[10px] text-slate-300">•</span>}
+                                                            <button
+                                                                onClick={() => onOpenDetails?.(linkedLead.id)}
+                                                                className="text-[10px] text-blue-500 hover:text-blue-700 font-medium transition-colors truncate"
+                                                                title={`פתח ליד: ${linkedLead.fields.Name || linkedLead.fields.Phone}`}
+                                                            >
+                                                                🔗 {linkedLead.fields.Name || linkedLead.fields.Phone}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                             {task.fields.Due_Date && (
                                                 <span className={clsx(

@@ -26,6 +26,7 @@ const BOUZOUKI_STATUSES = [
     { value: 'Closed', label: 'נסגר', color: 'bg-green-100 text-green-800' },
     { value: 'Lost', label: 'אבוד', color: 'bg-red-100 text-red-800' },
     { value: 'Referred', label: 'הופנה', color: 'bg-teal-100 text-teal-800' },
+    { value: 'Cold', label: 'ליד קר', color: 'bg-sky-100 text-sky-800' },
     { value: 'Completed', label: 'הושלם', color: 'bg-slate-200 text-slate-700' },
 ];
 
@@ -38,6 +39,7 @@ const MANUAL_STATUSES = [
     { value: 'Closed', label: 'נסגר', color: 'bg-green-100 text-green-800' },
     { value: 'Lost', label: 'אבוד', color: 'bg-red-100 text-red-800' },
     { value: 'Referred', label: 'הופנה', color: 'bg-teal-100 text-teal-800' },
+    { value: 'Cold', label: 'ליד קר', color: 'bg-sky-100 text-sky-800' },
     { value: 'Completed', label: 'הושלם', color: 'bg-slate-200 text-slate-700' },
 ];
 

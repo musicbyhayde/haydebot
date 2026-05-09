@@ -20,6 +20,7 @@ class LeadStatus(str, Enum):
     TALKING = "Talking"
     COMPLETED = "Completed"
     REFERRED = "Referred"
+    COLD = "Cold"
 
 class MusicianType(str, Enum):
     REFERRER = "REFERRER"
