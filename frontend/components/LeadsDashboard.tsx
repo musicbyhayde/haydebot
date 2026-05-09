@@ -102,6 +102,36 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
     const handleStatusUpdate = async (leadId: string, newStatus: string) => {
         try {
+            // When setting to Lost, check for linked incomplete tasks and prompt user
+            if (newStatus === 'Lost') {
+                const linkedTasks = tasks.filter(t => t.fields.Lead_ID === leadId && !t.fields.Is_Completed);
+                if (linkedTasks.length > 0) {
+                    const choice = prompt(
+                        `לליד זה יש ${linkedTasks.length} משימות פתוחות.\n\n` +
+                        `בחר פעולה עבור המשימות המקושרות:\n` +
+                        `• הקלד "1" — סמן כבוצעו ✅\n` +
+                        `• הקלד "2" — מחק אותן 🗑️\n` +
+                        `• הקלד "3" — השאר כמו שהן\n\n` +
+                        `מה לעשות עם המשימות?`,
+                        '1'
+                    );
+
+                    if (choice === null) return; // User cancelled — don't change status
+
+                    if (choice === '1') {
+                        try {
+                            await api.handleLeadTasks(leadId, 'complete');
+                            setTasks(tasks.map(t => t.fields.Lead_ID === leadId ? { ...t, fields: { ...t.fields, Is_Completed: true } } : t));
+                        } catch (e) { console.error('Failed to complete tasks:', e); }
+                    } else if (choice === '2') {
+                        try {
+                            await api.handleLeadTasks(leadId, 'delete');
+                            setTasks(tasks.filter(t => t.fields.Lead_ID !== leadId || t.fields.Is_Completed));
+                        } catch (e) { console.error('Failed to delete tasks:', e); }
+                    }
+                }
+            }
+
             await api.updateLead(leadId, { Status: newStatus });
             onRefresh?.();
         } catch (e) {
@@ -432,8 +462,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                     <button 
                                                         onClick={async () => {
                                                             if (confirm('לבטל את ההפניה ולהעביר לאבוד?')) {
-                                                                await api.updateLead(lead.id, { Status: 'Lost', Commission_Status: 'בוטל' });
-                                                                onRefresh?.();
+                                                                await api.updateLead(lead.id, { Commission_Status: 'בוטל' });
+                                                                await handleStatusUpdate(lead.id, 'Lost');
                                                             }
                                                         }}
                                                         className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors" 
@@ -464,8 +494,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                     <button 
                                                         onClick={async () => {
                                                             if (confirm('לבטל את העמלה ולהעביר לאבוד?')) {
-                                                                await api.updateLead(lead.id, { Status: 'Lost', Commission_Status: 'בוטל' });
-                                                                onRefresh?.();
+                                                                await api.updateLead(lead.id, { Commission_Status: 'בוטל' });
+                                                                await handleStatusUpdate(lead.id, 'Lost');
                                                             }
                                                         }}
                                                         className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors" 

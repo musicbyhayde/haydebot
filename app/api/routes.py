@@ -392,12 +392,20 @@ async def delete_calendar_event(lead_id: str):
 
 @protected_router.delete("/leads/{lead_id}")
 async def delete_lead(lead_id: str, delete_calendar: bool = False):
-    """Physically delete a lead and optionally its calendar event."""
+    """Physically delete a lead and optionally its calendar event. Also deletes linked tasks."""
     if delete_calendar:
         try:
             await delete_calendar_event(lead_id)
         except Exception as e:
             print(f"Error deleting calendar event while deleting lead: {e}")
+
+    # Delete all tasks linked to this lead
+    try:
+        deleted_count = airtable_service.delete_tasks_by_lead(lead_id)
+        if deleted_count > 0:
+            print(f"Cleaned up {deleted_count} tasks when deleting lead {lead_id}")
+    except Exception as e:
+        print(f"Error cleaning up tasks while deleting lead: {e}")
 
     airtable_service.delete_lead(lead_id)
     return {"status": "deleted"}
@@ -774,6 +782,23 @@ async def update_task(task_id: str, request: Request):
 async def delete_task(task_id: str):
     airtable_service.delete_task(task_id)
     return {"status": "deleted"}
+
+@protected_router.post("/leads/{lead_id}/handle-tasks")
+async def handle_lead_tasks(lead_id: str, request: Request):
+    """Handle linked tasks when a lead status changes (e.g. set to Lost).
+    Body: { "action": "complete" | "delete" }
+    """
+    body = await request.json()
+    action = body.get("action", "complete")
+    
+    if action == "delete":
+        count = airtable_service.delete_tasks_by_lead(lead_id)
+    elif action == "complete":
+        count = airtable_service.complete_tasks_by_lead(lead_id)
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid action: {action}")
+    
+    return {"status": "success", "action": action, "affected_count": count}
 
 # ─── Analytics ───────────────────────────────────────
 

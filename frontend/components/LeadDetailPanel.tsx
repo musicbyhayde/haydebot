@@ -277,6 +277,45 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         if (newStatus === 'Closed' && closingAmount) {
             updateData.Closing_Amount = parseFloat(closingAmount);
         }
+
+        // When setting to Lost, check for linked incomplete tasks and prompt user
+        if (newStatus === 'Lost') {
+            const linkedIncompleteTasks = tasks.filter(t => !t.fields.Is_Completed);
+            if (linkedIncompleteTasks.length > 0) {
+                const taskCount = linkedIncompleteTasks.length;
+                const choice = prompt(
+                    `לליד זה יש ${taskCount} משימות פתוחות.\n\n` +
+                    `בחר פעולה עבור המשימות המקושרות:\n` +
+                    `• הקלד "1" — סמן כבוצעו ✅\n` +
+                    `• הקלד "2" — מחק אותן 🗑️\n` +
+                    `• הקלד "3" — השאר כמו שהן\n\n` +
+                    `מה לעשות עם המשימות?`,
+                    '1'
+                );
+
+                if (choice === null) return; // User cancelled
+
+                if (choice === '1') {
+                    try {
+                        await api.handleLeadTasks(lead.id, 'complete');
+                        // Update local state
+                        setTasks(tasks.map(t => ({ ...t, fields: { ...t.fields, Is_Completed: true } })));
+                    } catch (e) {
+                        console.error('Failed to complete tasks:', e);
+                    }
+                } else if (choice === '2') {
+                    try {
+                        await api.handleLeadTasks(lead.id, 'delete');
+                        // Update local state
+                        setTasks(tasks.filter(t => t.fields.Is_Completed));
+                    } catch (e) {
+                        console.error('Failed to delete tasks:', e);
+                    }
+                }
+                // choice === '3' or anything else: leave tasks as-is
+            }
+        }
+
         await api.updateLead(lead.id, updateData);
         onStatusChange(lead.id, newStatus);
     };

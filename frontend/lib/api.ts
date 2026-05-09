@@ -359,6 +359,16 @@ export const api = {
         if (!res.ok) throw new Error('Failed to delete lead');
     },
 
+    async handleLeadTasks(leadId: string, action: 'complete' | 'delete'): Promise<{ status: string; action: string; affected_count: number }> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/handle-tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action }),
+        });
+        if (!res.ok) throw new Error('Failed to handle lead tasks');
+        return res.json();
+    },
+
     async syncLeadRsvps(leadId: string): Promise<{ status: string; rsvps: Record<string, string> }> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/sync-rsvps`, {
             method: 'POST',

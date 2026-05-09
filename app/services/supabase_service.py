@@ -388,6 +388,30 @@ class SupabaseService:
         if not self.client: return
         self.client.table("tasks").delete().eq("id", task_id).execute()
 
+    def delete_tasks_by_lead(self, lead_id: str) -> int:
+        """Delete all tasks linked to a specific lead. Returns count of deleted tasks."""
+        if not self.client: return 0
+        try:
+            response = self.client.table("tasks").delete().eq("Lead_ID", lead_id).execute()
+            count = len(response.data) if response.data else 0
+            print(f"Deleted {count} tasks linked to lead {lead_id}")
+            return count
+        except Exception as e:
+            print(f"Error deleting tasks for lead {lead_id}: {e}")
+            return 0
+
+    def complete_tasks_by_lead(self, lead_id: str) -> int:
+        """Mark all incomplete tasks linked to a lead as completed. Returns count of updated tasks."""
+        if not self.client: return 0
+        try:
+            response = self.client.table("tasks").update({"Is_Completed": True}).eq("Lead_ID", lead_id).eq("Is_Completed", False).execute()
+            count = len(response.data) if response.data else 0
+            print(f"Completed {count} tasks linked to lead {lead_id}")
+            return count
+        except Exception as e:
+            print(f"Error completing tasks for lead {lead_id}: {e}")
+            return 0
+
     # ─── Activities CRUD ─────────────────────────────────────
 
     def get_activities(self) -> List[dict]:
