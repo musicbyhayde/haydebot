@@ -334,8 +334,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
         if (referredStatusSort) {
             return [...items].sort((a, b) => {
-                const sA = (!a.fields.Commission_Status || a.fields.Commission_Status === 'ממתין') ? 'ממתין לאישור' : a.fields.Commission_Status;
-                const sB = (!b.fields.Commission_Status || b.fields.Commission_Status === 'ממתין') ? 'ממתין לאישור' : b.fields.Commission_Status;
+                const sA = (!a.fields.Commission_Status || (a.fields.Commission_Status as string) === 'ממתין') ? 'ממתין לאישור' : a.fields.Commission_Status;
+                const sB = (!b.fields.Commission_Status || (b.fields.Commission_Status as string) === 'ממתין') ? 'ממתין לאישור' : b.fields.Commission_Status;
                 const orderA = COMMISSION_STATUS_ORDER[sA] ?? 99;
                 const orderB = COMMISSION_STATUS_ORDER[sB] ?? 99;
                 return referredStatusSort === 'asc' ? orderA - orderB : orderB - orderA;
@@ -415,7 +415,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
         const getCommissionBadge = (status: string | undefined) => {
             // Handle legacy 'ממתין' as 'ממתין לאישור'
-            const s = (!status || status === 'ממתין') ? 'ממתין לאישור' : status;
+            const s = (!status || (status as string) === 'ממתין') ? 'ממתין לאישור' : status;
             switch (s) {
                 case 'ממתין לאישור':
                     return { label: 'ממתין לאישור', class: 'bg-amber-50 text-amber-700 border-amber-200' };
@@ -431,7 +431,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         };
 
         const getEffectiveStatus = (status: string | undefined) =>
-            (!status || status === 'ממתין') ? 'ממתין לאישור' : status;
+            (!status || (status as string) === 'ממתין') ? 'ממתין לאישור' : status;
 
         return (
             <div className="mt-4">
