@@ -170,7 +170,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
     if (view === 'list') {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" dir="rtl">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
                     <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                         <h3 className="font-bold text-slate-800 flex items-center gap-2">
                             <span>📝</span> הצעות מחיר
@@ -195,47 +195,63 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                             </div>
                         ) : (
                             <>
-                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                            <div className="bg-white rounded-xl overflow-hidden">
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-right text-xs">
-                                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                                    <table className="w-full text-sm">
+                                        <thead className="text-slate-400 font-medium text-xs bg-transparent border-b border-slate-100">
                                             <tr>
-                                                <th className="px-4 py-3">מס׳</th>
-                                                <th className="px-4 py-3">כותרת</th>
-                                                <th className="px-4 py-3">תאריך אירוע</th>
-                                                <th className="px-4 py-3">סכום</th>
-                                                <th className="px-4 py-3 text-center">פעולות</th>
+                                                <th className="px-6 py-4 font-medium text-right w-32">תאריך</th>
+                                                <th className="px-6 py-4 font-medium text-center">תיאור</th>
+                                                <th className="px-6 py-4 font-medium text-left w-32">סכום</th>
+                                                <th className="px-6 py-4 font-medium w-24"></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {quotes.map((q, idx) => (
-                                                <tr key={q.id} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-4 py-3 font-medium text-slate-500">{idx + 1}</td>
-                                                    <td className="px-4 py-3 font-bold text-slate-700 max-w-[150px] truncate" title={q.title}>{q.title}</td>
-                                                    <td className="px-4 py-3 text-slate-600">{q.date || '-'}</td>
-                                                    <td className="px-4 py-3 text-slate-600 font-mono">₪{Number(q.amount || 0).toLocaleString()}</td>
-                                                    <td className="px-4 py-3">
-                                                        <div className="flex items-center justify-center gap-2">
-                                                            <button 
-                                                                onClick={() => { setEditingQuote(q); setView('edit'); }}
-                                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                                title="עריכה"
-                                                            >
-                                                                <Edit size={14}/>
-                                                            </button>
+                                                <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
+                                                    <td className="px-6 py-6 text-slate-500 text-[14px] text-right align-middle">{q.date || '-'}</td>
+                                                    <td className="px-6 py-6 text-center align-middle">
+                                                        <a 
+                                                            href={`${window.location.origin}/quote/${leadId}?qid=${q.id}`} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="font-bold text-slate-700 text-[15px] leading-relaxed max-w-[280px] mx-auto hover:text-indigo-600 transition-colors block"
+                                                        >
+                                                            {q.title}
+                                                        </a>
+                                                        <div className="text-[12px] text-slate-400 mt-1.5 flex items-center justify-center gap-1.5">
+                                                            <span>הצעה מס׳ {idx + 1}</span>
+                                                            {q.notIncludingVat && <span className="text-slate-300">•</span>}
+                                                            {q.notIncludingVat && <span>לא כולל מע״מ</span>}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-6 text-left align-middle">
+                                                        <div className="font-bold text-slate-800 text-[16px] font-mono">
+                                                            ₪ {Number(q.amount || 0).toLocaleString()}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-6 text-left align-middle">
+                                                        <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <button 
                                                                 onClick={() => copyLink(q.id)}
-                                                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                                                className="text-slate-400 hover:text-blue-600 transition-colors"
                                                                 title="העתק לינק"
                                                             >
-                                                                <Link size={14}/>
+                                                                <Link size={16}/>
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => { setEditingQuote(q); setView('edit'); }}
+                                                                className="text-slate-400 hover:text-indigo-600 transition-colors"
+                                                                title="עריכה"
+                                                            >
+                                                                <Edit size={16}/>
                                                             </button>
                                                             <button 
                                                                 onClick={() => handleDelete(q.id)}
-                                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                                className="text-slate-400 hover:text-red-500 transition-colors"
                                                                 title="מחק הצעה"
                                                             >
-                                                                <Trash2 size={14}/>
+                                                                <Trash2 size={16}/>
                                                             </button>
                                                         </div>
                                                     </td>
@@ -275,7 +291,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" dir="rtl">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                     <div className="flex items-center gap-2">
                         <button onClick={() => setView('list')} className="text-slate-400 hover:text-slate-600 bg-white rounded-full p-1 border border-slate-200 ml-2">
