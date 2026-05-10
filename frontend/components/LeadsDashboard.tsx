@@ -9,6 +9,7 @@ import LeadDetailPanel from './LeadDetailPanel';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
 import { toDisplayPhone, normalizeEventDate, parseDateToSortable } from '@/lib/formatters';
+import TaskActionModal from './TaskActionModal';
 
 interface LeadsDashboardProps {
     leads: Lead[];
@@ -67,6 +68,11 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [collectAmount, setCollectAmount] = useState<string>('');
 
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [taskPrompt, setTaskPrompt] = useState<{
+        leadId: string;
+        newStatus: string;
+        taskCount: number;
+    } | null>(null);
 
     // ─── Search & Filter State ──────────────────────────
     const [searchQuery, setSearchQuery] = useState('');
@@ -127,37 +133,40 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             if (newStatus === 'Lost') {
                 const linkedTasks = tasks.filter(t => t.fields.Lead_ID === leadId && !t.fields.Is_Completed);
                 if (linkedTasks.length > 0) {
-                    const choice = prompt(
-                        `לליד זה יש ${linkedTasks.length} משימות פתוחות.\n\n` +
-                        `בחר פעולה עבור המשימות המקושרות:\n` +
-                        `• הקלד "1" — סמן כבוצעו ✅\n` +
-                        `• הקלד "2" — מחק אותן 🗑️\n` +
-                        `• הקלד "3" — השאר כמו שהן\n\n` +
-                        `מה לעשות עם המשימות?`,
-                        '1'
-                    );
-
-                    if (choice === null) return; // User cancelled — don't change status
-
-                    if (choice === '1') {
-                        try {
-                            await api.handleLeadTasks(leadId, 'complete');
-                            setTasks(tasks.map(t => t.fields.Lead_ID === leadId ? { ...t, fields: { ...t.fields, Is_Completed: true } } : t));
-                        } catch (e) { console.error('Failed to complete tasks:', e); }
-                    } else if (choice === '2') {
-                        try {
-                            await api.handleLeadTasks(leadId, 'delete');
-                            setTasks(tasks.filter(t => t.fields.Lead_ID !== leadId || t.fields.Is_Completed));
-                        } catch (e) { console.error('Failed to delete tasks:', e); }
-                    }
+                    setTaskPrompt({ leadId, newStatus, taskCount: linkedTasks.length });
+                    return; // Stop here, modal will continue the process
                 }
             }
 
-            await api.updateLead(leadId, { Status: newStatus });
-            onRefresh?.();
+            await executeStatusUpdate(leadId, newStatus);
         } catch (e) {
             console.error(e);
             alert('שגיאה בעדכון הסטטוס');
+        }
+    };
+
+    const executeStatusUpdate = async (leadId: string, newStatus: string) => {
+        await api.updateLead(leadId, { Status: newStatus });
+        onRefresh?.();
+    };
+
+    const handleTaskAction = async (action: 'complete' | 'delete' | 'ignore') => {
+        if (!taskPrompt) return;
+        const { leadId, newStatus } = taskPrompt;
+        setTaskPrompt(null);
+
+        try {
+            if (action === 'complete') {
+                await api.handleLeadTasks(leadId, 'complete');
+                setTasks(tasks.map(t => t.fields.Lead_ID === leadId ? { ...t, fields: { ...t.fields, Is_Completed: true } } : t));
+            } else if (action === 'delete') {
+                await api.handleLeadTasks(leadId, 'delete');
+                setTasks(tasks.filter(t => t.fields.Lead_ID !== leadId || t.fields.Is_Completed));
+            }
+            await executeStatusUpdate(leadId, newStatus);
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בעדכון המשימות או הסטטוס');
         }
     };
 
@@ -594,6 +603,12 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
     return (
         <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" dir="rtl">
+            <TaskActionModal
+                isOpen={taskPrompt !== null}
+                taskCount={taskPrompt?.taskCount || 0}
+                onClose={() => setTaskPrompt(null)}
+                onAction={handleTaskAction}
+            />
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <header className="mb-6 md:mb-8 flex items-center justify-between">

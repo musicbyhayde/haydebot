@@ -9,6 +9,7 @@ import SendMaterialsModal from './SendMaterialsModal';
 import CalendarEventModal from './CalendarEventModal';
 import ProposalModal from './ProposalModal';
 import { toDisplayPhone, toDbPhone, formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
+import TaskActionModal from './TaskActionModal';
 
 interface LeadDetailPanelProps {
     lead: Lead;
@@ -65,6 +66,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [newTaskAssignee, setNewTaskAssignee] = useState<string>('');
     const [newTaskDueDate, setNewTaskDueDate] = useState('');
     const [taskSubmitting, setTaskSubmitting] = useState(false);
+    const [taskPrompt, setTaskPrompt] = useState<{
+        leadId: string;
+        newStatus: string;
+        taskCount: number;
+    } | null>(null);
 
     // Finance Tab State
     const [finances, setFinances] = useState<FinanceEntry[]>([]);
@@ -284,42 +290,42 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         if (newStatus === 'Lost') {
             const linkedIncompleteTasks = tasks.filter(t => !t.fields.Is_Completed);
             if (linkedIncompleteTasks.length > 0) {
-                const taskCount = linkedIncompleteTasks.length;
-                const choice = prompt(
-                    `לליד זה יש ${taskCount} משימות פתוחות.\n\n` +
-                    `בחר פעולה עבור המשימות המקושרות:\n` +
-                    `• הקלד "1" — סמן כבוצעו ✅\n` +
-                    `• הקלד "2" — מחק אותן 🗑️\n` +
-                    `• הקלד "3" — השאר כמו שהן\n\n` +
-                    `מה לעשות עם המשימות?`,
-                    '1'
-                );
-
-                if (choice === null) return; // User cancelled
-
-                if (choice === '1') {
-                    try {
-                        await api.handleLeadTasks(lead.id, 'complete');
-                        // Update local state
-                        setTasks(tasks.map(t => ({ ...t, fields: { ...t.fields, Is_Completed: true } })));
-                    } catch (e) {
-                        console.error('Failed to complete tasks:', e);
-                    }
-                } else if (choice === '2') {
-                    try {
-                        await api.handleLeadTasks(lead.id, 'delete');
-                        // Update local state
-                        setTasks(tasks.filter(t => t.fields.Is_Completed));
-                    } catch (e) {
-                        console.error('Failed to delete tasks:', e);
-                    }
-                }
-                // choice === '3' or anything else: leave tasks as-is
+                setTaskPrompt({ leadId: lead.id, newStatus, taskCount: linkedIncompleteTasks.length });
+                return;
             }
         }
 
+        await executeStatusChange(newStatus, updateData);
+    };
+
+    const executeStatusChange = async (newStatus: string, updateData: Partial<Lead['fields']>) => {
         await api.updateLead(lead.id, updateData);
         onStatusChange(lead.id, newStatus);
+    };
+
+    const handleTaskAction = async (action: 'complete' | 'delete' | 'ignore') => {
+        if (!taskPrompt) return;
+        const { newStatus } = taskPrompt;
+        setTaskPrompt(null);
+        
+        try {
+            if (action === 'complete') {
+                await api.handleLeadTasks(lead.id, 'complete');
+                setTasks(tasks.map(t => ({ ...t, fields: { ...t.fields, Is_Completed: true } })));
+            } else if (action === 'delete') {
+                await api.handleLeadTasks(lead.id, 'delete');
+                setTasks(tasks.filter(t => t.fields.Is_Completed));
+            }
+            
+            const updateData: Partial<Lead['fields']> = { Status: newStatus };
+            if (newStatus === 'Closed' && closingAmount) {
+                updateData.Closing_Amount = parseFloat(closingAmount);
+            }
+            await executeStatusChange(newStatus, updateData);
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בעדכון המשימות או הסטטוס');
+        }
     };
 
     const handleAddTask = async () => {
@@ -558,6 +564,12 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
     return (
         <div className="fixed inset-0 z-50 flex items-stretch md:items-center justify-end bg-black/30 backdrop-blur-sm" dir="rtl" onClick={onClose}>
+            <TaskActionModal
+                isOpen={taskPrompt !== null}
+                taskCount={taskPrompt?.taskCount || 0}
+                onClose={() => setTaskPrompt(null)}
+                onAction={handleTaskAction}
+            />
             <div className="w-full md:w-[560px] h-full md:h-[90vh] bg-white md:rounded-r-2xl shadow-2xl flex flex-col relative" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">

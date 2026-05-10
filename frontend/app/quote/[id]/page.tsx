@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { notFound, useParams } from 'next/navigation';
+import { notFound, useParams, useSearchParams } from 'next/navigation';
 
 export default function QuotePage() {
     const params = useParams();
     const leadId = params.id as string;
+    const searchParams = useSearchParams();
+    const qid = searchParams.get('qid');
 
     const [quote, setQuote] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -30,7 +32,21 @@ export default function QuotePage() {
         return <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6] text-[#B8986D] font-serif italic text-lg tracking-widest">טוען...</div>;
     }
 
-    const noQuote = error || !quote || !quote.quote_data || Object.keys(quote.quote_data).length === 0;
+    let activeQuoteData = null;
+    if (quote && quote.quote_data) {
+        if (Array.isArray(quote.quote_data.quotes) && quote.quote_data.quotes.length > 0) {
+            if (qid) {
+                activeQuoteData = quote.quote_data.quotes.find((q: any) => q.id === qid);
+            }
+            if (!activeQuoteData) {
+                activeQuoteData = quote.quote_data.quotes[quote.quote_data.quotes.length - 1];
+            }
+        } else if (Object.keys(quote.quote_data).length > 0 && !quote.quote_data.quotes) {
+            activeQuoteData = quote.quote_data;
+        }
+    }
+
+    const noQuote = error || !quote || !activeQuoteData;
 
     if (noQuote) {
         return (
@@ -55,7 +71,7 @@ export default function QuotePage() {
     }
 
     // Dynamic data from DB
-    const quoteData = quote.quote_data;
+    const quoteData = activeQuoteData;
     const title = quoteData.title || `הצעת מחיר - ${quote.name}`;
     const description = quoteData.description || `היידה תספק את השירותים המוסיקליים והטכניים הבאים:`;
     const inclusions: string[] = quoteData.inclusions || [];
@@ -65,7 +81,7 @@ export default function QuotePage() {
         "במידה והנחיות פיקוד העורף לא יאפשרו את קיום האירוע לא יגבו דמי ביטול.",
         "אישור הצעה זו בהודעה חוזרת."
     ];
-    const amount = quoteData.amount || quote.amount;
+    const amount = quoteData.amount !== undefined ? quoteData.amount : quote.amount;
 
     return (
         <div className="min-h-screen bg-[#F5F2EC] font-sans selection:bg-[#EBE6DD] selection:text-slate-900 md:py-10" dir="rtl">
@@ -135,8 +151,9 @@ export default function QuotePage() {
                     {/* Pricing */}
                     <div className="px-8 md:px-16 mb-16">
                         <div className="border-t border-slate-200 pt-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <p className="text-lg md:text-xl font-bold text-slate-800">
-                                מחיר: {Number(amount).toLocaleString()} ש״ח
+                            <p className="text-lg md:text-xl font-bold text-slate-800 flex items-baseline gap-2">
+                                <span>מחיר: {Number(amount).toLocaleString()} ש״ח</span>
+                                {quoteData.notIncludingVat && <span className="text-sm font-normal text-slate-500">(לא כולל מע״מ)</span>}
                             </p>
 
                             {quoteData.addons && quoteData.addons.length > 0 && (
