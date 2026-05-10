@@ -194,59 +194,73 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                                 </button>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {quotes.map((q, idx) => (
-                                    <div key={q.id} className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:border-blue-200 transition-colors">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h4 className="font-bold text-slate-800 text-sm">{q.title}</h4>
-                                                <p className="text-xs text-slate-500 mt-1">
-                                                    תאריך אירוע: {q.date || 'לא הוגדר'} • סכום: ₪{Number(q.amount || 0).toLocaleString()}
-                                                </p>
-                                            </div>
-                                            <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-md border border-blue-100">
-                                                הצעה {idx + 1}
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-2 pt-2 border-t border-slate-100">
-                                            <button 
-                                                onClick={() => { setEditingQuote(q); setView('edit'); }}
-                                                className="flex-1 flex justify-center items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded border border-slate-200 transition-colors"
-                                            >
-                                                <Edit size={12}/> עריכה
-                                            </button>
-                                            <button 
-                                                onClick={() => copyLink(q.id)}
-                                                className="flex-1 flex justify-center items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded border border-blue-200 transition-colors"
-                                            >
-                                                <Link size={12}/> העתק לינק
-                                            </button>
-                                            <button 
-                                                onClick={() => handleDelete(q.id)}
-                                                className="flex justify-center items-center px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded border border-red-200 transition-colors"
-                                                title="מחק הצעה"
-                                            >
-                                                <Trash2 size={14}/>
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                <div className="mt-6 flex flex-col gap-2">
-                                    <button 
-                                        onClick={() => handleCreateNew('copy_last')}
-                                        className="w-full px-4 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        <Copy size={14}/> צור הצעה חדשה (העתק מאחרונה)
-                                    </button>
-                                    <button 
-                                        onClick={() => handleCreateNew('empty')}
-                                        className="w-full px-4 py-2.5 bg-white text-slate-600 font-bold text-xs rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        <Plus size={14}/> צור הצעה חדשה ריקה
-                                    </button>
+                            <>
+                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-right text-xs">
+                                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                                            <tr>
+                                                <th className="px-4 py-3">מס׳</th>
+                                                <th className="px-4 py-3">כותרת</th>
+                                                <th className="px-4 py-3">תאריך אירוע</th>
+                                                <th className="px-4 py-3">סכום</th>
+                                                <th className="px-4 py-3 text-center">פעולות</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {quotes.map((q, idx) => (
+                                                <tr key={q.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-slate-500">{idx + 1}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-700 max-w-[150px] truncate" title={q.title}>{q.title}</td>
+                                                    <td className="px-4 py-3 text-slate-600">{q.date || '-'}</td>
+                                                    <td className="px-4 py-3 text-slate-600 font-mono">₪{Number(q.amount || 0).toLocaleString()}</td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <button 
+                                                                onClick={() => { setEditingQuote(q); setView('edit'); }}
+                                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                                title="עריכה"
+                                                            >
+                                                                <Edit size={14}/>
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => copyLink(q.id)}
+                                                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                                                title="העתק לינק"
+                                                            >
+                                                                <Link size={14}/>
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDelete(q.id)}
+                                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                                title="מחק הצעה"
+                                                            >
+                                                                <Trash2 size={14}/>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
+                            
+                            <div className="mt-4 flex flex-col gap-2">
+                                <button 
+                                    onClick={() => handleCreateNew('copy_last')}
+                                    className="w-full px-4 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Copy size={14}/> צור הצעה חדשה (העתק מאחרונה)
+                                </button>
+                                <button 
+                                    onClick={() => handleCreateNew('empty')}
+                                    className="w-full px-4 py-2.5 bg-white text-slate-600 font-bold text-xs rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Plus size={14}/> צור הצעה חדשה ריקה
+                                </button>
+                            </div>
+                        </>
                         )}
                     </div>
                 </div>
