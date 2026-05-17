@@ -110,6 +110,10 @@ class MusicianBase(BaseSchema):
     score: int = Field(5, alias="Score")
     type: MusicianType = Field(MusicianType.REFERRER, alias="Type")
     email: Optional[str] = Field(None, alias="Email")
+    bank_account_name: Optional[str] = Field(None, alias="Bank_Account_Name")
+    bank_name: Optional[str] = Field(None, alias="Bank_Name")
+    bank_branch: Optional[str] = Field(None, alias="Bank_Branch")
+    bank_account_number: Optional[str] = Field(None, alias="Bank_Account_Number")
 
 class MusicianCreate(BaseSchema):
     name: str = Field(..., alias="Name")
@@ -118,6 +122,10 @@ class MusicianCreate(BaseSchema):
     is_active: bool = Field(True, alias="Is_Active")
     score: int = Field(5, alias="Score")
     type: MusicianType = Field(MusicianType.REFERRER, alias="Type")
+    bank_account_name: Optional[str] = Field(None, alias="Bank_Account_Name")
+    bank_name: Optional[str] = Field(None, alias="Bank_Name")
+    bank_branch: Optional[str] = Field(None, alias="Bank_Branch")
+    bank_account_number: Optional[str] = Field(None, alias="Bank_Account_Number")
 
 class MusicianUpdate(BaseSchema):
     name: Optional[str] = Field(None, alias="Name")
@@ -126,6 +134,10 @@ class MusicianUpdate(BaseSchema):
     score: Optional[int] = Field(None, alias="Score")
     type: Optional[MusicianType] = Field(None, alias="Type")
     email: Optional[str] = Field(None, alias="Email")
+    bank_account_name: Optional[str] = Field(None, alias="Bank_Account_Name")
+    bank_name: Optional[str] = Field(None, alias="Bank_Name")
+    bank_branch: Optional[str] = Field(None, alias="Bank_Branch")
+    bank_account_number: Optional[str] = Field(None, alias="Bank_Account_Number")
 
 class MusicianResponse(MusicianBase):
     id: str

@@ -53,6 +53,10 @@ export interface Musician {
         Score?: number;
         Type?: 'REFERRER' | 'POOL';
         Email?: string;
+        Bank_Account_Name?: string;
+        Bank_Name?: string;
+        Bank_Branch?: string;
+        Bank_Account_Number?: string;
     };
 }
 

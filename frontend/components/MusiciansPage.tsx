@@ -7,7 +7,7 @@ import { AppUser } from '@/lib/auth';
 import {
     Plus, Trash2, Edit, Check, X, Star, Music, Menu,
     TrendingUp, Users, Award, DollarSign, AlertTriangle,
-    ChevronDown, ChevronUp, MessageSquare, Send
+    ChevronDown, ChevronUp, MessageSquare, Send, Landmark, Copy, CheckCheck
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toDisplayPhone, toDbPhone } from '@/lib/formatters';
@@ -41,6 +41,9 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
     const [chatInput, setChatInput] = useState('');
     const [sendingChat, setSendingChat] = useState(false);
 
+    // Copied bank field indicator
+    const [copiedBank, setCopiedBank] = useState(false);
+
     // Add form
     const [form, setForm] = useState({
         Name: '',
@@ -49,6 +52,10 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
         Is_Active: true,
         Type: 'REFERRER' as 'REFERRER' | 'POOL',
         Email: '',
+        Bank_Account_Name: '',
+        Bank_Name: '',
+        Bank_Branch: '',
+        Bank_Account_Number: '',
     });
 
     useEffect(() => {
@@ -94,7 +101,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
         try {
             const created = await api.createMusician(form);
             setMusicians([created, ...musicians]);
-            setForm({ Name: '', Phone: '', Score: 5, Is_Active: true, Type: 'REFERRER', Email: '' });
+            setForm({ Name: '', Phone: '', Score: 5, Is_Active: true, Type: 'REFERRER', Email: '', Bank_Account_Name: '', Bank_Name: '', Bank_Branch: '', Bank_Account_Number: '' });
             setShowAddForm(false);
         } catch (e) {
             console.error('Failed to create musician:', e);
@@ -111,7 +118,25 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
             Is_Active: m.fields.Is_Active ?? true,
             Type: m.fields.Type ?? 'REFERRER',
             Email: m.fields.Email || '',
+            Bank_Account_Name: m.fields.Bank_Account_Name || '',
+            Bank_Name: m.fields.Bank_Name || '',
+            Bank_Branch: m.fields.Bank_Branch || '',
+            Bank_Account_Number: m.fields.Bank_Account_Number || '',
         });
+    };
+
+    const copyBankDetails = (m: Musician) => {
+        const parts = [
+            m.fields.Bank_Account_Name && `שם: ${m.fields.Bank_Account_Name}`,
+            m.fields.Bank_Name && `בנק: ${m.fields.Bank_Name}`,
+            m.fields.Bank_Branch && `סניף: ${m.fields.Bank_Branch}`,
+            m.fields.Bank_Account_Number && `חשבון: ${m.fields.Bank_Account_Number}`,
+        ].filter(Boolean).join('\n');
+        if (parts) {
+            navigator.clipboard.writeText(parts);
+            setCopiedBank(true);
+            setTimeout(() => setCopiedBank(false), 2000);
+        }
     };
 
     const saveEdit = async (id: string) => {
@@ -330,6 +355,31 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                     </button>
                                 </div>
                             </div>
+                            {/* Bank Account Details */}
+                            <div className="mt-5 pt-4 border-t border-slate-100">
+                                <label className="block text-[10px] font-bold text-slate-500 mb-3 flex items-center gap-1.5">
+                                    <Landmark size={12} className="text-slate-400" />
+                                    פרטי חשבון בנק
+                                </label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">שם בעל החשבון</label>
+                                        <input type="text" value={form.Bank_Account_Name} onChange={(e) => setForm({ ...form, Bank_Account_Name: e.target.value })} placeholder="שם מלא" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">שם הבנק</label>
+                                        <input type="text" value={form.Bank_Name} onChange={(e) => setForm({ ...form, Bank_Name: e.target.value })} placeholder="למשל: לאומי, הפועלים" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">מספר סניף</label>
+                                        <input type="text" value={form.Bank_Branch} onChange={(e) => setForm({ ...form, Bank_Branch: e.target.value })} placeholder="מספר סניף" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" dir="ltr" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">מספר חשבון</label>
+                                        <input type="text" value={form.Bank_Account_Number} onChange={(e) => setForm({ ...form, Bank_Account_Number: e.target.value })} placeholder="מספר חשבון" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-purple-300 outline-none" dir="ltr" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
                             <button onClick={() => setShowAddForm(false)} className="px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700">ביטול</button>
@@ -408,6 +458,19 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                                 <button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 hover:bg-slate-200 rounded"><X size={14} /></button>
                                             </div>
                                         </div>
+                                        {/* Bank Details Edit Row */}
+                                        <div className="px-4 md:px-6 py-3 bg-amber-50/60 border-t border-amber-100">
+                                            <div className="flex items-center gap-1.5 mb-2">
+                                                <Landmark size={11} className="text-slate-400" />
+                                                <span className="text-[10px] font-bold text-slate-500">פרטי חשבון בנק</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                <input type="text" value={editForm.Bank_Account_Name || ''} onChange={(e) => setEditForm({ ...editForm, Bank_Account_Name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" placeholder="שם בעל החשבון" />
+                                                <input type="text" value={editForm.Bank_Name || ''} onChange={(e) => setEditForm({ ...editForm, Bank_Name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" placeholder="שם הבנק" />
+                                                <input type="text" value={editForm.Bank_Branch || ''} onChange={(e) => setEditForm({ ...editForm, Bank_Branch: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="מספר סניף" />
+                                                <input type="text" value={editForm.Bank_Account_Number || ''} onChange={(e) => setEditForm({ ...editForm, Bank_Account_Number: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="מספר חשבון" />
+                                            </div>
+                                        </div>
                                     ) : (
                                         <div className="flex items-center px-4 md:px-6 py-2 text-xs hover:bg-slate-50 transition-colors w-full cursor-pointer" onClick={() => toggleExpand(m.id)}>
                                             <div className="flex-1 min-w-[120px] flex flex-col justify-center gap-0.5">
@@ -458,6 +521,50 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                         <div className="border-t border-slate-100">
                                             {/* Stats */}
                                             {renderStatsCards(m.id)}
+
+                                            {/* Bank Account Details */}
+                                            <div className="px-4 pb-4">
+                                                <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border border-slate-200 p-4">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                                                            <Landmark size={13} className="text-slate-500" /> פרטי חשבון בנק
+                                                        </span>
+                                                        {(m.fields.Bank_Account_Name || m.fields.Bank_Name || m.fields.Bank_Branch || m.fields.Bank_Account_Number) && (
+                                                            <button
+                                                                onClick={() => copyBankDetails(m)}
+                                                                className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-slate-500 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors border border-slate-200 hover:border-purple-200"
+                                                                title="העתק פרטי בנק"
+                                                            >
+                                                                {copiedBank ? <CheckCheck size={11} className="text-green-600" /> : <Copy size={11} />}
+                                                                {copiedBank ? 'הועתק!' : 'העתק'}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {(m.fields.Bank_Account_Name || m.fields.Bank_Name || m.fields.Bank_Branch || m.fields.Bank_Account_Number) ? (
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                                            <div className="bg-white rounded-lg p-2.5 border border-slate-100">
+                                                                <div className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">שם</div>
+                                                                <div className="text-xs font-bold text-slate-700">{m.fields.Bank_Account_Name || '—'}</div>
+                                                            </div>
+                                                            <div className="bg-white rounded-lg p-2.5 border border-slate-100">
+                                                                <div className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">בנק</div>
+                                                                <div className="text-xs font-bold text-slate-700">{m.fields.Bank_Name || '—'}</div>
+                                                            </div>
+                                                            <div className="bg-white rounded-lg p-2.5 border border-slate-100">
+                                                                <div className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">סניף</div>
+                                                                <div className="text-xs font-bold text-slate-700 font-mono" dir="ltr">{m.fields.Bank_Branch || '—'}</div>
+                                                            </div>
+                                                            <div className="bg-white rounded-lg p-2.5 border border-slate-100">
+                                                                <div className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">חשבון</div>
+                                                                <div className="text-xs font-bold text-slate-700 font-mono" dir="ltr">{m.fields.Bank_Account_Number || '—'}</div>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-slate-400 italic">לא הוזנו פרטי בנק. לחץ על עריכה כדי להוסיף.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
 
                                             {/* Chat Button / Chat Panel */}
                                             <div className="px-4 pb-4">
