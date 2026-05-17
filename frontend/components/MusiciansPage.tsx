@@ -425,6 +425,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                 >
                                     {/* Main Row */}
                                     {isEditing ? (
+                                        <>
                                         <div className="flex items-center px-4 md:px-6 py-2 bg-amber-50 gap-3 text-xs w-full">
                                             <div className="flex-1 min-w-[120px]">
                                                 <input type="text" value={editForm.Name} onChange={(e) => setEditForm({ ...editForm, Name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" placeholder="שם" />
@@ -471,6 +472,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
                                                 <input type="text" value={editForm.Bank_Account_Number || ''} onChange={(e) => setEditForm({ ...editForm, Bank_Account_Number: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white" dir="ltr" placeholder="מספר חשבון" />
                                             </div>
                                         </div>
+                                        </>
                                     ) : (
                                         <div className="flex items-center px-4 md:px-6 py-2 text-xs hover:bg-slate-50 transition-colors w-full cursor-pointer" onClick={() => toggleExpand(m.id)}>
                                             <div className="flex-1 min-w-[120px] flex flex-col justify-center gap-0.5">

@@ -140,13 +140,13 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                 <div className="flex items-center gap-2">
                     <button
                         onClick={async () => {
-                            if (!confirm('לנקות משימות מיותמות?\n(משימות של לידים שנמחקו או סומנו כאבודים)')) return;
+                            if (!confirm('לנקות משימות מיותמות?\n(משימות של לידים שנמחקו, הושלמו, נסגרו, או סומנו כאבודים)')) return;
                             try {
                                 const result = await api.cleanupOrphanedTasks();
                                 if (result.deleted === 0 && result.completed === 0) {
                                     alert('לא נמצאו משימות מיותמות 👍');
                                 } else {
-                                    alert(`ניקוי הושלם:\n• ${result.deleted} משימות נמחקו (ליד לא קיים)\n• ${result.completed} משימות סומנו כבוצעו (ליד אבוד)`);
+                                    alert(`ניקוי הושלם:\n• ${result.deleted} משימות נמחקו (ליד לא קיים)\n• ${result.completed} משימות סומנו כבוצעו (ליד הושלם/נסגר/אבוד)`);
                                     fetchTasks();
                                 }
                             } catch (e) {
@@ -155,7 +155,7 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                             }
                         }}
                         className="text-[10px] font-bold px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all flex items-center gap-1"
-                        title="נקה משימות של לידים שנמחקו או סומנו כאבודים"
+                        title="נקה משימות של לידים שנמחקו, הושלמו, נסגרו, או סומנו כאבודים"
                     >
                         <Sparkles size={12} /> ניקוי משימות
                     </button>

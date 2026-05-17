@@ -413,14 +413,17 @@ class SupabaseService:
             return 0
 
     def cleanup_orphaned_tasks(self) -> dict:
-        """Find and handle tasks linked to deleted or Lost leads.
+        """Find and handle tasks linked to deleted or finished leads.
         - Tasks linked to a deleted lead → deleted
-        - Incomplete tasks linked to a Lost lead → marked as completed
+        - Incomplete tasks linked to a Lost/Completed/Closed lead → marked as completed
         Returns a summary dict with counts.
         """
         if not self.client: return {"deleted": 0, "completed": 0}
 
         result = {"deleted": 0, "completed": 0, "details": []}
+
+        # Statuses that indicate a lead is "done" — tasks should be auto-completed
+        DONE_STATUSES = {"Lost", "Completed", "Closed"}
 
         try:
             # Get all tasks that have a Lead_ID
@@ -439,7 +442,7 @@ class SupabaseService:
 
             # Categorize orphaned tasks
             tasks_to_delete = []  # linked to deleted leads
-            tasks_to_complete = []  # incomplete tasks linked to Lost leads
+            tasks_to_complete = []  # incomplete tasks linked to done leads
 
             for task in all_tasks:
                 lead_id = task.get("Lead_ID")
@@ -450,10 +453,10 @@ class SupabaseService:
                     # Lead was deleted
                     tasks_to_delete.append(task["id"])
                     result["details"].append(f"Task {task['id']} → deleted (lead {lead_id} no longer exists)")
-                elif leads_map[lead_id] == "Lost" and not task.get("Is_Completed"):
-                    # Lead is Lost and task is incomplete
+                elif leads_map[lead_id] in DONE_STATUSES and not task.get("Is_Completed"):
+                    # Lead is done and task is incomplete
                     tasks_to_complete.append(task["id"])
-                    result["details"].append(f"Task {task['id']} → completed (lead {lead_id} is Lost)")
+                    result["details"].append(f"Task {task['id']} → completed (lead {lead_id} is {leads_map[lead_id]})")
 
             # Execute deletions
             for task_id in tasks_to_delete:
