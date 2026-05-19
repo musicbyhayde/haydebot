@@ -105,6 +105,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [loadingTeam, setLoadingTeam] = useState(false);
     const [savingTeam, setSavingTeam] = useState(false);
     const [syncingCalendar, setSyncingCalendar] = useState(false);
+    const [teamVersion, setTeamVersion] = useState(0);
 
     useEffect(() => {
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
@@ -1256,6 +1257,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     await api.updateLead(lead.id, { Musician_Team: newTeam });
                                                     // Update locally
                                                     Object.assign(lead.fields, { Musician_Team: newTeam });
+                                                    setTeamVersion(v => v + 1);
                                                     
                                                     e.target.value = ''; // Reset select
                                                 } catch (err) {
@@ -1341,6 +1343,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                                     const newTeam = (lead.fields.Musician_Team || []).filter(id => id !== mId);
                                                                     await api.updateLead(lead.id, { Musician_Team: newTeam });
                                                                     Object.assign(lead.fields, { Musician_Team: newTeam });
+                                                                    setTeamVersion(v => v + 1);
                                                                 } catch (err) {
                                                                     console.error(err);
                                                                     alert('שגיאה בעדכון הצוות');

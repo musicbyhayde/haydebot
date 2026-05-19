@@ -644,7 +644,12 @@ async def create_musician(request: Request):
         phone=body.get("Phone", ""),
         is_active=body.get("Is_Active", True),
         score=body.get("Score", 5),
-        type=body.get("Type", "REFERRER")
+        type=body.get("Type", "REFERRER"),
+        email=body.get("Email"),
+        bank_account_name=body.get("Bank_Account_Name"),
+        bank_name=body.get("Bank_Name"),
+        bank_branch=body.get("Bank_Branch"),
+        bank_account_number=body.get("Bank_Account_Number"),
     )
     return airtable_service.create_musician(musician)
 
