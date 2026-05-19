@@ -141,8 +141,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         fetchNotes();
         fetchFinances();
         fetchTasks();
-        if (tab === 'team') fetchAvailableTeamMusicians();
-    }, [lead.id, tab]);
+        fetchAvailableTeamMusicians();
+    }, [lead.id]);
 
 
     const fetchNotes = async () => {

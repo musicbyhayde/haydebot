@@ -74,11 +74,17 @@ export default function GooglePlacesAutocomplete({
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
     useEffect(() => {
-        if (!apiKey) return;
+        if (!apiKey) {
+            console.warn('GooglePlacesAutocomplete: No API key found (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)');
+            return;
+        }
         loadGoogleMapsScript(apiKey).then(() => {
             if (window.google?.maps?.places) {
                 autocompleteService.current = new window.google.maps.places.AutocompleteService();
                 setIsReady(true);
+                console.log('GooglePlacesAutocomplete: Ready ✅');
+            } else {
+                console.warn('GooglePlacesAutocomplete: Google Maps loaded but Places not available');
             }
         });
     }, [apiKey]);
@@ -105,7 +111,6 @@ export default function GooglePlacesAutocomplete({
             {
                 input,
                 componentRestrictions: regionBias ? { country: regionBias } : undefined,
-                types: ['establishment', 'geocode'],
             },
             (results, status) => {
                 setLoading(false);
@@ -113,6 +118,7 @@ export default function GooglePlacesAutocomplete({
                     setPredictions(results as unknown as Prediction[]);
                     setIsOpen(true);
                 } else {
+                    console.warn('Places autocomplete status:', status);
                     setPredictions([]);
                 }
             }
