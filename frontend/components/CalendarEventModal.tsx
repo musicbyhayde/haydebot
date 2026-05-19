@@ -5,6 +5,7 @@ import { X, Calendar, MapPin, AlignLeft, Users, RefreshCw, Check } from 'lucide-
 import clsx from 'clsx';
 import { Musician } from '@/types';
 import { formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
+import GooglePlacesAutocomplete from './GooglePlacesAutocomplete';
 
 interface CalendarEventModalProps {
     isOpen: boolean;
@@ -124,10 +125,10 @@ export default function CalendarEventModal({
                             <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                 <MapPin size={14} className="text-slate-400" /> מיקום
                             </label>
-                            <input
-                                type="text"
+                            <GooglePlacesAutocomplete
                                 value={location}
-                                onChange={(e) => setLocation(e.target.value)}
+                                onChange={setLocation}
+                                placeholder="חפש אולם, עיר או מקום..."
                                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none"
                             />
                         </div>
