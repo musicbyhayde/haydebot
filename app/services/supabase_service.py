@@ -72,6 +72,16 @@ class SupabaseService:
         response = self.client.table("leads").select("*").eq("Phone", phone).neq("Status", LeadStatus.CLOSED.value).neq("Status", LeadStatus.LOST.value).order("Last_Interaction", desc=True).limit(1).execute()
         return self._to_airtable_format(response.data[0]) if response.data else None
 
+    def get_lead_by_phone_any_status(self, phone: str) -> Optional[dict]:
+        """Find ANY lead by phone, including Closed/Completed.
+        Returns the most recent one by Last_Interaction."""
+        if not self.client: return None
+        response = (self.client.table("leads").select("*")
+                    .eq("Phone", phone)
+                    .order("Last_Interaction", desc=True)
+                    .limit(1).execute())
+        return self._to_airtable_format(response.data[0]) if response.data else None
+
     def create_lead(self, lead: LeadCreate) -> dict:
         """Create a new lead."""
         if not self.client: return {}

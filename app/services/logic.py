@@ -213,6 +213,14 @@ class HaydeBotLogic:
 
         # 3. Handle New User Case
         if not lead:
+             # Check if this phone belongs to a Closed/Completed lead before creating a duplicate
+             closed_lead = self._find_closed_lead_by_phone(phone)
+             if closed_lead:
+                 await self._handle_returning_closed_customer(
+                     phone, name, text, whatsapp_id, media_url, media_type, closed_lead
+                 )
+                 return
+
              lead_id = await self.start_new_conversation(phone, name)
              # Log the initial message that started it
              airtable_service.create_message(MessageCreate(
@@ -1064,6 +1072,81 @@ class HaydeBotLogic:
         if not n1 or not n2: return False
         # Compare the last 9 digits (common for Israeli mobile)
         return n1[-9:] == n2[-9:]
+
+    def _find_closed_lead_by_phone(self, phone: str) -> Optional[dict]:
+        """Search all leads (including Closed/Completed) by phone using robust matching.
+        Returns the lead only if its status is Closed or Completed."""
+        all_leads = airtable_service.get_all_leads()
+        for lead in all_leads:
+            fields = lead["fields"]
+            status = fields.get("Status")
+            if status in [LeadStatus.CLOSED.value, LeadStatus.COMPLETED.value]:
+                if self._phones_match(fields.get("Phone"), phone):
+                    return lead
+        return None
+
+    async def _handle_returning_closed_customer(
+        self, phone, name, text, whatsapp_id, media_url, media_type, existing_lead
+    ):
+        """Handle a message from a customer who already has a Closed/Completed event.
+        Logs the message on the existing lead, sends a tailored reply, and notifies admins."""
+        lead_id = existing_lead["id"]
+        fields = existing_lead["fields"]
+        status = fields.get("Status")
+
+        print(f"DEBUG: Returning {status} customer detected: {phone} (lead {lead_id})")
+
+        # 1. Log the incoming message on the EXISTING lead
+        airtable_service.create_message(MessageCreate(
+            lead=[lead_id],
+            direction="Inbound",
+            content=text,
+            media_url=media_url,
+            media_type=media_type,
+            timestamp=datetime.now(),
+            id=whatsapp_id,
+            status="Delivered"
+        ))
+
+        # 2. Update last interaction timestamp
+        airtable_service.update_lead(lead_id, LeadUpdate(
+            last_interaction=datetime.now()
+        ))
+
+        # 3. Send a tailored response based on status
+        if status == LeadStatus.CLOSED.value:
+            reply = (
+                "היי, אני רואה שיש לך אירוע עם \"היידה\" בקרוב! "
+                "מוזמן לרשום ממש כאן איך נוכל לעזור ונחזור אלייך תיק תק!"
+            )
+        else:  # Completed
+            reply = (
+                "היי אני רואה שכבר שימחנו אתכם בעבר! "
+                "מוזמן לרשום ממש כאן במה נוכל לעזור ונחזור אליכם תיקתק!"
+            )
+        self._send_message(phone, reply, lead_id)
+
+        # 4. Notify admins via approved template (admin_system_alert_v2)
+        lead_name = fields.get("Name", name or "לא ידוע")
+        event_date = fields.get("Event_Date", "לא צוין")
+        preview = "[מדיה]" if media_url else text[:80] if text else ""
+        status_label = "סגור" if status == LeadStatus.CLOSED.value else "הושלם"
+
+        alert_body = (
+            f"לקוח חוזר ({status_label}): {lead_name} / {phone}   "
+            f"תאריך אירוע: {event_date}   "
+            f"הודעה: {preview}"
+        )
+        sanitized_body = self._sanitize_template_param(alert_body)
+
+        if settings.NOTIFICATION_NUMBERS:
+            for admin_phone in settings.NOTIFICATION_NUMBERS.split(","):
+                admin_phone = admin_phone.strip()
+                if admin_phone:
+                    whatsapp_service.send_template(
+                        admin_phone, "admin_system_alert_v2", "he",
+                        parameters=["לקוח חוזר", sanitized_body]
+                    )
 
     def _send_message(self, phone: str, text: str, lead_id: str = None, musician_id: str = None):
         whatsapp_service.send_message(phone, text)
