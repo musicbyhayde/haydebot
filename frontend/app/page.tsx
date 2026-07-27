@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import LeadsDashboard from "@/components/LeadsDashboard";
@@ -12,11 +12,12 @@ import HistoryPage from "@/components/HistoryPage";
 import VideosPage from "@/components/VideosPage";
 import AdminDashboard from "@/components/AdminDashboard";
 import LeadDetailPanel from "@/components/LeadDetailPanel";
+import BottomNav from "@/components/BottomNav";
+import { LoadingScreen } from "@/components/ui";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
 import { getCurrentUser, signOut, AppUser, createSupabaseClient } from "@/lib/auth";
 import clsx from "clsx";
-import { useMemo } from "react";
 
 export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -206,14 +207,30 @@ export default function Home() {
     window.location.href = '/login';
   };
 
+  // Total unread messages count for bottom nav badge
+  const totalUnread = useMemo(() => {
+    return Object.values(unreadStatus).reduce((sum, s) => sum + (s.count || 0), 0);
+  }, [unreadStatus]);
+
   if (loading) {
-    return <div className="h-screen w-screen flex items-center justify-center font-bold text-slate-400 italic">Hayde is Warming Up... 🎸</div>;
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-slate-50" dir="rtl">
+        <LoadingScreen message="Hayde מתחמם... 🎸" />
+      </div>
+    );
   }
 
   const showSidebar = mobileMenuOpen || (view !== 'home' && view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && view !== 'history' && activeId === null);
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
+      {/* Mobile Bottom Nav */}
+      <BottomNav
+        currentView={view}
+        onViewChange={(v) => { setView(v); setActiveId(null); setMobileMenuOpen(false); }}
+        unreadCount={totalUnread}
+      />
+
       <div className={clsx(
         "h-full flex-shrink-0 transition-all duration-300 relative z-10",
         showSidebar ? "block w-full" : "hidden md:block",
@@ -275,11 +292,11 @@ export default function Home() {
             onMenuClick={() => setMobileMenuOpen(true)}
           />
         ) : view === 'tasks' ? (
-          <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" dir="rtl">
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 pb-20 md:pb-8" dir="rtl">
             <div className="max-w-4xl mx-auto">
               {/* Header with Mobile Button */}
               <div className="mb-6 flex items-center gap-3">
-                <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 bg-white rounded-lg shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 bg-white rounded-lg shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors" aria-label="פתח תפריט">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></svg>
                 </button>
                 <h1 className="text-xl md:text-3xl font-extrabold text-slate-900">לוח משימות 📋</h1>
@@ -288,11 +305,11 @@ export default function Home() {
             </div>
           </div>
         ) : view === 'history' ? (
-          <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" dir="rtl">
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 pb-20 md:pb-8" dir="rtl">
             <div className="max-w-5xl mx-auto">
               {/* Header with Mobile Button */}
               <div className="mb-6 flex items-center gap-3">
-                <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 bg-white rounded-lg shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 bg-white rounded-lg shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors" aria-label="פתח תפריט">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></svg>
                 </button>
                 <h1 className="text-xl md:text-2xl font-extrabold text-slate-800">⏱️ היסטוריית פעילות</h1>

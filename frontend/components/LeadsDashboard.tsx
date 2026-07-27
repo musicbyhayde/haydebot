@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import clsx from 'clsx';
 import { toDisplayPhone, normalizeEventDate, parseDateToSortable } from '@/lib/formatters';
 import TaskActionModal from './TaskActionModal';
+import { useToast } from '@/components/ui';
 
 interface LeadsDashboardProps {
     leads: Lead[];
@@ -54,6 +55,7 @@ const BOUZOUKI_STATUS_LIST = ['New', 'Processing', 'Distributed', 'Assigned', 'C
 const MANUAL_STATUS_LIST = ['New', 'Manual', 'Talking', 'Quote_Sent', 'Waiting_Payment', 'Closed', 'Lost', 'Referred', 'Cold', 'Completed'];
 
 export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh, onNavigateToTasks, unreadStatus = {}, onOpenDetails }: LeadsDashboardProps) {
+    const { error, success, confirm } = useToast();
     const [showAddModal, setShowAddModal] = useState(false);
     const [showClosed, setShowClosed] = useState(false);
     const [showLost, setShowLost] = useState(false);
@@ -141,7 +143,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             await executeStatusUpdate(leadId, newStatus);
         } catch (e) {
             console.error(e);
-            alert('שגיאה בעדכון הסטטוס');
+            error('שגיאה בעדכון הסטטוס');
         }
     };
 
@@ -166,7 +168,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             await executeStatusUpdate(leadId, newStatus);
         } catch (e) {
             console.error(e);
-            alert('שגיאה בעדכון המשימות או הסטטוס');
+            error('שגיאה בעדכון המשימות או הסטטוס');
         }
     };
 
@@ -176,7 +178,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             onRefresh?.();
         } catch (e) {
             console.error(e);
-            alert('שגיאה בעדכון סכום העמלה');
+            error('שגיאה בעדכון סכום העמלה');
         }
     };
 
@@ -186,7 +188,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             onRefresh?.();
         } catch (e) {
             console.error(e);
-            alert('שגיאה בעדכון היעד');
+            error('שגיאה בעדכון היעד');
         }
     };
 
@@ -214,10 +216,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             setCommissionModalOpen(false);
             setCollectLead(null);
             onRefresh?.();
-            alert('העמלה נרשמה בהצלחה!');
+            success('העמלה נרשמה בהצלחה!');
         } catch (e) {
             console.error(e);
-            alert('שגיאה ביצירת פעולה כספית');
+            error('שגיאה ביצירת פעולה כספית');
         }
     };
 
@@ -544,7 +546,13 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                     </button>
                                                     <button 
                                                         onClick={async () => {
-                                                            if (confirm('לבטל את ההפניה ולהעביר לאבוד?')) {
+                                                            const isConfirmed = await confirm({
+                                                                title: 'ביטול הפניה',
+                                                                message: 'לבטל את ההפניה ולהעביר לאבוד?',
+                                                                variant: 'danger',
+                                                                confirmLabel: 'בטל'
+                                                            });
+                                                            if (isConfirmed) {
                                                                 await api.updateLead(lead.id, { Commission_Status: 'בוטל' });
                                                                 await handleStatusUpdate(lead.id, 'Lost');
                                                             }
@@ -576,7 +584,13 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                     </button>
                                                     <button 
                                                         onClick={async () => {
-                                                            if (confirm('לבטל את העמלה ולהעביר לאבוד?')) {
+                                                            const isConfirmed = await confirm({
+                                                                title: 'ביטול עמלה',
+                                                                message: 'לבטל את העמלה ולהעביר לאבוד?',
+                                                                variant: 'danger',
+                                                                confirmLabel: 'בטל'
+                                                            });
+                                                            if (isConfirmed) {
                                                                 await api.updateLead(lead.id, { Commission_Status: 'בוטל' });
                                                                 await handleStatusUpdate(lead.id, 'Lost');
                                                             }

@@ -5,10 +5,12 @@ import { api } from '@/lib/api';
 import { Video } from '@/types';
 import { Trash2, Plus, Film, ExternalLink, RefreshCw, X } from 'lucide-react';
 import clsx from 'clsx';
+import { useToast } from '@/components/ui';
 
 // VideoEntry removed, using Video from @/types
 
 export default function VideosPage({ onMenuClick }: { onMenuClick: () => void }) {
+    const { error, success, confirm } = useToast();
     const [videos, setVideos] = useState<Video[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -44,23 +46,30 @@ export default function VideosPage({ onMenuClick }: { onMenuClick: () => void })
             setNewLabel('');
             setNewUrl('');
             setIsAddModalOpen(false);
-            fetchVideos();
+            success('סרטון נוסף בהצלחה!');
         } catch (e) {
             console.error(e);
-            alert('שגיאה בהוספת הסרטון');
+            error('שגיאה בהוספת הסרטון');
         } finally {
             setSubmitting(false);
         }
     };
 
     const handleDeleteVideo = async (id: string) => {
-        if (!confirm('האם אתה בטוח שברצונך למחוק סרטון זה?')) return;
+        const isConfirmed = await confirm({
+            title: 'מחיקת סרטון',
+            message: 'האם אתה בטוח שברצונך למחוק סרטון זה?',
+            variant: 'danger',
+            confirmLabel: 'מחק'
+        });
+        if (!isConfirmed) return;
         try {
             await api.deleteVideo(id);
             setVideos(videos.filter(v => v.id !== id));
+            success('סרטון נמחק בהצלחה');
         } catch (e) {
             console.error(e);
-            alert('שגיאה במחיקת הסרטון');
+            error('שגיאה במחיקת הסרטון');
         }
     };
 

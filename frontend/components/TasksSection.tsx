@@ -7,6 +7,7 @@ import { CheckCircle2, Circle, Calendar, User, Plus, Trash2, ListTodo, Briefcase
 import clsx from 'clsx';
 import { AppUser } from '@/lib/auth';
 import { formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
+import { useToast } from '@/components/ui';
 
 interface TasksSectionProps {
     currentUser?: AppUser | null;
@@ -14,6 +15,7 @@ interface TasksSectionProps {
 }
 
 export default function TasksSection({ currentUser, leads = [] }: TasksSectionProps) {
+    const { error, success, confirm, info, warning } = useToast();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -57,7 +59,7 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
             setNewTaskLeadId('');
         } catch (e) {
             console.error('Failed to create task:', e);
-            alert('שגיאה ביצירת המשימה');
+            error('שגיאה ביצירת המשימה');
         } finally {
             setIsSaving(false);
         }
@@ -70,18 +72,25 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
             setTasks(tasks.map(t => t.id === updated.id ? updated : t));
         } catch (e) {
             console.error('Failed to update task:', e);
-            alert('שגיאה בעדכון המשימה');
+            error('שגיאה בעדכון המשימה');
         }
     };
 
     const handleDeleteTask = async (id: string) => {
-        if (!confirm('למחוק את המשימה?')) return;
+        const isConfirmed = await confirm({
+            title: 'מחיקת משימה',
+            message: 'האם למחוק את המשימה?',
+            variant: 'danger',
+            confirmLabel: 'מחק'
+        });
+        if (!isConfirmed) return;
         try {
             await api.deleteTask(id);
             setTasks(tasks.filter(t => t.id !== id));
+            success('המשימה נמחקה');
         } catch (e) {
             console.error('Failed to delete task:', e);
-            alert('שגיאה במחיקת המשימה');
+            error('שגיאה במחיקת המשימה');
         }
     };
 
@@ -96,7 +105,7 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                 !t.fields.Is_Completed && (t.fields.Pinned_By || []).includes(userName)
             ).length;
             if (userPinnedCount >= 3) {
-                alert('ניתן להצמיד עד 3 משימות בלבד');
+                warning('ניתן להצמיד עד 3 משימות בלבד');
                 return;
             }
         }
@@ -140,18 +149,22 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                 <div className="flex items-center gap-2">
                     <button
                         onClick={async () => {
-                            if (!confirm('לנקות משימות מיותמות?\n(משימות של לידים שנמחקו, הושלמו, נסגרו, או סומנו כאבודים)')) return;
+                            const isConfirmed = await confirm({
+                                title: 'ניקוי משימות',
+                                message: 'לנקות משימות מיותמות?\n(משימות של לידים שנמחקו, הושלמו, נסגרו, או סומנו כאבודים)'
+                            });
+                            if (!isConfirmed) return;
                             try {
                                 const result = await api.cleanupOrphanedTasks();
                                 if (result.deleted === 0 && result.completed === 0) {
-                                    alert('לא נמצאו משימות מיותמות 👍');
+                                    success('לא נמצאו משימות מיותמות 👍');
                                 } else {
-                                    alert(`ניקוי הושלם:\n• ${result.deleted} משימות נמחקו (ליד לא קיים)\n• ${result.completed} משימות סומנו כבוצעו (ליד הושלם/נסגר/אבוד)`);
+                                    success(`ניקוי הושלם:\n• ${result.deleted} משימות נמחקו (ליד לא קיים)\n• ${result.completed} משימות סומנו כבוצעו (ליד הושלם/נסגר/אבוד)`);
                                     fetchTasks();
                                 }
                             } catch (e) {
                                 console.error(e);
-                                alert('שגיאה בניקוי משימות');
+                                error('שגיאה בניקוי משימות');
                             }
                         }}
                         className="text-[10px] font-bold px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all flex items-center gap-1"

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { format, isToday, isYesterday } from 'date-fns';
 import SendMaterialsModal from './SendMaterialsModal';
+import { useToast } from '@/components/ui';
 
 interface ChatWindowProps {
     item: Lead | Musician | null;
@@ -14,6 +15,7 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBack }: ChatWindowProps) {
+    const { error, info } = useToast();
     const [inputText, setInputText] = useState("");
     const [sending, setSending] = useState(false);
     const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBa
             await onSend(inputText);
             setInputText("");
         } catch (e) {
-            alert("Failed to send");
+            error("Failed to send");
         } finally {
             setSending(false);
         }
@@ -214,7 +216,7 @@ export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBa
             <div className="bg-white px-6 py-4 border-t border-slate-200">
                 <div className="bg-slate-50 border border-slate-200 rounded-3xl p-2 flex gap-3 items-end focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all shadow-inner">
                     <button 
-                        onClick={() => alert("שליחת קבצים תיתמך בגרסה הבאה! 📎")}
+                        onClick={() => info("שליחת קבצים תיתמך בגרסה הבאה! 📎")}
                         className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors flex-shrink-0" 
                         title="צרף קובץ"
                     >

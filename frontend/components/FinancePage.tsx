@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { FinanceEntry, Lead, FinanceSummaryItem } from '@/types';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
+import { useToast } from '@/components/ui';
 
 interface FinancePageProps {
     currentUser: AppUser | null;
@@ -34,6 +35,7 @@ interface FinanceForm {
 }
 
 export default function FinancePage({ currentUser, onMenuClick }: FinancePageProps) {
+    const { error, confirm } = useToast();
     const [entries, setEntries] = useState<FinanceEntry[]>([]);
     const [leads, setLeads] = useState<Lead[]>([]);
     const [summary, setSummary] = useState<Record<string, FinanceSummaryItem>>({});
@@ -186,7 +188,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
             fetchData();
         } catch (e) {
             console.error(e);
-            alert('שגיאה בשמירת התנועה');
+            error('שגיאה בשמירת התנועה');
         }
     };
 
@@ -208,13 +210,19 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
     };
 
     const handleDeleteFinance = async (id: string) => {
-        if (!confirm('האם למחוק את הרשומה?')) return;
+        const isConfirmed = await confirm({
+            title: 'מחיקת תנועה',
+            message: 'האם למחוק את הרשומה?',
+            variant: 'danger',
+            confirmLabel: 'מחק'
+        });
+        if (!isConfirmed) return;
         try {
             await api.deleteFinanceEntry(id);
             fetchData();
         } catch (e) {
             console.error(e);
-            alert('שגיאה במחיקת תנועה');
+            error('שגיאה במחיקת תנועה');
         }
     };
 

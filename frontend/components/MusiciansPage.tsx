@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toDisplayPhone, toDbPhone } from '@/lib/formatters';
+import { useToast } from '@/components/ui';
 
 interface MusiciansPageProps {
     currentUser?: AppUser | null;
@@ -26,6 +27,7 @@ interface MusicianStats {
 }
 
 export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
+    const { error, confirm } = useToast();
     const [musicians, setMusicians] = useState<Musician[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
@@ -105,7 +107,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
             setShowAddForm(false);
         } catch (e) {
             console.error('Failed to create musician:', e);
-            alert('שגיאה ביצירת נגן');
+            error('שגיאה ביצירת נגן');
         }
     };
 
@@ -146,19 +148,25 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
             setEditingId(null);
         } catch (e) {
             console.error('Failed to update musician:', e);
-            alert('שגיאה בעדכון נגן');
+            error('שגיאה בעדכון נגן');
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('למחוק את הנגן?')) return;
+        const isConfirmed = await confirm({
+            title: 'מחיקת נגן',
+            message: 'למחוק את הנגן?',
+            variant: 'danger',
+            confirmLabel: 'מחק'
+        });
+        if (!isConfirmed) return;
         try {
             await api.deleteMusician(id);
             setMusicians(musicians.filter(m => m.id !== id));
             if (expandedId === id) setExpandedId(null);
         } catch (e) {
             console.error('Failed to delete musician:', e);
-            alert('שגיאה במחיקת נגן');
+            error('שגיאה במחיקת נגן');
         }
     };
 
@@ -187,7 +195,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
             fetchChatMessages(chatMusicianId);
         } catch (e) {
             console.error('Failed to send message:', e);
-            alert('שגיאה בשליחת הודעה');
+            error('שגיאה בשליחת הודעה');
         } finally {
             setSendingChat(false);
         }

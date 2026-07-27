@@ -1,12 +1,146 @@
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════
+   HaydeBot Design Token System
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Google Font: Heebo (Hebrew-optimized) ──────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Colors (Brand) ───────────────────────────────────── */
+  --color-brand-primary: #f59e0b;      /* amber-500 – Hayde gold */
+  --color-brand-primary-hover: #d97706; /* amber-600 */
+  --color-brand-dark: #0f172a;          /* slate-900 */
+
+  /* ── Colors (Semantic) ────────────────────────────────── */
+  --color-bg-primary: #f8fafc;    /* slate-50 */
+  --color-bg-surface: #ffffff;
+  --color-bg-muted: #f1f5f9;      /* slate-100 */
+  --color-border: #e2e8f0;        /* slate-200 */
+  --color-border-light: #f1f5f9;  /* slate-100 */
+
+  --color-text-primary: #0f172a;  /* slate-900 */
+  --color-text-secondary: #475569; /* slate-600 */
+  --color-text-muted: #94a3b8;    /* slate-400 */
+  --color-text-placeholder: #94a3b8;
+
+  /* ── Colors (Status) ──────────────────────────────────── */
+  --color-success: #059669;   /* emerald-600 */
+  --color-warning: #d97706;   /* amber-600 */
+  --color-error: #dc2626;     /* red-600 */
+  --color-info: #2563eb;      /* blue-600 */
+
+  /* ── Spacing Scale ────────────────────────────────────── */
+  --space-xs: 0.25rem;   /* 4px */
+  --space-sm: 0.5rem;    /* 8px */
+  --space-md: 1rem;      /* 16px */
+  --space-lg: 1.5rem;    /* 24px */
+  --space-xl: 2rem;      /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+
+  /* ── Border Radius ────────────────────────────────────── */
+  --radius-sm: 0.375rem;  /* 6px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1rem;      /* 16px */
+  --radius-2xl: 1.25rem;  /* 20px */
+  --radius-full: 9999px;
+
+  /* ── Shadows ──────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* ── Animation Durations ──────────────────────────────── */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+
+  /* ── Z-Index Scale ────────────────────────────────────── */
+  --z-dropdown: 40;
+  --z-modal-backdrop: 50;
+  --z-modal: 51;
+  --z-toast: 60;
+  --z-tooltip: 70;
+
+  /* ── Typography ───────────────────────────────────────── */
+  --font-family: 'Heebo', system-ui, -apple-system, sans-serif;
+  --font-size-xs: 0.6875rem;   /* 11px */
+  --font-size-sm: 0.8125rem;   /* 13px */
+  --font-size-base: 0.9375rem; /* 15px */
+  --font-size-lg: 1.125rem;    /* 18px */
+  --font-size-xl: 1.25rem;     /* 20px */
+  --font-size-2xl: 1.5rem;     /* 24px */
+  --font-size-3xl: 1.875rem;   /* 30px */
+
+  /* Legacy compatibility */
+  --background: var(--color-bg-primary);
+  --foreground: var(--color-text-primary);
 }
 
+/* ── Global Styles ──────────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Toast Animation Keyframes ──────────────────────────── */
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+}
+
+/* ── Modal Animations ───────────────────────────────────── */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up-mobile {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* ── Bottom Nav Safe Area ───────────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }

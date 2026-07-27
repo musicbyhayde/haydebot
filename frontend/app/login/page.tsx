@@ -38,7 +38,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Login Card */}
-                <form onSubmit={handleLogin} className="bg-white backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+                <form onSubmit={handleLogin} className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
                     <h2 className="text-xl font-bold text-white mb-6 text-center">התחברות</h2>
 
                     {error && (
@@ -54,7 +54,7 @@ export default function LoginPage() {
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 bg-white border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all text-left"
+                                className="w-full px-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all text-left"
                                 placeholder="your@email.com"
                                 dir="ltr"
                                 required
@@ -67,7 +67,7 @@ export default function LoginPage() {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-3 bg-white border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all text-left"
+                                className="w-full px-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all text-left"
                                 placeholder="••••••••"
                                 dir="ltr"
                                 required

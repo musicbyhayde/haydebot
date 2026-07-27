@@ -10,6 +10,7 @@ import CalendarEventModal from './CalendarEventModal';
 import ProposalModal from './ProposalModal';
 import { toDisplayPhone, toDbPhone, formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
 import TaskActionModal from './TaskActionModal';
+import { useToast } from '@/components/ui';
 
 interface LeadDetailPanelProps {
     lead: Lead;
@@ -45,6 +46,7 @@ const MANUAL_STATUSES = [
 ];
 
 export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false, onClose, onStatusChange }: LeadDetailPanelProps) {
+    const { error, success, confirm: confirmToast } = useToast();
     const [tab, setTab] = useState<'updates' | 'tasks' | 'team' | 'info' | 'finance'>('updates');
     const [notes, setNotes] = useState<Note[]>([]);
     const [noteText, setNoteText] = useState('');
@@ -232,7 +234,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     file_name = uploadData.filename;
                 } catch (err) {
                     console.error('File upload err:', err);
-                    alert('שגיאה בהעלאת הקובץ. אנא נסה שנית.');
+                    error('שגיאה בהעלאת הקובץ. אנא נסה שנית.');
                     setSubmitting(false);
                     return;
                 }
@@ -264,20 +266,26 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             fetchNotes();
         } catch (e) {
             console.error(e);
-            alert('שגיאה בעדכון ההערה');
+            error('שגיאה בעדכון ההערה');
         } finally {
             setUpdatingNote(false);
         }
     };
 
     const handleDeleteNote = async (noteId: string) => {
-        if (!confirm('האם אתה בטוח שברצונך למחוק עדכון זה?')) return;
+        const isConfirmed = await confirmToast({
+            title: 'מחיקת עדכון',
+            message: 'האם אתה בטוח שברצונך למחוק עדכון זה?',
+            variant: 'danger',
+            confirmLabel: 'מחק'
+        });
+        if (!isConfirmed) return;
         try {
             await api.deleteNote(noteId);
             setNotes(notes.filter(n => n.id !== noteId));
         } catch (e) {
             console.error(e);
-            alert('שגיאה במחיקת ההערה');
+            error('שגיאה במחיקת ההערה');
         }
     };
 
@@ -325,7 +333,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             await executeStatusChange(newStatus, updateData);
         } catch (e) {
             console.error(e);
-            alert('שגיאה בעדכון המשימות או הסטטוס');
+            error('שגיאה בעדכון המשימות או הסטטוס');
         }
     };
 
@@ -345,7 +353,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             fetchTasks();
         } catch (e) {
             console.error(e);
-            alert('שגיאה ביצירת המשימה');
+            error('שגיאה ביצירת המשימה');
         } finally {
             setTaskSubmitting(false);
         }
@@ -361,13 +369,19 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     };
 
     const handleDeleteTask = async (id: string) => {
-        if (!confirm('למחוק את המשימה?')) return;
+        const isConfirmed = await confirmToast({
+            title: 'מחיקת משימה',
+            message: 'למחוק את המשימה?',
+            variant: 'danger',
+            confirmLabel: 'מחק'
+        });
+        if (!isConfirmed) return;
         try {
             await api.deleteTask(id);
             setTasks(tasks.filter(t => t.id !== id));
         } catch (e) {
             console.error(e);
-            alert('שגיאה במחיקת המשימה');
+            error('שגיאה במחיקת המשימה');
         }
     };
 
@@ -404,7 +418,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             fetchFinances(); // Refresh the list
         } catch (e) {
             console.error(e);
-            alert('שגיאה בשמירת התנועה');
+            error('שגיאה בשמירת התנועה');
         } finally {
             setFinanceSubmitting(false);
         }
@@ -414,20 +428,20 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         try {
             if (isCalendarUpdate) {
                 await api.updateCalendarEvent(lead.id, payload);
-                alert('האירוע עודכן בהצלחה ביומן');
+                success('האירוע עודכן בהצלחה ביומן');
             } else {
                 const res = await api.createCalendarEvent(lead.id, payload);
                 if (res && res.event_id) {
                     // Update local state for immediate UI reflect
                     Object.assign(lead.fields, { Google_Event_ID: res.event_id });
-                    alert('האירוע נוצר בהצלחה ביומן');
+                    success('האירוע נוצר בהצלחה ביומן');
                 }
             }
             onStatusChange(lead.id, lead.fields.Status);
             setIsCalendarModalOpen(false);
         } catch (e) {
             console.error(e);
-            alert(e instanceof Error ? e.message : 'שגיאה בסנכרון היומן');
+            error(e instanceof Error ? e.message : 'שגיאה בסנכרון היומן');
         }
     };
 
@@ -446,64 +460,90 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             } catch (rsvpErr) {
                 console.warn('RSVP sync failed:', rsvpErr);
             }
-            alert('הנגנים סונכרנו בהצלחה ליומן');
+            success('הנגנים סונכרנו בהצלחה ליומן');
         } catch (e) {
             console.error(e);
-            alert('שגיאה בסנכרון הנגנים ליומן');
+            error('שגיאה בסנכרון הנגנים ליומן');
         } finally {
             setSyncingCalendar(false);
         }
     };
 
     const handleDeleteCalendarEvent = async () => {
-        if (!confirm('האם אתה בטוח שברצונך למחוק את האירוע מהיומן?')) return;
+        const isConfirmed = await confirmToast({
+            title: 'מחיקת אירוע ביומן',
+            message: 'האם אתה בטוח שברצונך למחוק את האירוע מהיומן?',
+            variant: 'danger',
+            confirmLabel: 'מחק מהיומן'
+        });
+        if (!isConfirmed) return;
         try {
             await api.deleteCalendarEvent(lead.id);
             // Update local state for immediate UI reflect
             Object.assign(lead.fields, { Google_Event_ID: undefined });
-            alert('האירוע נמחק מהיומן');
+            success('האירוע נמחק מהיומן');
             onStatusChange(lead.id, lead.fields.Status);
         } catch (e) {
             console.error(e);
-            alert('שגיאה במחיקת האירוע מהיומן');
+            error('שגיאה במחיקת האירוע מהיומן');
         }
     };
 
     const handleDeleteLead = async () => {
-        // Step 1: Basic confirmation
-        if (!confirm('האם אתה בטוח שברצונך למחוק ליד זה מהמערכת?')) return;
+        const isConfirmed = await confirmToast({
+            title: 'מחיקת ליד',
+            message: 'האם אתה בטוח שברצונך למחוק ליד זה מהמערכת?',
+            variant: 'danger',
+            confirmLabel: 'המשך'
+        });
+        if (!isConfirmed) return;
         
-        // Step 2: Double confirmation (Safety check)
-        if (!confirm('שים לב: מחיקת הליד היא פעולה סופית ולא ניתן יהיה לשחזר את המידע. האם אתה בטוח לחלוטין?')) return;
+        const isDoubleConfirmed = await confirmToast({
+            title: 'אזהרה',
+            message: 'שים לב: מחיקת הליד היא פעולה סופית ולא ניתן יהיה לשחזר את המידע. האם אתה בטוח לחלוטין?',
+            variant: 'danger',
+            confirmLabel: 'מחק לתמיד'
+        });
+        if (!isDoubleConfirmed) return;
 
         const hasCalendar = !!lead.fields.Google_Event_ID;
         let deleteCalendar = false;
 
         if (hasCalendar) {
-            // Step 3: Calendar sync question
-            const choice = confirm('ליד זה מקושר לאירוע ביומן. האם למחוק גם את האירוע מהיומן של גוגל?\n\nאישור = מחק גם מהיומן\nביטול = מחק ליד בלבד');
-            deleteCalendar = choice;
+            deleteCalendar = await confirmToast({
+                title: 'אירוע מקושר ביומן',
+                message: 'ליד זה מקושר לאירוע ביומן. האם למחוק גם את האירוע מהיומן של גוגל?',
+                variant: 'danger',
+                confirmLabel: 'מחק גם מהיומן',
+                cancelLabel: 'מחק ליד בלבד'
+            });
         }
 
         try {
             await api.deleteLead(lead.id, deleteCalendar);
-            alert('הליד נמחק בהצלחה');
+            success('הליד נמחק בהצלחה');
             onClose();
             onStatusChange('', ''); // Reload the whole list
         } catch (e) {
             console.error(e);
-            alert('שגיאה במחיקת הליד');
+            error('שגיאה במחיקת הליד');
         }
     };
 
     const handleDeleteFinance = async (id: string) => {
-        if (!confirm('למחוק תנועה זו?')) return;
+        const isConfirmed = await confirmToast({
+            title: 'מחיקת תנועה',
+            message: 'למחוק תנועה זו?',
+            variant: 'danger',
+            confirmLabel: 'מחק'
+        });
+        if (!isConfirmed) return;
         try {
             await api.deleteFinanceEntry(id);
             fetchFinances();
         } catch (e) {
             console.error(e);
-            alert('שגיאה במחיקת התנועה');
+            error('שגיאה במחיקת התנועה');
         }
     };
     
@@ -534,10 +574,10 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             // We don't have a direct onUpdate callback here, but the realtime subscription 
             // in the parent will catch it. However, to be immediate:
             Object.assign(lead.fields, editData);
-            alert('הפרטים עודכנו בהצלחה');
+            success('הפרטים עודכנו בהצלחה');
         } catch (e) {
             console.error(e);
-            alert('עדכון הפרטים נכשל');
+            error('עדכון הפרטים נכשל');
         } finally {
             setSavingInfo(false);
         }
@@ -700,8 +740,13 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         <div className="flex gap-2 flex-wrap">
                             {lead.fields.Service === 'Bouzouki' && (
                                 <button
-                                    onClick={() => {
-                                        if (confirm('להחזיר את הליד להפצה לכל הנגנים?')) {
+                                    onClick={async () => {
+                                        const isConfirmed = await confirmToast({
+                                            title: 'החזרה להפצה',
+                                            message: 'להחזיר את הליד להפצה לכל הנגנים?',
+                                            confirmLabel: 'החזר להפצה'
+                                        });
+                                        if (isConfirmed) {
                                             api.updateLead(lead.id, { Status: 'New', Musician_Assigned: [] });
                                             onStatusChange(lead.id, 'New');
                                         }
@@ -712,8 +757,13 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 </button>
                             )}
                             <button
-                                onClick={() => {
-                                    if (confirm('לאפס את הליד לסטטוס "חדש"? זה ינקה את שיוך הנגן.')) {
+                                onClick={async () => {
+                                    const isConfirmed = await confirmToast({
+                                        title: 'איפוס סטטוס ליד',
+                                        message: 'לאפס את הליד לסטטוס "חדש"? זה ינקה את שיוך הנגן.',
+                                        confirmLabel: 'איפוס'
+                                    });
+                                    if (isConfirmed) {
                                         api.updateLead(lead.id, { Status: 'New', Musician_Assigned: [] });
                                         onStatusChange(lead.id, 'New');
                                     }
@@ -723,11 +773,16 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 <RotateCcw size={12} /> החזר לחדש
                             </button>
                             <button
-                                onClick={() => {
-                                    if (confirm('להשתיק את הבוט ל-24 שעות עבור ליד זה?')) {
+                                onClick={async () => {
+                                    const isConfirmed = await confirmToast({
+                                        title: 'השתקת בוט',
+                                        message: 'להשתיק את הבוט ל-24 שעות עבור ליד זה?',
+                                        confirmLabel: 'השתק'
+                                    });
+                                    if (isConfirmed) {
                                         const muteUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
                                         api.updateLead(lead.id, { Bot_Mute_Until: muteUntil });
-                                        alert('הבוט הושתק ל-24 שעות עבור ליד זה.');
+                                        success('הבוט הושתק ל-24 שעות עבור ליד זה.');
                                     }
                                 }}
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 text-amber-700 text-[11px] font-bold rounded-lg hover:bg-amber-100 transition-all"
@@ -814,7 +869,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     setClosingAmount(val?.toString() || '');
                                 } catch (e) {
                                     console.error(e);
-                                    alert('שגיאה בשמירת הסכום');
+                                    error('שגיאה בשמירת הסכום');
                                 }
                             }}
                             className="text-[11px] font-bold bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors shadow-sm"
@@ -881,7 +936,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         setCommissionIncludesVat(!!updateData.Commission_Includes_VAT);
                                     } catch (e) {
                                         console.error(e);
-                                        alert('שגיאה בשמירת נתוני ההפניה');
+                                        error('שגיאה בשמירת נתוני ההפניה');
                                     }
                                 }}
                                 className="text-[11px] font-bold bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700 transition-colors shadow-sm whitespace-nowrap"
@@ -1262,7 +1317,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     e.target.value = ''; // Reset select
                                                 } catch (err) {
                                                     console.error(err);
-                                                    alert('שגיאה בעדכון הצוות');
+                                                    error('שגיאה בעדכון הצוות');
                                                 } finally {
                                                     setSavingTeam(false);
                                                 }
@@ -1337,7 +1392,13 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                         )}
                                                         <button
                                                             onClick={async () => {
-                                                                if (!confirm(`להסיר את ${m.fields.Name} מהצוות?`)) return;
+                                                                const isConfirmed = await confirmToast({
+                                                                    title: 'הסרת נגן',
+                                                                    message: `להסיר את ${m.fields.Name} מהצוות?`,
+                                                                    variant: 'danger',
+                                                                    confirmLabel: 'הסר'
+                                                                });
+                                                                if (!isConfirmed) return;
                                                                 setSavingTeam(true);
                                                                 try {
                                                                     const newTeam = (lead.fields.Musician_Team || []).filter(id => id !== mId);
@@ -1346,7 +1407,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                                     setTeamVersion(v => v + 1);
                                                                 } catch (err) {
                                                                     console.error(err);
-                                                                    alert('שגיאה בעדכון הצוות');
+                                                                    error('שגיאה בעדכון הצוות');
                                                                 } finally {
                                                                     setSavingTeam(false);
                                                                 }

@@ -33,6 +33,8 @@ jest.mock('@/lib/api', () => ({
         createNote: jest.fn().mockResolvedValue({ id: 'new', fields: {} }),
         getMessages: jest.fn().mockResolvedValue([]),
         getMusicians: jest.fn().mockResolvedValue([]),
+        getTasks: jest.fn().mockResolvedValue([]),
+        getFinanceEntries: jest.fn().mockResolvedValue([]),
     },
 }));
 

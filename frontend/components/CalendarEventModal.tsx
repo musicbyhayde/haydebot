@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import { Musician } from '@/types';
 import { formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
 import GooglePlacesAutocomplete from './GooglePlacesAutocomplete';
+import { useToast } from '@/components/ui';
 
 interface CalendarEventModalProps {
     isOpen: boolean;
@@ -36,6 +37,7 @@ export default function CalendarEventModal({
     isUpdate = false,
     existingEventData = null,
 }: CalendarEventModalProps) {
+    const { error } = useToast();
     const [summary, setSummary] = useState('');
     const [location, setLocation] = useState(initialLocation);
     const [date, setDate] = useState(initialDate);
@@ -62,7 +64,7 @@ export default function CalendarEventModal({
 
     const handleConfirm = async () => {
         if (!summary.trim() || !date.trim()) {
-            alert('חובה למלא כותרת ותאריך');
+            error('חובה למלא כותרת ותאריך');
             return;
         }
         setSubmitting(true);

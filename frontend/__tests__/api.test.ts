@@ -35,7 +35,7 @@ describe('api.getLeads', () => {
         mockFetch.mockResolvedValueOnce(okJson(mockLeads));
 
         const result = await api.getLeads();
-        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/leads'));
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/leads'), expect.anything());
         expect(result).toEqual(mockLeads);
     });
 
@@ -56,7 +56,7 @@ describe('api.createLead', () => {
             expect.stringContaining('/leads'),
             expect.objectContaining({
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(leadData),
             })
         );
@@ -94,7 +94,7 @@ describe('api.getMessages', () => {
     it('calls correct URL with lead ID', async () => {
         mockFetch.mockResolvedValueOnce(okJson([]));
         await api.getMessages('rec_lead_001');
-        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/leads/rec_lead_001/messages'));
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/leads/rec_lead_001/messages'), expect.anything());
     });
 });
 
@@ -121,7 +121,7 @@ describe('api.getNotes', () => {
     it('calls correct URL', async () => {
         mockFetch.mockResolvedValueOnce(okJson([]));
         await api.getNotes('rec_lead_001');
-        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/leads/rec_lead_001/notes'));
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/leads/rec_lead_001/notes'), expect.anything());
     });
 });
 
@@ -158,7 +158,7 @@ describe('api.getFinanceEntries', () => {
     it('calls without owner filter', async () => {
         mockFetch.mockResolvedValueOnce(okJson([]));
         await api.getFinanceEntries();
-        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/finance'));
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/finance'), expect.anything());
         expect(mockFetch.mock.calls[0][0]).not.toContain('owner=');
     });
 
@@ -216,7 +216,7 @@ describe('api.getFinanceSummary', () => {
     it('calls correct URL', async () => {
         mockFetch.mockResolvedValueOnce(okJson({ אילן: { income: 5000, expenses: 1000, balance: 4000 } }));
         const result = await api.getFinanceSummary();
-        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/finance/summary'));
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/finance/summary'), expect.anything());
         expect(result['אילן'].balance).toBe(4000);
     });
 });
@@ -230,7 +230,7 @@ describe('api.getMusicians', () => {
     it('calls correct URL', async () => {
         mockFetch.mockResolvedValueOnce(okJson([]));
         await api.getMusicians();
-        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/musicians'));
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/musicians'), expect.anything());
     });
 });
 

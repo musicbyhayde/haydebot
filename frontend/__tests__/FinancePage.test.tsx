@@ -45,20 +45,20 @@ describe('FinancePage', () => {
     it('shows add form when button clicked', async () => {
         render(<FinancePage currentUser={mockUser} />);
         await waitFor(() => {
-            expect(screen.getByText(/רשומה חדשה/)).toBeInTheDocument();
+            expect(screen.getByText(/הוסף הכנסה/)).toBeInTheDocument();
         });
-        fireEvent.click(screen.getByText(/רשומה חדשה/));
+        fireEvent.click(screen.getByText(/הוסף הכנסה/));
         expect(screen.getByText('סוג תנועה *')).toBeInTheDocument();
     });
 
     describe('Form Validation', () => {
         it('shows error when submitting empty form', async () => {
             render(<FinancePage currentUser={mockUser} />);
-            await waitFor(() => screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText(/רשומה חדשה/));
+            await waitFor(() => screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText(/הוסף הכנסה/));
 
             // Click submit without filling anything
-            fireEvent.click(screen.getByText('+ אילן'));
+            fireEvent.click(screen.getByText('שמור רשומה'));
             await waitFor(() => {
                 expect(screen.getByText(/שדות חובה שלא מולאו/)).toBeInTheDocument();
             });
@@ -66,9 +66,9 @@ describe('FinancePage', () => {
 
         it('shows description error when empty', async () => {
             render(<FinancePage currentUser={mockUser} />);
-            await waitFor(() => screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText('+ אילן'));
+            await waitFor(() => screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText('שמור רשומה'));
             await waitFor(() => {
                 expect(screen.getByText(/חובה להזין פירוט/)).toBeInTheDocument();
             });
@@ -76,9 +76,9 @@ describe('FinancePage', () => {
 
         it('shows amount error for missing amount', async () => {
             render(<FinancePage currentUser={mockUser} />);
-            await waitFor(() => screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText('+ אילן'));
+            await waitFor(() => screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText('שמור רשומה'));
             await waitFor(() => {
                 expect(screen.getByText(/חובה להזין סכום חיובי/)).toBeInTheDocument();
             });
@@ -88,16 +88,16 @@ describe('FinancePage', () => {
     describe('Dynamic Fields', () => {
         it('shows musician field for income type', async () => {
             render(<FinancePage currentUser={mockUser} />);
-            await waitFor(() => screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText(/רשומה חדשה/));
+            await waitFor(() => screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText(/הוסף הכנסה/));
             // Musician input with placeholder should exist in form
             expect(screen.getByPlaceholderText('אופציונלי')).toBeInTheDocument();
         });
 
         it('hides musician form field for expense type', async () => {
             render(<FinancePage currentUser={mockUser} />);
-            await waitFor(() => screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText(/רשומה חדשה/));
+            await waitFor(() => screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText(/הוסף הכנסה/));
 
             // Switch to expense
             fireEvent.change(screen.getByDisplayValue('💰 הכנסה'), { target: { value: 'expense' } });
@@ -109,8 +109,8 @@ describe('FinancePage', () => {
     describe('Lead Dropdown', () => {
         it('excludes lost leads from the dropdown', async () => {
             render(<FinancePage currentUser={mockUser} />);
-            await waitFor(() => screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText(/רשומה חדשה/));
+            await waitFor(() => screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText(/הוסף הכנסה/));
 
             // Open lead dropdown
             fireEvent.click(screen.getByText('— ללא קישור —'));
@@ -124,8 +124,8 @@ describe('FinancePage', () => {
 
         it('filters leads by search', async () => {
             render(<FinancePage currentUser={mockUser} />);
-            await waitFor(() => screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText(/רשומה חדשה/));
+            await waitFor(() => screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText(/הוסף הכנסה/));
 
             // Open dropdown
             fireEvent.click(screen.getByText('— ללא קישור —'));
@@ -140,21 +140,21 @@ describe('FinancePage', () => {
     });
 
     describe('Admin vs Partner', () => {
-        it('shows both owner buttons for admin', async () => {
+        it('shows both owner options for admin', async () => {
             render(<FinancePage currentUser={mockUser} />);
-            await waitFor(() => screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText(/רשומה חדשה/));
-            expect(screen.getByText('+ אילן')).toBeInTheDocument();
-            expect(screen.getByText('+ קובי')).toBeInTheDocument();
+            await waitFor(() => screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText(/הוסף הכנסה/));
+            expect(screen.getByText('למי לשייך? (פעולה למנהל)')).toBeInTheDocument();
+            expect(screen.getAllByText('אילן').length).toBeGreaterThan(0);
+            expect(screen.getAllByText('קובי').length).toBeGreaterThan(0);
         });
 
-        it('shows single owner button for partner', async () => {
+        it('hides owner selection for partner', async () => {
             const partnerUser = { ...mockUser, role: 'partner' as const };
             render(<FinancePage currentUser={partnerUser} />);
-            await waitFor(() => screen.getByText(/רשומה חדשה/));
-            fireEvent.click(screen.getByText(/רשומה חדשה/));
-            expect(screen.getByText('הוסף ל-אילן')).toBeInTheDocument();
-            expect(screen.queryByText('+ קובי')).not.toBeInTheDocument();
+            await waitFor(() => screen.getByText(/הוסף הכנסה/));
+            fireEvent.click(screen.getByText(/הוסף הכנסה/));
+            expect(screen.queryByText('למי לשייך?')).not.toBeInTheDocument();
         });
     });
 });

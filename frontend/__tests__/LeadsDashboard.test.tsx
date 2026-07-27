@@ -20,6 +20,7 @@ jest.mock('@/lib/api', () => ({
         getMusicians: jest.fn().mockResolvedValue([]),
         getNotes: jest.fn().mockResolvedValue([]),
         getMessages: jest.fn().mockResolvedValue([]),
+        getTasks: jest.fn().mockResolvedValue([]),
     },
 }));
 
@@ -39,13 +40,11 @@ describe('LeadsDashboard', () => {
             expect(screen.getByText('Processing Lead')).toBeInTheDocument();
         });
 
-        it('does not display closed/lost leads in the main table', () => {
+        it('does not display closed/lost leads in the main view', () => {
             render(<LeadsDashboard {...defaultProps} />);
-            // These should be in archive sections, not the main table
-            const mainRows = screen.getAllByRole('row');
-            const mainText = mainRows.map(r => r.textContent).join('');
-            // Active leads should be in the main view
-            expect(mainText).toContain('Active Lead');
+            expect(screen.getByText('Active Lead')).toBeInTheDocument();
+            expect(screen.queryByText('Closed Lead')).not.toBeInTheDocument();
+            expect(screen.queryByText('Lost Lead')).not.toBeInTheDocument();
         });
     });
 

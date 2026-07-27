@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { X, Send, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
-
 import { Video } from '@/types';
+import { useToast } from '@/components/ui';
 
 interface SendMaterialsModalProps {
     isOpen: boolean;
@@ -15,6 +15,7 @@ interface SendMaterialsModalProps {
 }
 
 export default function SendMaterialsModal({ isOpen, onClose, leadId, initialName }: SendMaterialsModalProps) {
+    const { error, success } = useToast();
     const [introCustomName, setIntroCustomName] = useState(initialName);
     const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
     const [videoOptions, setVideoOptions] = useState<Video[]>([]);
@@ -43,7 +44,7 @@ export default function SendMaterialsModal({ isOpen, onClose, leadId, initialNam
 
     const handleSendIntro = async () => {
         if (!introCustomName.trim()) {
-            alert('אנא הזן שם ללקוח');
+            error('אנא הזן שם ללקוח');
             return;
         }
         setSending(true);
@@ -52,12 +53,12 @@ export default function SendMaterialsModal({ isOpen, onClose, leadId, initialNam
                 custom_name: introCustomName,
                 video_urls: selectedVideos
             });
-            alert('החומרים נשלחו בהצלחה בווטסאפ! ✨');
+            success('החומרים נשלחו בהצלחה בווטסאפ! ✨');
             onClose();
             setSelectedVideos([]);
         } catch (e) {
             console.error('Error sending materials:', e);
-            alert('שגיאה בשליחת החומרים. וודא שהתבנית מאושרת במטא.');
+            error('שגיאה בשליחת החומרים. וודא שהתבנית מאושרת במטא.');
         } finally {
             setSending(false);
         }
