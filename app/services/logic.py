@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -15,6 +16,49 @@ from app.services.email import email_service
 from app.core.utils import calculate_commission
 
 settings = get_settings()
+
+
+def normalize_date_value(raw_value: str) -> str:
+    """Normalize a date value returned by Gemini AI into a clean DD.MM.YYYY format.
+    
+    Handles formats like:
+    - "07.02.2026 (מחר בערב)" → "07.02.2026"
+    - "28.5.26" → "28.05.2026"
+    - "2026-03-20" → "20.03.2026"
+    - "(6/5) 06.05.2025" → "06.05.2025"
+    - "15/08/2026 (15 לאוגוסט)" → "15.08.2026"
+    """
+    if not raw_value or raw_value.upper() == "TBD":
+        return raw_value
+    
+    cleaned = raw_value.strip()
+    
+    # Strip leading parenthetical like "(6/5) "
+    cleaned = re.sub(r'^\([^)]*\)\s*', '', cleaned)
+    
+    # Extract the core date part (before any parenthetical annotation)
+    paren_idx = cleaned.find('(')
+    if paren_idx > 0:
+        cleaned = cleaned[:paren_idx].strip()
+    
+    # Try ISO format: YYYY-MM-DD
+    iso_match = re.match(r'^(\d{4})-(\d{1,2})-(\d{1,2})$', cleaned)
+    if iso_match:
+        y, m, d = iso_match.group(1), iso_match.group(2), iso_match.group(3)
+        return f"{d.zfill(2)}.{m.zfill(2)}.{y}"
+    
+    # Try DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY (also with 2-digit year)
+    dmy_match = re.match(r'^(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})$', cleaned)
+    if dmy_match:
+        d, m, y = dmy_match.group(1), dmy_match.group(2), dmy_match.group(3)
+        if len(y) == 2:
+            y = '20' + y
+        return f"{d.zfill(2)}.{m.zfill(2)}.{y}"
+    
+    # Fallback: return raw value as-is (don't lose data)
+    print(f"WARNING: Could not normalize date value: '{raw_value}'")
+    return raw_value
+
 
 class PersistentDict(dict):
     """A dict that auto-saves to a JSON file on every mutation.
@@ -457,7 +501,7 @@ class HaydeBotLogic:
                 # Gentle steer back
                 self._send_message(phone, res.get("reply", "אני אשמח קודם כל להבין מתי האירוע כדי לתת לך את המענה הטוב ביותר. 😊"), lead_id)
                 return
-            date_val = res["extracted_value"]
+            date_val = normalize_date_value(res["extracted_value"])
 
         print(f"DEBUG: Updating Airtable for lead {lead_id} with date {date_val}")
         try:

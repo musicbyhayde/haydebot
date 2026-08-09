@@ -91,6 +91,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     // Referred leads sort state
     const [referredDateSort, setReferredDateSort] = useState<'asc' | 'desc' | null>(null);
     const [referredStatusSort, setReferredStatusSort] = useState<'asc' | 'desc' | null>(null);
+    const [referredLocationSort, setReferredLocationSort] = useState<'asc' | 'desc' | null>(null);
 
     // Toggle a column sort and clear the others so only one is active at a time
     const toggleColumnSort = (column: 'date' | 'status' | 'service') => {
@@ -114,14 +115,20 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         'ממתין לאישור': 0, 'ממתין': 0, 'ממתין לגבייה': 1, 'נגבה': 2, 'בוטל': 3,
     };
 
-    const toggleReferredSort = (column: 'date' | 'status') => {
+    const toggleReferredSort = (column: 'date' | 'status' | 'location') => {
         const cycle = (prev: 'asc' | 'desc' | null) => prev === null ? 'asc' : prev === 'asc' ? 'desc' : null;
         if (column === 'date') {
             setReferredDateSort(cycle);
             setReferredStatusSort(null);
-        } else {
+            setReferredLocationSort(null);
+        } else if (column === 'status') {
             setReferredStatusSort(cycle);
             setReferredDateSort(null);
+            setReferredLocationSort(null);
+        } else {
+            setReferredLocationSort(cycle);
+            setReferredDateSort(null);
+            setReferredStatusSort(null);
         }
     };
 
@@ -353,8 +360,20 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             });
         }
 
+        if (referredLocationSort) {
+            return [...items].sort((a, b) => {
+                const locA = (a.fields.Location || '').trim();
+                const locB = (b.fields.Location || '').trim();
+                if (!locA && !locB) return 0;
+                if (!locA) return 1;
+                if (!locB) return -1;
+                const cmp = locA.localeCompare(locB, 'he');
+                return referredLocationSort === 'asc' ? cmp : -cmp;
+            });
+        }
+
         return items;
-    }, [filteredLeads, referredDateSort, referredStatusSort]);
+    }, [filteredLeads, referredDateSort, referredStatusSort, referredLocationSort]);
 
     const renderArchiveTable = (items: Lead[], isOpen: boolean, toggle: () => void, title: string, emoji: string, badgeColor: string) => {
         if (items.length === 0) return null;
@@ -459,7 +478,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 {showReferred && (
                     <div className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div className="overflow-x-auto">
-                            <div className="flex flex-col min-w-full md:min-w-[700px]">
+                            <div className="flex flex-col min-w-full md:min-w-[800px]">
                                 {/* Header Row */}
                                 <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
                                     <div className="flex-1 min-w-[120px]">לקוח</div>
@@ -472,6 +491,18 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             תאריך
                                             {referredDateSort === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
                                              referredDateSort === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                             <ChevronsUpDown size={12} className="text-slate-300" />}
+                                        </button>
+                                    </div>
+                                    <div className="w-24 hidden md:block">
+                                        <button
+                                            onClick={() => toggleReferredSort('location')}
+                                            className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
+                                            title="מיין לפי מיקום"
+                                        >
+                                            מיקום
+                                            {referredLocationSort === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                             referredLocationSort === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
                                              <ChevronsUpDown size={12} className="text-slate-300" />}
                                         </button>
                                     </div>
@@ -509,6 +540,11 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         </div>
                                         <div className="w-24 hidden md:flex items-center text-slate-500 font-medium">
                                             {lead.fields.Event_Date ? normalizeEventDate(lead.fields.Event_Date) : <span className="text-slate-300">—</span>}
+                                        </div>
+                                        <div className="w-24 hidden md:flex items-center text-slate-500">
+                                            {lead.fields.Location ? (
+                                                <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
+                                            ) : <span className="text-slate-300">—</span>}
                                         </div>
                                         <div className="w-28 hidden md:flex items-center text-slate-500">
                                             {lead.fields.Referred_To || <span className="text-slate-300">—</span>}
