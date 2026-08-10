@@ -385,12 +385,14 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 {isOpen && (
                     <div className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden opacity-80">
                         <div className="overflow-x-auto">
-                                <div className="flex flex-col min-w-full md:min-w-[500px]">
+                                <div className="flex flex-col min-w-full md:min-w-[700px]">
                                 {/* Header Row */}
                                 <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
                                     <div className="flex-1 min-w-[120px]">לקוח</div>
-                                <div className="w-32 hidden md:block">שירות</div>
-                                <div className="w-32 hidden md:block">סכום / סיבה</div>
+                                <div className="w-24 hidden md:block">שירות</div>
+                                <div className="w-24 hidden md:block">תאריך</div>
+                                <div className="w-24 hidden md:block">מיקום</div>
+                                <div className="w-32 hidden md:block">תקציב / סיבה</div>
                                 <div className="w-12 text-center flex-shrink-0">פרטים</div>
                             </div>
                             {/* Rows */}
@@ -412,8 +414,16 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         </div>
                                         <span className="text-[10px] text-slate-400">{toDisplayPhone(lead.fields.Phone)}</span>
                                     </div>
-                                    <div className="w-32 hidden md:flex items-center text-slate-500">
+                                    <div className="w-24 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Service || '—'}
+                                    </div>
+                                    <div className="w-24 hidden md:flex items-center text-slate-500 font-medium">
+                                        {lead.fields.Event_Date ? normalizeEventDate(lead.fields.Event_Date) : <span className="text-slate-300">—</span>}
+                                    </div>
+                                    <div className="w-24 hidden md:flex items-center text-slate-500">
+                                        {lead.fields.Location ? (
+                                            <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
+                                        ) : <span className="text-slate-300">—</span>}
                                     </div>
                                     <div className="w-32 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Closing_Amount ? `₪${lead.fields.Closing_Amount.toLocaleString()}` : (lead.fields.Lost_Reason || '—')}
