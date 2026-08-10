@@ -556,6 +556,7 @@ async def create_note(lead_id: str, request: Request):
         content=body.get("content", ""),
         file_url=body.get("file_url"),
         file_name=body.get("file_name"),
+        follow_up_date=body.get("follow_up_date"),
     )
     result = airtable_service.create_note(note)
     
@@ -929,8 +930,8 @@ async def get_analytics():
 @public_router.get("/cron/reminders")
 async def send_daily_reminders(request: Request):
     """
-    Called daily (e.g. at 9:00 AM) by an external cron service (like cron-job.org).
-    Sends a summary of all starred items to the ADMIN_PHONES via WhatsApp.
+    Called daily (e.g. at 8:00 AM) by an external cron service (like cron-job.org).
+    Sends a summary of follow-up reminders, new leads, and starred tasks to admins via WhatsApp.
     """
     auth = request.headers.get("Authorization")
     secret = os.getenv("CRON_SECRET", "haydebot_cron_secret")
@@ -942,12 +943,13 @@ async def send_daily_reminders(request: Request):
     
     tasks = supabase_service.get_tasks()
     leads = supabase_service.get_all_leads()
+    followup_notes = supabase_service.get_notes_due_today()
     
-    # Create a lookup for lead names and dates
+    # Create a lookup for lead names
     lead_lookup = {l.get("id"): l.get("fields", {}) for l in leads}
     
     open_tasks = [t for t in tasks if not t.get("fields", {}).get("Is_Completed")]
-    open_leads = [l for l in leads if l.get("fields", {}).get("Status") not in ["Closed", "Lost"]]
+    new_leads = [l for l in leads if l.get("fields", {}).get("Status") in ["New", "Processing"]]
     
     # Mapping numbers to names as defined in auth.ts
     admin_map = {
@@ -967,54 +969,56 @@ async def send_daily_reminders(request: Request):
         if not user_name:
             continue
             
-        # Filter items for this specific user or "כולם"
+        # Filter tasks for this specific user or "כולם"
         u_tasks = [t for t in open_tasks if user_name in (t.get("fields", {}).get("Starred_By") or []) or "כולם" in (t.get("fields", {}).get("Starred_By") or [])]
         
-        # New/Processing leads are ALWAYS included for everyone, plus user's starred leads
-        u_leads = [l for l in open_leads if 
-                   l.get("fields", {}).get("Status") in ["New", "Processing"] or
-                   user_name in (l.get("fields", {}).get("Starred_By") or []) or 
-                   "כולם" in (l.get("fields", {}).get("Starred_By") or [])]
+        # Build message sections
+        sections = []
         
-        if not u_tasks and not u_leads:
-            send_results.append({"phone": phone, "status": "No items for this user"})
-            continue
-            
-        # Build detailed message (Single line, as Meta rejects newlines in template variables)
-        lead_summary = ""
-        if u_leads:
-            parts = []
-            for l in u_leads:
+        # Section 1: Follow-up reminders (for all admins)
+        if followup_notes:
+            fu_parts = []
+            for note in followup_notes:
+                note_fields = note.get("fields", {})
+                lead_id = note_fields.get("Lead_ID", "")
+                lead_fields = lead_lookup.get(lead_id, {})
+                lead_name = lead_fields.get("Name", "לקוח")
+                author = note_fields.get("Author", "")
+                content_preview = (note_fields.get("Content", "") or "")[:30]
+                fu_parts.append(f"🔔 {lead_name}: \"{content_preview}\" ({author})")
+            sections.append(f"פולו-אפ להיום: {' | '.join(fu_parts)}")
+        
+        # Section 2: New/Processing leads (for all admins)
+        if new_leads:
+            lead_parts = []
+            for l in new_leads:
                 name = l.get("fields", {}).get("Name", "ללא שם")
                 date = l.get("fields", {}).get("Event_Date", "ללא תאריך")
-                parts.append(f"👤 {name} ({date})")
-            lead_summary = " | ".join(parts)
+                lead_parts.append(f"👤 {name} ({date})")
+            sections.append(f"לידים חדשים: {' | '.join(lead_parts)}")
                 
-        task_summary = ""
+        # Section 3: Starred tasks (per user)
         if u_tasks:
-            parts = []
+            task_parts = []
             for t in u_tasks:
                 title = t.get("fields", {}).get("Title", "משימה")
-                # Fix: In tasks table, the lead link is stored in 'Lead_ID'
                 lead_id = t.get("fields", {}).get("Lead_ID")
                 lead_info = ""
                 if lead_id:
-                    # lead_id is sometimes a string, sometimes a list in Airtable-emulated schemas
                     if isinstance(lead_id, list) and lead_id:
                         lead_id = lead_id[0]
-                    
                     lead = lead_lookup.get(lead_id, {})
                     lead_name = lead.get("Name")
                     if lead_name:
                         lead_info = f" (מקושרת לליד \"{lead_name}\")"
-                parts.append(f"✅ {title}{lead_info}")
-            task_summary = " | ".join(parts)
+                task_parts.append(f"✅ {title}{lead_info}")
+            sections.append(f"משימות: {' | '.join(task_parts)}")
         
-        final_text = ""
-        if lead_summary: final_text += f"לידים: {lead_summary}"
-        if task_summary: 
-            if final_text: final_text += " • "
-            final_text += f"משימות: {task_summary}"
+        if not sections:
+            send_results.append({"phone": phone, "status": "No items for this user"})
+            continue
+        
+        final_text = " • ".join(sections)
             
         # Limit text length as Meta has limits
         if len(final_text) > 500:
@@ -1023,11 +1027,13 @@ async def send_daily_reminders(request: Request):
         from app.services.logic import HaydeBotLogic
         sanitized_text = HaydeBotLogic._sanitize_template_param(final_text)
             
-        res = whatsapp_service.send_template(phone, "admin_system_alert_v2", "he", ["תזכורת פריטים מסומנים", sanitized_text])
+        res = whatsapp_service.send_template(phone, "admin_system_alert_v2", "he", ["תזכורת יומית 🔔", sanitized_text])
         send_results.append({"phone": phone, "user": user_name, "result": res})
             
     return {
         "status": "Reminders processing complete", 
         "whatsapp_results": send_results,
+        "followup_notes_count": len(followup_notes),
         "raw_numbers_env": settings.NOTIFICATION_NUMBERS
     }
+

@@ -69,6 +69,7 @@ export interface Note {
         Content: string;
         File_URL?: string;
         File_Name?: string;
+        Follow_Up_Date?: string;
         Created_At: string;
     };
 }

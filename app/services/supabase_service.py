@@ -307,6 +307,17 @@ class SupabaseService:
             print(f"Error deleting note {note_id}: {e}")
             raise e
 
+    def get_notes_due_today(self) -> List[dict]:
+        """Fetch all notes with Follow_Up_Date matching today (YYYY-MM-DD)."""
+        if not self.client: return []
+        try:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            response = self.client.table("notes").select("*").eq("Follow_Up_Date", today_str).execute()
+            return self._to_airtable_list(response.data)
+        except Exception as e:
+            print(f"Error fetching follow-up notes for today: {e}")
+            return []
+
     # ─── Finance CRUD ─────────────────────────────────────
 
     def create_finance_entry(self, entry: FinanceEntryCreate) -> dict:

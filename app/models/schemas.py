@@ -161,9 +161,11 @@ class NoteCreate(BaseSchema):
     content: str = Field(..., alias="Content")
     file_url: Optional[str] = Field(None, alias="File_URL")
     file_name: Optional[str] = Field(None, alias="File_Name")
+    follow_up_date: Optional[str] = Field(None, alias="Follow_Up_Date")
 
 class NoteUpdate(BaseSchema):
     content: Optional[str] = Field(None, alias="Content")
+    follow_up_date: Optional[str] = Field(None, alias="Follow_Up_Date")
 
 
 class FinanceEntryCreate(BaseSchema):

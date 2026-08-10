@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Star, Save, Check } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell } from 'lucide-react';
 import { api, CalendarEventPayload } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
@@ -60,7 +60,6 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [commissionIncludesVat, setCommissionIncludesVat] = useState(false);
     const [editData, setEditData] = useState<Partial<Lead['fields']>>({});
     const [savingInfo, setSavingInfo] = useState(false);
-    const [isStarMenuOpen, setIsStarMenuOpen] = useState(false);
 
     // Tasks Tab State
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -95,6 +94,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
     const [editingNoteText, setEditingNoteText] = useState('');
     const [updatingNote, setUpdatingNote] = useState(false);
+
+    // Follow-Up State
+    const [followUpDate, setFollowUpDate] = useState('');
+    const [showFollowUpNudge, setShowFollowUpNudge] = useState(false);
+    const [nudgeFollowUpDate, setNudgeFollowUpDate] = useState('');
     
     // Calendar State
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
@@ -219,8 +223,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         setAttachedFile(null);
     };
 
-    const handleAddNote = async () => {
-        if (!noteText.trim() && !attachedFile) return;
+    const submitNote = async (fuDate?: string) => {
         setSubmitting(true);
         try {
             let file_url: string | undefined;
@@ -240,13 +243,17 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 }
             }
 
+            const follow_up_date = fuDate || followUpDate || undefined;
+
             await api.createNote(lead.id, {
                 content: noteText || `📎 ${attachedFile?.file.name || 'קובץ'}`,
                 author: currentUserName,
                 file_url,
                 file_name,
+                follow_up_date,
             });
             setNoteText('');
+            setFollowUpDate('');
             removeFile();
             fetchNotes();
         } catch (e) {
@@ -254,6 +261,19 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleAddNote = async () => {
+        if (!noteText.trim() && !attachedFile) return;
+        
+        // If no follow-up date set, show nudge modal
+        if (!followUpDate) {
+            setNudgeFollowUpDate('');
+            setShowFollowUpNudge(true);
+            return;
+        }
+        
+        await submitNote();
     };
 
     const handleUpdateNote = async (noteId: string) => {
@@ -611,6 +631,62 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 onClose={() => setTaskPrompt(null)}
                 onAction={handleTaskAction}
             />
+
+            {/* Follow-Up Nudge Modal */}
+            {showFollowUpNudge && (
+                <div
+                    className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-[modal-backdrop-in_150ms_ease-out]"
+                    onClick={() => setShowFollowUpNudge(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-[modal-slide-up_250ms_ease-out]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="px-6 pt-6 pb-3">
+                            <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                <span className="text-2xl">⏰</span> מתי נזכיר לך?
+                            </h3>
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                                ממליצים מאוד להגדיר תאריך מעקב — ככה המערכת תשלח לך תזכורת אוטומטית בוואטסאפ ביום שתבחר, ולא תשכח לחזור ללקוח הזה!
+                            </p>
+                        </div>
+                        <div className="px-6 pb-4">
+                            <input
+                                type="date"
+                                value={nudgeFollowUpDate}
+                                onChange={(e) => setNudgeFollowUpDate(e.target.value)}
+                                min={new Date().toISOString().split('T')[0]}
+                                className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-400 outline-none transition-all"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex items-center gap-3 px-6 pb-6">
+                            <button
+                                onClick={async () => {
+                                    if (nudgeFollowUpDate) {
+                                        setShowFollowUpNudge(false);
+                                        await submitNote(nudgeFollowUpDate);
+                                    }
+                                }}
+                                disabled={!nudgeFollowUpDate || submitting}
+                                className="flex-1 py-2.5 font-bold rounded-xl transition-colors text-sm bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40"
+                            >
+                                {submitting ? '...שולח' : 'הוסף תאריך ושלח ✅'}
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setShowFollowUpNudge(false);
+                                    await submitNote('');
+                                }}
+                                disabled={submitting}
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors text-sm disabled:opacity-40"
+                            >
+                                שלח בלי תאריך
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="w-full md:w-[560px] h-full md:h-[90vh] bg-white md:rounded-r-2xl shadow-2xl flex flex-col relative" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -618,9 +694,6 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         <div className="flex items-center gap-2.5 flex-wrap">
                             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                 {lead.fields.Name || lead.fields.Phone}
-                                {(lead.fields.Starred_By || []).length > 0 && (
-                                    <Star size={18} className="text-amber-400 fill-amber-400 drop-shadow-sm" />
-                                )}
                                 <button 
                                     onClick={() => setIsIntroModalOpen(true)}
                                     className="p-1 px-2 bg-green-50 text-green-700 text-[10px] font-bold rounded-lg border border-green-100 hover:bg-green-100 transition-all flex items-center gap-1.5"
@@ -648,57 +721,6 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         <p className="text-xs text-slate-500 mt-0.5">{toDisplayPhone(lead.fields.Phone)} · {lead.fields.Service || '—'}</p>
                     </div>
                     <div className="flex items-center gap-2 relative">
-                        {/* Star Menu Toggle */}
-                        <div className="relative">
-                            <button 
-                                onClick={() => setIsStarMenuOpen(!isStarMenuOpen)} 
-                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 text-slate-600 font-medium text-sm"
-                            >
-                                <Star size={20} className={(lead.fields.Starred_By || []).includes(currentUserName) ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
-                            </button>
-
-                            {isStarMenuOpen && (
-                                <>
-                                    <div className="fixed inset-0 z-[60]" onClick={() => setIsStarMenuOpen(false)}></div>
-                                    <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-100 rounded-xl shadow-xl z-[70] py-1 overflow-hidden" dir="rtl">
-                                        <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-50 uppercase tracking-wider">סמן במועדפים עבור:</div>
-                                        {['אילן', 'קובי', 'כולם'].map(assignee => {
-                                            const isStarred = (lead.fields.Starred_By || []).includes(assignee);
-                                            const isDisabled = currentUserName === 'קובי' && assignee === 'אילן';
-                                            
-                                            return (
-                                                <button
-                                                    key={assignee}
-                                                    disabled={isDisabled}
-                                                    onClick={() => {
-                                                        const currentStars = lead.fields.Starred_By || [];
-                                                        const newStars = isStarred 
-                                                            ? currentStars.filter(n => n !== assignee)
-                                                            : [...currentStars, assignee];
-                                                        
-                                                        api.updateLead(lead.id, { Starred_By: newStars }).then(() => {
-                                                            onStatusChange(lead.id, lead.fields.Status);
-                                                        });
-                                                        setIsStarMenuOpen(false);
-                                                    }}
-                                                    className={clsx(
-                                                        "w-full text-right px-4 py-2 text-sm flex items-center justify-between transition-colors",
-                                                        isDisabled ? "text-slate-300 cursor-not-allowed bg-slate-50/50" : "text-slate-700 hover:bg-slate-50"
-                                                    )}
-                                                >
-                                                    <span className="flex items-center gap-2">
-                                                        {assignee}
-                                                        {isDisabled && <span className="text-[9px] text-slate-400 font-normal">(רק אילן יכול)</span>}
-                                                    </span>
-                                                    {isStarred && <Star size={14} className="text-amber-400 fill-amber-400" />}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
                         <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
                             <X size={20} className="text-slate-500" />
                         </button>
@@ -995,7 +1017,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">⚠️ {fileError}</p>
                                 )}
                                 <div className="flex items-center justify-between mt-2">
-                                    <div>
+                                    <div className="flex items-center gap-1">
                                         <input
                                             ref={fileInputRef}
                                             type="file"
@@ -1010,6 +1032,47 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         >
                                             <Paperclip size={16} />
                                         </button>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    const dateInput = document.getElementById('follow-up-date-input') as HTMLInputElement;
+                                                    if (dateInput) {
+                                                        dateInput.showPicker?.();
+                                                        dateInput.focus();
+                                                    }
+                                                }}
+                                                className={clsx(
+                                                    "p-1.5 rounded-lg transition-colors",
+                                                    followUpDate 
+                                                        ? "text-blue-500 bg-blue-50 hover:bg-blue-100" 
+                                                        : "text-slate-400 hover:text-blue-500 hover:bg-slate-100"
+                                                )}
+                                                title={followUpDate ? `תזכורת: ${followUpDate}` : "הוסף תאריך פולו-אפ"}
+                                            >
+                                                <Bell size={16} />
+                                            </button>
+                                            <input
+                                                id="follow-up-date-input"
+                                                type="date"
+                                                value={followUpDate}
+                                                onChange={(e) => setFollowUpDate(e.target.value)}
+                                                min={new Date().toISOString().split('T')[0]}
+                                                className={clsx(
+                                                    "text-[10px] font-medium border rounded-lg px-1.5 py-1 focus:ring-1 focus:ring-blue-400 outline-none transition-all w-[105px]",
+                                                    followUpDate 
+                                                        ? "border-blue-200 bg-blue-50 text-blue-700" 
+                                                        : "border-slate-200 text-slate-400"
+                                                )}
+                                            />
+                                            {followUpDate && (
+                                                <button 
+                                                    onClick={() => setFollowUpDate('')} 
+                                                    className="text-slate-300 hover:text-red-400 transition-colors"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     <button
                                         onClick={handleAddNote}
@@ -1037,6 +1100,21 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     <span className="text-[9px] text-slate-400 flex items-center gap-1">
                                                         <Clock size={8} /> {formatDate(note.fields.Created_At)}
                                                     </span>
+                                                    {note.fields.Follow_Up_Date && (() => {
+                                                        const fuParts = note.fields.Follow_Up_Date.split('-');
+                                                        const fuDisplay = fuParts.length === 3 ? `${fuParts[2]}.${fuParts[1]}` : note.fields.Follow_Up_Date;
+                                                        const isPast = new Date(note.fields.Follow_Up_Date) < new Date(new Date().toDateString());
+                                                        return (
+                                                            <span className={clsx(
+                                                                "inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                                                                isPast 
+                                                                    ? "bg-red-50 text-red-500 border border-red-100" 
+                                                                    : "bg-blue-50 text-blue-600 border border-blue-100"
+                                                            )}>
+                                                                {isPast ? '⏰' : '🔔'} {fuDisplay}{isPast ? ' (פג)' : ''}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                             
