@@ -727,6 +727,9 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     </div>
                 </div>
 
+                {/* Scrollable Body */}
+                <div className="flex-1 overflow-y-auto flex flex-col relative">
+                
                 {/* Status Pipeline */}
                 <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
                     <span className="block text-xs font-bold text-slate-500 mb-2.5">שלב נוכחי: בתהליך</span>
@@ -970,13 +973,13 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 )}
 
                 {/* Tabs */}
-                <div className="flex border-b border-slate-100">
+                <div className="flex border-b border-slate-200 sticky top-0 z-20 bg-white/95 backdrop-blur-sm shadow-sm overflow-x-auto no-scrollbar shrink-0">
                     {tabs.map(t => (
                         <button
                             key={t.key}
                             onClick={() => setTab(t.key)}
                             className={clsx(
-                                "flex-1 py-3 text-sm font-bold transition-all border-b-2",
+                                "flex-1 min-w-[80px] py-3 text-sm font-bold transition-all border-b-2 whitespace-nowrap",
                                 tab === t.key
                                     ? "border-blue-500 text-blue-600"
                                     : "border-transparent text-slate-400 hover:text-slate-600"
@@ -988,7 +991,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex flex-col">
                     {tab === 'updates' && (
                         <div className="p-4 space-y-4">
                             {/* Note Input */}
@@ -1209,7 +1212,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     )}
 
                     {tab === 'finance' && (
-                        <div className="flex flex-col h-full bg-slate-50">
+                        <div className="flex flex-col bg-slate-50">
                             {/* Actions */}
                             <div className="p-3 bg-white border-b border-slate-200 flex gap-2">
                                 <button
@@ -1227,7 +1230,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             </div>
 
                             {/* List */}
-                            <div className="flex-1 overflow-y-auto">
+                            <div>
                                 {finances.length === 0 ? (
                                     <p className="text-center text-slate-400 text-xs py-4">אין תנועות כספיות לליד זה</p>
                                 ) : (
@@ -1268,7 +1271,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             </div>
 
                             {/* Summary Footer */}
-                            <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+                            <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] sticky bottom-0 z-10 mt-auto">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-bold text-slate-600">סה״כ נשאר בקופה:</span>
                                     <span className={clsx(
@@ -1369,7 +1372,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     )}
 
                     {tab === 'team' && (
-                        <div className="flex flex-col h-full bg-slate-50">
+                        <div className="flex flex-col bg-slate-50">
                             {/* Selector Header */}
                             <div className="p-4 bg-white border-b border-slate-200">
                                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">הוסף נגן לצוות (ממאגר הנגנים וההפניות)</label>
@@ -1418,7 +1421,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             </div>
 
                             {/* Assigned Team List */}
-                            <div className="flex-1 overflow-y-auto p-4">
+                            <div className="p-4">
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
                                         <Wrench size={14} className="text-purple-600" /> צוות משובץ לאירוע
@@ -1546,7 +1549,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     )}
 
                     {tab === 'tasks' && (
-                        <div className="flex flex-col h-full bg-slate-50">
+                        <div className="flex flex-col bg-slate-50">
                             {/* Actions / Form */}
                             <div className="p-4 bg-white border-b border-slate-200">
                                 <form onSubmit={(e) => { e.preventDefault(); handleAddTask(); }} className="flex flex-col gap-2">
@@ -1593,7 +1596,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             </div>
 
                             {/* List */}
-                            <div className="flex-1 overflow-y-auto p-4">
+                            <div className="p-4">
                                 {tasks.length === 0 ? (
                                     <p className="text-center text-slate-400 text-xs py-8">אין משימות פתוחות לאירוע זה</p>
                                 ) : (
@@ -1641,6 +1644,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             </div>
                         </div>
                     )}
+                </div>
                 </div>
 
                 {financeModalOpen && (

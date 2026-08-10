@@ -46,6 +46,56 @@ const STATUS_ORDER: Record<string, number> = {
     'Lost': 9, 'Referred': 10, 'Completed': 11, 'Cold': 12,
 };
 
+
+const COMMISSION_STATUS_ORDER: Record<string, number> = {
+    'ממתין לאישור': 0, 'ממתין': 0, 'ממתין לגבייה': 1, 'נגבה': 2, 'בוטל': 3,
+};
+
+const applyLocalSort = (items: Lead[], sort?: { column: string; order: 'asc' | 'desc' }) => {
+    if (!sort) return items;
+    return [...items].sort((a, b) => {
+        const { column, order } = sort;
+        let cmp = 0;
+        if (column === 'date') {
+            const dateA = parseDateToSortable(a.fields.Event_Date) || '';
+            const dateB = parseDateToSortable(b.fields.Event_Date) || '';
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            cmp = dateA.localeCompare(dateB);
+        } else if (column === 'status') {
+            const orderA = STATUS_ORDER[a.fields.Status] ?? 99;
+            const orderB = STATUS_ORDER[b.fields.Status] ?? 99;
+            cmp = orderA - orderB;
+        } else if (column === 'service') {
+            const svcA = (a.fields.Service || '').toLowerCase();
+            const svcB = (b.fields.Service || '').toLowerCase();
+            if (!svcA && !svcB) return 0;
+            if (!svcA) return 1;
+            if (!svcB) return -1;
+            cmp = svcA.localeCompare(svcB);
+        } else if (column === 'location') {
+            const locA = (a.fields.Location || '').trim();
+            const locB = (b.fields.Location || '').trim();
+            if (!locA && !locB) return 0;
+            if (!locA) return 1;
+            if (!locB) return -1;
+            cmp = locA.localeCompare(locB, 'he');
+        } else if (column === 'budget') {
+            const budgA = a.fields.Closing_Amount || 0;
+            const budgB = b.fields.Closing_Amount || 0;
+            cmp = budgA - budgB;
+        } else if (column === 'commission_status') {
+            const sA = (!a.fields.Commission_Status || (a.fields.Commission_Status as string) === 'ממתין') ? 'ממתין לאישור' : a.fields.Commission_Status as string;
+            const sB = (!b.fields.Commission_Status || (b.fields.Commission_Status as string) === 'ממתין') ? 'ממתין לאישור' : b.fields.Commission_Status as string;
+            const orderA = COMMISSION_STATUS_ORDER[sA] ?? 99;
+            const orderB = COMMISSION_STATUS_ORDER[sB] ?? 99;
+            cmp = orderA - orderB;
+        }
+        return order === 'asc' ? cmp : -cmp;
+    });
+};
+
 const OWNER_COLORS: Record<string, string> = {
     'אילן': 'bg-blue-100 text-blue-700',
     'קובי': 'bg-purple-100 text-purple-700',
@@ -81,54 +131,34 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [filterService, setFilterService] = useState<string>('');
     const [filterOwner, setFilterOwner] = useState<string>('');
     const [filterStatus, setFilterStatus] = useState<string>('');
+    
+    // New Advanced Filters
+    const [filterDateFrom, setFilterDateFrom] = useState<string>('');
+    const [filterDateTo, setFilterDateTo] = useState<string>('');
+    const [filterMinBudget, setFilterMinBudget] = useState<string>('');
+    const [filterMaxBudget, setFilterMaxBudget] = useState<string>('');
+    const [filterLocation, setFilterLocation] = useState<string>('');
+    const [filterOpenTasks, setFilterOpenTasks] = useState<boolean>(false);
+
     const [showFilters, setShowFilters] = useState(false);
-    const [sortBy, setSortBy] = useState<'interaction' | 'created'>('interaction');
-    const [dateSortOrder, setDateSortOrder] = useState<'asc' | 'desc' | null>(null);
-    const [statusSortOrder, setStatusSortOrder] = useState<'asc' | 'desc' | null>(null);
-    const [serviceSortOrder, setServiceSortOrder] = useState<'asc' | 'desc' | null>(null);
+    
+    // Global Sorting
+    const [globalSort, setGlobalSort] = useState<{ field: 'interaction' | 'created' | 'event_date' | 'budget'; order: 'asc' | 'desc' }>({ field: 'interaction', order: 'desc' });
 
-    // Referred leads sort state
-    const [referredDateSort, setReferredDateSort] = useState<'asc' | 'desc' | null>(null);
-    const [referredStatusSort, setReferredStatusSort] = useState<'asc' | 'desc' | null>(null);
-    const [referredLocationSort, setReferredLocationSort] = useState<'asc' | 'desc' | null>(null);
+    // Local Table Sorts (tableKey -> { column, order })
+    const [localSorts, setLocalSorts] = useState<Record<string, { column: string; order: 'asc' | 'desc' }>>({});
 
-    // Toggle a column sort and clear the others so only one is active at a time
-    const toggleColumnSort = (column: 'date' | 'status' | 'service') => {
-        const cycle = (prev: 'asc' | 'desc' | null) => prev === null ? 'asc' : prev === 'asc' ? 'desc' : null;
-        if (column === 'date') {
-            setDateSortOrder(cycle);
-            setStatusSortOrder(null);
-            setServiceSortOrder(null);
-        } else if (column === 'status') {
-            setStatusSortOrder(cycle);
-            setDateSortOrder(null);
-            setServiceSortOrder(null);
-        } else {
-            setServiceSortOrder(cycle);
-            setDateSortOrder(null);
-            setStatusSortOrder(null);
-        }
-    };
-
-    const COMMISSION_STATUS_ORDER: Record<string, number> = {
-        'ממתין לאישור': 0, 'ממתין': 0, 'ממתין לגבייה': 1, 'נגבה': 2, 'בוטל': 3,
-    };
-
-    const toggleReferredSort = (column: 'date' | 'status' | 'location') => {
-        const cycle = (prev: 'asc' | 'desc' | null) => prev === null ? 'asc' : prev === 'asc' ? 'desc' : null;
-        if (column === 'date') {
-            setReferredDateSort(cycle);
-            setReferredStatusSort(null);
-            setReferredLocationSort(null);
-        } else if (column === 'status') {
-            setReferredStatusSort(cycle);
-            setReferredDateSort(null);
-            setReferredLocationSort(null);
-        } else {
-            setReferredLocationSort(cycle);
-            setReferredDateSort(null);
-            setReferredStatusSort(null);
-        }
+    const toggleLocalSort = (tableKey: string, column: string) => {
+        setLocalSorts(prev => {
+            const current = prev[tableKey];
+            if (current?.column === column) {
+                if (current.order === 'asc') return { ...prev, [tableKey]: { column, order: 'desc' } };
+                const newSorts = { ...prev };
+                delete newSorts[tableKey];
+                return newSorts;
+            }
+            return { ...prev, [tableKey]: { column, order: 'asc' } };
+        });
     };
 
     useEffect(() => {
@@ -255,23 +285,81 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 const phone = (l.fields.Phone || '').toLowerCase();
                 if (!name.includes(q) && !phone.includes(q)) return false;
             }
-            // Service filter
             if (filterService && l.fields.Service !== filterService) return false;
-            // Owner filter
             if (filterOwner && l.fields.Owner !== filterOwner) return false;
-            // Status filter
             if (filterStatus && l.fields.Status !== filterStatus) return false;
+            
+            // Advanced Filters
+            if (filterLocation) {
+                const q = filterLocation.toLowerCase();
+                const loc = (l.fields.Location || '').toLowerCase();
+                if (!loc.includes(q)) return false;
+            }
+            if (filterDateFrom || filterDateTo) {
+                const leadDate = parseDateToSortable(l.fields.Event_Date);
+                if (filterDateFrom && leadDate < filterDateFrom) return false;
+                if (filterDateTo && leadDate && leadDate > filterDateTo) return false;
+                if ((filterDateFrom || filterDateTo) && !leadDate) return false;
+            }
+            if (filterMinBudget || filterMaxBudget) {
+                const amount = l.fields.Closing_Amount || 0;
+                if (filterMinBudget && amount < parseInt(filterMinBudget)) return false;
+                if (filterMaxBudget && amount > parseInt(filterMaxBudget)) return false;
+            }
+            if (filterOpenTasks) {
+                const hasOpen = tasks.some(t => t.fields.Lead_ID === l.id && !t.fields.Is_Completed);
+                if (!hasOpen) return false;
+            }
+            
             return true;
         });
-    }, [leads, searchQuery, filterService, filterOwner, filterStatus, currentUser]);
+    }, [leads, searchQuery, filterService, filterOwner, filterStatus, filterLocation, filterDateFrom, filterDateTo, filterMinBudget, filterMaxBudget, filterOpenTasks, tasks, currentUser]);
 
-    const hasActiveFilters = searchQuery || filterService || filterOwner || filterStatus;
+    const globallySortedLeads = useMemo(() => {
+        return [...filteredLeads].sort((a, b) => {
+            if (globalSort.field === 'interaction') {
+                const tA = new Date(a.fields.Last_Interaction || 0).getTime();
+                const tB = new Date(b.fields.Last_Interaction || 0).getTime();
+                return globalSort.order === 'asc' ? tA - tB : tB - tA;
+            }
+            if (globalSort.field === 'created') {
+                const tA = new Date(a.createdTime || 0).getTime();
+                const tB = new Date(b.createdTime || 0).getTime();
+                return globalSort.order === 'asc' ? tA - tB : tB - tA;
+            }
+            if (globalSort.field === 'event_date') {
+                const dateA = parseDateToSortable(a.fields.Event_Date) || '';
+                const dateB = parseDateToSortable(b.fields.Event_Date) || '';
+                if (!dateA && !dateB) return 0;
+                if (!dateA) return 1;
+                if (!dateB) return -1;
+                const cmp = dateA.localeCompare(dateB);
+                return globalSort.order === 'asc' ? cmp : -cmp;
+            }
+            if (globalSort.field === 'budget') {
+                const budgA = a.fields.Closing_Amount || 0;
+                const budgB = b.fields.Closing_Amount || 0;
+                return globalSort.order === 'asc' ? budgA - budgB : budgB - budgA;
+            }
+            return 0;
+        });
+    }, [filteredLeads, globalSort]);
+
+    const hasActiveFilters = searchQuery || filterService || filterOwner || filterStatus || filterLocation || filterDateFrom || filterDateTo || filterMinBudget || filterMaxBudget || filterOpenTasks;
 
     const clearAllFilters = () => {
         setSearchQuery('');
         setFilterService('');
         setFilterOwner('');
         setFilterStatus('');
+        setFilterLocation('');
+        setFilterDateFrom('');
+        setFilterDateTo('');
+        setFilterMinBudget('');
+        setFilterMaxBudget('');
+        setFilterOpenTasks(false);
+        setGlobalSort({ field: 'interaction', order: 'desc' });
+        setLocalSorts({});
     };
 
     const stats = {
@@ -281,94 +369,15 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         assigned: leads.filter(l => ['Assigned', 'Closed', 'Waiting_Payment'].includes(l.fields.Status)).length,
     };
 
-    const activeLeads = useMemo(() => {
-        const active = filteredLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment', 'Completed', 'Referred', 'Cold'].includes(l.fields.Status));
-        
-        // Column sort: only one can be active at a time
-        if (dateSortOrder) {
-            return active.sort((a, b) => {
-                const dateA = parseDateToSortable(a.fields.Event_Date);
-                const dateB = parseDateToSortable(b.fields.Event_Date);
-                if (!dateA && !dateB) return 0;
-                if (!dateA) return 1;
-                if (!dateB) return -1;
-                const cmp = dateA.localeCompare(dateB);
-                return dateSortOrder === 'asc' ? cmp : -cmp;
-            });
-        }
-        
-        if (statusSortOrder) {
-            return active.sort((a, b) => {
-                const orderA = STATUS_ORDER[a.fields.Status] ?? 99;
-                const orderB = STATUS_ORDER[b.fields.Status] ?? 99;
-                return statusSortOrder === 'asc' ? orderA - orderB : orderB - orderA;
-            });
-        }
-        
-        if (serviceSortOrder) {
-            return active.sort((a, b) => {
-                const svcA = (a.fields.Service || '').toLowerCase();
-                const svcB = (b.fields.Service || '').toLowerCase();
-                if (!svcA && !svcB) return 0;
-                if (!svcA) return 1;
-                if (!svcB) return -1;
-                const cmp = svcA.localeCompare(svcB);
-                return serviceSortOrder === 'asc' ? cmp : -cmp;
-            });
-        }
-        
-        if (sortBy === 'created') {
-            return active.sort((a, b) => new Date(b.createdTime || 0).getTime() - new Date(a.createdTime || 0).getTime());
-        }
-        return active.sort((a, b) => new Date(b.fields.Last_Interaction || 0).getTime() - new Date(a.fields.Last_Interaction || 0).getTime());
-    }, [filteredLeads, sortBy, dateSortOrder, statusSortOrder, serviceSortOrder]);
+    const activeLeads = useMemo(() => applyLocalSort(globallySortedLeads.filter(l => !['Closed', 'Lost', 'Waiting_Payment', 'Completed', 'Referred', 'Cold'].includes(l.fields.Status)), localSorts['active']), [globallySortedLeads, localSorts]);
+    const closedLeads = useMemo(() => applyLocalSort(globallySortedLeads.filter(l => l.fields.Status === 'Closed'), localSorts['closed']), [globallySortedLeads, localSorts]);
+    const lostLeads = useMemo(() => applyLocalSort(globallySortedLeads.filter(l => l.fields.Status === 'Lost'), localSorts['lost']), [globallySortedLeads, localSorts]);
+    const waitingPaymentLeads = useMemo(() => applyLocalSort(globallySortedLeads.filter(l => l.fields.Status === 'Waiting_Payment'), localSorts['waiting_payment']), [globallySortedLeads, localSorts]);
+    const completedLeads = useMemo(() => applyLocalSort(globallySortedLeads.filter(l => l.fields.Status === 'Completed'), localSorts['completed']), [globallySortedLeads, localSorts]);
+    const coldLeads = useMemo(() => applyLocalSort(globallySortedLeads.filter(l => l.fields.Status === 'Cold'), localSorts['cold']), [globallySortedLeads, localSorts]);
+    const referredLeads = useMemo(() => applyLocalSort(globallySortedLeads.filter(l => l.fields.Status === 'Referred'), localSorts['referred']), [globallySortedLeads, localSorts]);
 
-    const closedLeads = filteredLeads.filter(l => l.fields.Status === 'Closed');
-    const lostLeads = filteredLeads.filter(l => l.fields.Status === 'Lost');
-    const waitingPaymentLeads = filteredLeads.filter(l => l.fields.Status === 'Waiting_Payment');
-    const completedLeads = filteredLeads.filter(l => l.fields.Status === 'Completed');
-    const coldLeads = filteredLeads.filter(l => l.fields.Status === 'Cold');
-    const referredLeads = useMemo(() => {
-        const items = filteredLeads.filter(l => l.fields.Status === 'Referred');
-
-        if (referredDateSort) {
-            return [...items].sort((a, b) => {
-                const dateA = parseDateToSortable(a.fields.Event_Date);
-                const dateB = parseDateToSortable(b.fields.Event_Date);
-                if (!dateA && !dateB) return 0;
-                if (!dateA) return 1;
-                if (!dateB) return -1;
-                const cmp = dateA.localeCompare(dateB);
-                return referredDateSort === 'asc' ? cmp : -cmp;
-            });
-        }
-
-        if (referredStatusSort) {
-            return [...items].sort((a, b) => {
-                const sA = (!a.fields.Commission_Status || (a.fields.Commission_Status as string) === 'ממתין') ? 'ממתין לאישור' : a.fields.Commission_Status;
-                const sB = (!b.fields.Commission_Status || (b.fields.Commission_Status as string) === 'ממתין') ? 'ממתין לאישור' : b.fields.Commission_Status;
-                const orderA = COMMISSION_STATUS_ORDER[sA] ?? 99;
-                const orderB = COMMISSION_STATUS_ORDER[sB] ?? 99;
-                return referredStatusSort === 'asc' ? orderA - orderB : orderB - orderA;
-            });
-        }
-
-        if (referredLocationSort) {
-            return [...items].sort((a, b) => {
-                const locA = (a.fields.Location || '').trim();
-                const locB = (b.fields.Location || '').trim();
-                if (!locA && !locB) return 0;
-                if (!locA) return 1;
-                if (!locB) return -1;
-                const cmp = locA.localeCompare(locB, 'he');
-                return referredLocationSort === 'asc' ? cmp : -cmp;
-            });
-        }
-
-        return items;
-    }, [filteredLeads, referredDateSort, referredStatusSort, referredLocationSort]);
-
-    const renderArchiveTable = (items: Lead[], isOpen: boolean, toggle: () => void, title: string, emoji: string, badgeColor: string) => {
+    const renderArchiveTable = (items: Lead[], isOpen: boolean, toggle: () => void, title: string, emoji: string, badgeColor: string, tableKey: string) => {
         if (items.length === 0) return null;
         return (
             <div className="mt-4">
@@ -389,12 +398,29 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 {/* Header Row */}
                                 <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 border-b border-slate-100 uppercase bg-slate-50">
                                     <div className="flex-1 min-w-[120px]">לקוח</div>
-                                <div className="w-24 hidden md:block">שירות</div>
-                                <div className="w-24 hidden md:block">תאריך</div>
-                                <div className="w-24 hidden md:block">מיקום</div>
-                                <div className="w-32 hidden md:block">תקציב / סיבה</div>
+                                <div className="w-24 hidden md:flex items-center">
+                                    <button onClick={() => toggleLocalSort(tableKey, 'service')} className="flex items-center gap-1 hover:text-blue-600 transition-colors">
+                                        שירות {localSorts[tableKey]?.column === 'service' ? (localSorts[tableKey]?.order === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ChevronsUpDown size={12} className="text-slate-300"/>}
+                                    </button>
+                                </div>
+                                <div className="w-24 hidden md:flex items-center">
+                                    <button onClick={() => toggleLocalSort(tableKey, 'date')} className="flex items-center gap-1 hover:text-blue-600 transition-colors">
+                                        תאריך {localSorts[tableKey]?.column === 'date' ? (localSorts[tableKey]?.order === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ChevronsUpDown size={12} className="text-slate-300"/>}
+                                    </button>
+                                </div>
+                                <div className="w-24 hidden md:flex items-center">
+                                    <button onClick={() => toggleLocalSort(tableKey, 'location')} className="flex items-center gap-1 hover:text-blue-600 transition-colors">
+                                        מיקום {localSorts[tableKey]?.column === 'location' ? (localSorts[tableKey]?.order === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ChevronsUpDown size={12} className="text-slate-300"/>}
+                                    </button>
+                                </div>
+                                <div className="w-32 hidden md:flex items-center">
+                                    <button onClick={() => toggleLocalSort(tableKey, 'budget')} className="flex items-center gap-1 hover:text-blue-600 transition-colors">
+                                        תקציב / סיבה {localSorts[tableKey]?.column === 'budget' ? (localSorts[tableKey]?.order === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ChevronsUpDown size={12} className="text-slate-300"/>}
+                                    </button>
+                                </div>
                                 <div className="w-12 text-center flex-shrink-0">פרטים</div>
                             </div>
+
                             {/* Rows */}
                             {items.map(lead => (
                                 <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
@@ -487,25 +513,25 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     <div className="flex-1 min-w-[120px]">לקוח</div>
                                     <div className="w-24 hidden md:block">
                                         <button
-                                            onClick={() => toggleReferredSort('date')}
+                                            onClick={() => toggleLocalSort('referred', 'date')}
                                             className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
                                             title="מיין לפי תאריך"
                                         >
                                             תאריך
-                                            {referredDateSort === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
-                                             referredDateSort === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                            {localSorts['referred']?.column === 'date' && localSorts['referred']?.order === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                             localSorts['referred']?.column === 'date' && localSorts['referred']?.order === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
                                              <ChevronsUpDown size={12} className="text-slate-300" />}
                                         </button>
                                     </div>
                                     <div className="w-24 hidden md:block">
                                         <button
-                                            onClick={() => toggleReferredSort('location')}
+                                            onClick={() => toggleLocalSort('referred', 'location')}
                                             className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
                                             title="מיין לפי מיקום"
                                         >
                                             מיקום
-                                            {referredLocationSort === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
-                                             referredLocationSort === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                            {localSorts['referred']?.column === 'location' && localSorts['referred']?.order === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                             localSorts['referred']?.column === 'location' && localSorts['referred']?.order === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
                                              <ChevronsUpDown size={12} className="text-slate-300" />}
                                         </button>
                                     </div>
@@ -513,13 +539,13 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     <div className="w-32">עמלה</div>
                                     <div className="w-28 text-center">
                                         <button
-                                            onClick={() => toggleReferredSort('status')}
+                                            onClick={() => toggleLocalSort('referred', 'status')}
                                             className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none w-full justify-center"
                                             title="מיין לפי מצב"
                                         >
                                             מצב
-                                            {referredStatusSort === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
-                                             referredStatusSort === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                            {localSorts['referred']?.column === 'commission_status' && localSorts['referred']?.order === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                             localSorts['referred']?.column === 'commission_status' && localSorts['referred']?.order === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
                                              <ChevronsUpDown size={12} className="text-slate-300" />}
                                         </button>
                                     </div>
@@ -758,61 +784,151 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
                     {/* Filter Dropdowns */}
                     {showFilters && (
-                        <div className="flex flex-wrap gap-2 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm animate-in slide-in-from-top-2 duration-200">
-                            <select
-                                value={filterService}
-                                onChange={e => setFilterService(e.target.value)}
-                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                            >
-                                <option value="">כל השירותים</option>
-                                {uniqueServices.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
+                        <div className="p-4 md:p-5 bg-white rounded-2xl border border-slate-200 shadow-lg animate-in slide-in-from-top-2 duration-200 mt-2 z-10 relative space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2"><Filter size={16} className="text-blue-500" /> סינון ומיון מתקדם</h3>
+                                <button onClick={clearAllFilters} className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-colors">נקה הכל</button>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {/* Basic Filters */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">מיון לפי</label>
+                                    <select
+                                        value={`${globalSort.field}-${globalSort.order}`}
+                                        onChange={e => {
+                                            const [field, order] = e.target.value.split('-');
+                                            setGlobalSort({ field: field as any, order: order as any });
+                                        }}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                    >
+                                        <option value="interaction-desc">אינטראקציה אחרונה (מהחדש לישן)</option>
+                                        <option value="interaction-asc">אינטראקציה אחרונה (מהישן לחדש)</option>
+                                        <option value="event_date-asc">תאריך אירוע (קרוב לרחוק)</option>
+                                        <option value="event_date-desc">תאריך אירוע (רחוק לקרוב)</option>
+                                        <option value="budget-desc">תקציב/סכום (הכי גבוה)</option>
+                                        <option value="budget-asc">תקציב/סכום (הכי נמוך)</option>
+                                        <option value="created-desc">תאריך יצירת ליד (הכי חדש)</option>
+                                        <option value="created-asc">תאריך יצירת ליד (הכי ישן)</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">שירות</label>
+                                    <select value={filterService} onChange={e => setFilterService(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+                                        <option value="">כל השירותים</option>
+                                        {uniqueServices.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">מוביל</label>
+                                    <select value={filterOwner} onChange={e => setFilterOwner(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+                                        <option value="">כל המובילים</option>
+                                        {uniqueOwners.map(o => <option key={o} value={o}>{o}</option>)}
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">סטטוס</label>
+                                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+                                        <option value="">כל הסטטוסים</option>
+                                        {Object.entries(STATUS_MAP).map(([key, val]) => (
+                                            <option key={key} value={key}>{val.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                            <select
-                                value={filterOwner}
-                                onChange={e => setFilterOwner(e.target.value)}
-                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                            >
-                                <option value="">כל המובילים</option>
-                                {uniqueOwners.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
-
-                            <select
-                                value={filterStatus}
-                                onChange={e => setFilterStatus(e.target.value)}
-                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                            >
-                                <option value="">כל הסטטוסים</option>
-                                {Object.entries(STATUS_MAP).map(([key, val]) => (
-                                    <option key={key} value={key}>{val.label}</option>
-                                ))}
-                            </select>
-
-                            <select
-                                value={sortBy}
-                                onChange={e => setSortBy(e.target.value as 'interaction' | 'created')}
-                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                            >
-                                <option value="interaction">מיון לפי: אינטראקציה אחרונה</option>
-                                <option value="created">מיון לפי: תאריך יצירה</option>
-                            </select>
-
-                            {hasActiveFilters && (
-                                <button
-                                    onClick={clearAllFilters}
-                                    className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
-                                >
-                                    <X size={12} /> נקה הכל
-                                </button>
-                            )}
+                                {/* Advanced Filters */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">טווח תאריכי אירוע</label>
+                                    <div className="flex gap-2">
+                                        <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="w-1/2 px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 outline-none focus:ring-1 focus:ring-blue-400" title="מתאריך" />
+                                        <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="w-1/2 px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 outline-none focus:ring-1 focus:ring-blue-400" title="עד תאריך" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">טווח תקציב/עמלה</label>
+                                    <div className="flex gap-2">
+                                        <input type="number" placeholder="מינימום ₪" value={filterMinBudget} onChange={e => setFilterMinBudget(e.target.value)} className="w-1/2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 outline-none focus:ring-1 focus:ring-blue-400" />
+                                        <input type="number" placeholder="מקסימום ₪" value={filterMaxBudget} onChange={e => setFilterMaxBudget(e.target.value)} className="w-1/2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 outline-none focus:ring-1 focus:ring-blue-400" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">חיפוש מיקום</label>
+                                    <input type="text" placeholder="הקלד עיר או אולם..." value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-1 focus:ring-blue-400" />
+                                </div>
+                                <div className="space-y-1.5 flex flex-col justify-end">
+                                    <label className="flex items-center gap-2 cursor-pointer p-2 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors mt-auto">
+                                        <input type="checkbox" checked={filterOpenTasks} onChange={e => setFilterOpenTasks(e.target.checked)} className="w-4 h-4 text-blue-600 rounded border-slate-300" />
+                                        <span className="text-xs font-bold text-slate-700">רק עם משימות פתוחות</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    {/* Active filter summary */}
-                    {hasActiveFilters && !showFilters && (
-                        <div className="flex items-center gap-2 text-xs text-slate-500 px-1">
-                            <span>מציג {filteredLeads.length} מתוך {leads.length} לידים</span>
-                            <button onClick={clearAllFilters} className="text-blue-600 hover:text-blue-800 font-bold">נקה סינון</button>
+                    {/* Active filter/sort summary */}
+                    {(hasActiveFilters || Object.keys(localSorts).length > 0 || globalSort.field !== 'interaction' || globalSort.order !== 'desc') && !showFilters && (
+                        <div className="flex items-center flex-wrap gap-2 text-xs px-1">
+                            <span className="text-slate-500">מציג {filteredLeads.length} מתוך {leads.length} לידים</span>
+                            
+                            {/* Filter Chips */}
+                            {filterService && (
+                                <span className="bg-blue-50 text-blue-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-blue-100 shadow-sm">
+                                    שירות: {filterService}
+                                    <button onClick={() => setFilterService('')} className="p-0.5 hover:bg-blue-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            {filterOwner && (
+                                <span className="bg-purple-50 text-purple-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-purple-100 shadow-sm">
+                                    מוביל: {filterOwner}
+                                    <button onClick={() => setFilterOwner('')} className="p-0.5 hover:bg-purple-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            {filterStatus && (
+                                <span className="bg-slate-100 text-slate-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-slate-200 shadow-sm">
+                                    סטטוס: {STATUS_MAP[filterStatus]?.label || filterStatus}
+                                    <button onClick={() => setFilterStatus('')} className="p-0.5 hover:bg-slate-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            {filterLocation && (
+                                <span className="bg-slate-100 text-slate-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-slate-200 shadow-sm">
+                                    מיקום: {filterLocation}
+                                    <button onClick={() => setFilterLocation('')} className="p-0.5 hover:bg-slate-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            {(filterDateFrom || filterDateTo) && (
+                                <span className="bg-slate-100 text-slate-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-slate-200 shadow-sm">
+                                    תאריכים מסוננים
+                                    <button onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }} className="p-0.5 hover:bg-slate-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            {(filterMinBudget || filterMaxBudget) && (
+                                <span className="bg-slate-100 text-slate-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-slate-200 shadow-sm">
+                                    תקציב מסונן
+                                    <button onClick={() => { setFilterMinBudget(''); setFilterMaxBudget(''); }} className="p-0.5 hover:bg-slate-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            {filterOpenTasks && (
+                                <span className="bg-emerald-50 text-emerald-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-emerald-100 shadow-sm">
+                                    משימות פתוחות
+                                    <button onClick={() => setFilterOpenTasks(false)} className="p-0.5 hover:bg-emerald-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            
+                            {/* Sort Chips */}
+                            {(globalSort.field !== 'interaction' || globalSort.order !== 'desc') && (
+                                <span className="bg-amber-50 text-amber-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-amber-200 shadow-sm">
+                                    מיון גלובלי מותאם
+                                    <button onClick={() => setGlobalSort({ field: 'interaction', order: 'desc' })} className="p-0.5 hover:bg-amber-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            {Object.keys(localSorts).length > 0 && (
+                                <span className="bg-amber-50 text-amber-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-amber-200 shadow-sm">
+                                    מיון בתוך טבלאות
+                                    <button onClick={() => setLocalSorts({})} className="p-0.5 hover:bg-amber-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            
+                            <button onClick={clearAllFilters} className="text-red-600 hover:text-red-800 font-bold mr-1">נקה הכל</button>
                         </div>
                     )}
                 </div>
@@ -835,38 +951,38 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 <div className="flex-1 min-w-[100px] md:min-w-[120px]">לקוח</div>
                             <div className="w-20 md:w-24 shrink-0">
                                 <button
-                                    onClick={() => toggleColumnSort('status')}
+                                    onClick={() => toggleLocalSort('active', 'status')}
                                     className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
                                     title="מיין לפי סטטוס"
                                 >
                                     סטטוס
-                                    {statusSortOrder === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
-                                     statusSortOrder === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                    {localSorts['active']?.column === 'status' && localSorts['active']?.order === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                     localSorts['active']?.column === 'status' && localSorts['active']?.order === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
                                      <ChevronsUpDown size={12} className="text-slate-300" />}
                                 </button>
                             </div>
                             <div className="w-16 shrink-0 hidden md:block">מוביל</div>
                             <div className="w-28 shrink-0 hidden md:block">
                                 <button
-                                    onClick={() => toggleColumnSort('service')}
+                                    onClick={() => toggleLocalSort('active', 'service')}
                                     className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
                                     title="מיין לפי שירות"
                                 >
                                     שירות
-                                    {serviceSortOrder === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
-                                     serviceSortOrder === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                    {localSorts['active']?.column === 'service' && localSorts['active']?.order === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                     localSorts['active']?.column === 'service' && localSorts['active']?.order === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
                                      <ChevronsUpDown size={12} className="text-slate-300" />}
                                 </button>
                             </div>
                             <div className="w-24 shrink-0 hidden md:block">
                                 <button
-                                    onClick={() => toggleColumnSort('date')}
+                                    onClick={() => toggleLocalSort('active', 'date')}
                                     className="flex items-center gap-1 hover:text-blue-600 transition-colors cursor-pointer select-none"
                                     title="מיין לפי תאריך"
                                 >
                                     תאריך
-                                    {dateSortOrder === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
-                                     dateSortOrder === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
+                                    {localSorts['active']?.column === 'date' && localSorts['active']?.order === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : 
+                                     localSorts['active']?.column === 'date' && localSorts['active']?.order === 'desc' ? <ChevronDown size={12} className="text-blue-500" /> : 
                                      <ChevronsUpDown size={12} className="text-slate-300" />}
                                 </button>
                             </div>
@@ -979,31 +1095,31 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 {/* Cold Leads */}
                 {renderArchiveTable(
                     coldLeads, showCold, () => setShowCold(!showCold),
-                    'לידים קרים', '🥶', 'bg-sky-100 text-sky-700'
+                    'לידים קרים', '🥶', 'bg-sky-100 text-sky-700', 'cold'
                 )}
 
                 {/* Waiting Payment Leads */}
                 {renderArchiveTable(
                     waitingPaymentLeads, showWaitingPayment, () => setShowWaitingPayment(!showWaitingPayment),
-                    'מחכים לתשלום', '⏳', 'bg-orange-100 text-orange-700'
+                    'מחכים לתשלום', '⏳', 'bg-orange-100 text-orange-700', 'waiting_payment'
                 )}
 
                 {/* Closed Leads */}
                 {renderArchiveTable(
                     closedLeads, showClosed, () => setShowClosed(!showClosed),
-                    'לידים סגורים', '✅', 'bg-green-100 text-green-700'
+                    'לידים סגורים', '✅', 'bg-green-100 text-green-700', 'closed'
                 )}
 
                 {/* Lost Leads */}
                 {renderArchiveTable(
                     lostLeads, showLost, () => setShowLost(!showLost),
-                    'לידים אבודים', '❌', 'bg-red-100 text-red-700'
+                    'לידים אבודים', '❌', 'bg-red-100 text-red-700', 'lost'
                 )}
 
                 {/* Completed Leads (Archive) */}
                 {renderArchiveTable(
                     completedLeads, showCompleted, () => setShowCompleted(!showCompleted),
-                    'הושלמו (ארכיון)', '🏆', 'bg-slate-200 text-slate-600'
+                    'הושלמו (ארכיון)', '🏆', 'bg-slate-200 text-slate-600', 'completed'
                 )}
             </div>
 
