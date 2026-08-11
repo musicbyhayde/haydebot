@@ -11,6 +11,8 @@ import clsx from 'clsx';
 import { toDisplayPhone, normalizeEventDate, parseDateToSortable } from '@/lib/formatters';
 import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
+import { Note } from '@/types';
+import PendingFollowUpsModal from './PendingFollowUpsModal';
 
 interface LeadsDashboardProps {
     leads: Lead[];
@@ -117,7 +119,14 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [commissionModalOpen, setCommissionModalOpen] = useState(false);
     const [collectLead, setCollectLead] = useState<Lead | null>(null);
     const [collectOwner, setCollectOwner] = useState<string>(currentUser?.displayName || 'אילן');
-    const [collectAmount, setCollectAmount] = useState<string>('');
+    const [collectAmount, setCollectAmount] = useState('');
+    
+    // Pending Follow-Ups
+    const [pendingFollowUps, setPendingFollowUps] = useState<Note[]>([]);
+    const [showPendingModal, setShowPendingModal] = useState(false);
+
+    // Ensure we start with no leads to prevent hydration mismatch
+    const [isMounted, setIsMounted] = useState(false);
 
     const [tasks, setTasks] = useState<Task[]>([]);
     const [taskPrompt, setTaskPrompt] = useState<{
@@ -162,8 +171,41 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     };
 
     useEffect(() => {
+        setIsMounted(true);
         api.getTasks().then(setTasks).catch(console.error);
+        fetchPendingFollowUps();
     }, []);
+
+    // Fetch pending follow ups
+    const fetchPendingFollowUps = async () => {
+        try {
+            const data = await api.getPendingFollowUps();
+            setPendingFollowUps(data);
+            if (data.length > 0) {
+                setShowPendingModal(true);
+            }
+        } catch (error) {
+            console.error('Failed to fetch pending follow ups:', error);
+        }
+    };
+
+    const handleRefreshFollowUps = () => {
+        fetchPendingFollowUps();
+        onRefresh?.(); // refresh leads too just in case
+    };
+
+    // Listen for Escape key
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                if (taskPrompt) setTaskPrompt(null);
+                if (commissionModalOpen) setCommissionModalOpen(false);
+                setShowPendingModal(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [taskPrompt, commissionModalOpen]);
 
     const handleStatusUpdate = async (leadId: string, newStatus: string) => {
         try {

@@ -143,13 +143,19 @@ export const api = {
         return res.json();
     },
 
-    async createNote(leadId: string, data: { content: string; author: string; file_url?: string; file_name?: string; follow_up_date?: string }): Promise<Note> {
+    async createNote(leadId: string, data: { content: string; author: string; file_url?: string; file_name?: string; follow_up_date?: string; follow_up_completed?: boolean }): Promise<Note> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/notes`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error('Failed to create note');
+        return res.json();
+    },
+
+    async getPendingFollowUps(): Promise<Note[]> {
+        const res = await fetchWithAuth(`${API_Base}/notes/pending`);
+        if (!res.ok) throw new Error('Failed to fetch pending follow ups');
         return res.json();
     },
 
@@ -164,7 +170,7 @@ export const api = {
         return res.json();
     },
 
-    async updateNote(noteId: string, data: { content?: string; follow_up_date?: string }): Promise<Note> {
+    async updateNote(noteId: string, data: { content?: string; follow_up_date?: string; follow_up_completed?: boolean }): Promise<Note> {
         const res = await fetchWithAuth(`${API_Base}/notes/${noteId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },

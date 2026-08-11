@@ -251,6 +251,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 file_url,
                 file_name,
                 follow_up_date,
+                follow_up_completed: follow_up_date ? false : undefined,
             });
             setNoteText('');
             setFollowUpDate('');
@@ -1109,12 +1110,18 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                         const isPast = new Date(note.fields.Follow_Up_Date) < new Date(new Date().toDateString());
                                                         return (
                                                             <span className={clsx(
-                                                                "inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full",
-                                                                isPast 
-                                                                    ? "bg-red-50 text-red-500 border border-red-100" 
-                                                                    : "bg-blue-50 text-blue-600 border border-blue-100"
+                                                                "inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1",
+                                                                note.fields.Follow_Up_Completed 
+                                                                    ? "bg-green-50 text-green-600 border border-green-100"
+                                                                    : isPast 
+                                                                        ? "bg-red-50 text-red-500 border border-red-100" 
+                                                                        : "bg-blue-50 text-blue-600 border border-blue-100"
                                                             )}>
-                                                                {isPast ? '⏰' : '🔔'} {fuDisplay}{isPast ? ' (פג)' : ''}
+                                                                {note.fields.Follow_Up_Completed ? '✅' : (isPast ? '⏰' : '🔔')} 
+                                                                {note.fields.Follow_Up_Completed ? ' ' : ' '}
+                                                                {fuDisplay}
+                                                                {!note.fields.Follow_Up_Completed && isPast ? ' (פג)' : ''}
+                                                                {note.fields.Follow_Up_Completed ? ' (טופל)' : ''}
                                                             </span>
                                                         );
                                                     })()}

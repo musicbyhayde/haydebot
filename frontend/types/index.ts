@@ -70,6 +70,7 @@ export interface Note {
         File_URL?: string;
         File_Name?: string;
         Follow_Up_Date?: string;
+        Follow_Up_Completed?: boolean;
         Created_At: string;
     };
 }

@@ -543,6 +543,10 @@ async def delete_video(video_id: str):
 
 # ─── Notes ────────────────────────────────────────────
 
+@protected_router.get("/notes/pending")
+async def get_pending_followups():
+    return airtable_service.get_pending_followups()
+
 @protected_router.get("/leads/{lead_id}/notes")
 async def get_notes(lead_id: str):
     return airtable_service.get_notes_for_lead(lead_id)
@@ -557,6 +561,7 @@ async def create_note(lead_id: str, request: Request):
         file_url=body.get("file_url"),
         file_name=body.get("file_name"),
         follow_up_date=body.get("follow_up_date"),
+        follow_up_completed=body.get("follow_up_completed", False),
     )
     result = airtable_service.create_note(note)
     
