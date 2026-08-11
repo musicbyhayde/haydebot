@@ -1,8 +1,10 @@
 import { Lead, Musician } from '@/types';
-import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo, BarChart3, Film, LayoutDashboard } from 'lucide-react';
+import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo, BarChart3, Film, LayoutDashboard, Database } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useState } from 'react';
 
 interface SidebarProps {
     leads: Lead[];
@@ -33,6 +35,19 @@ const STATUS_MAP: Record<string, { label: string; class: string }> = {
 };
 
 export default function Sidebar({ leads, musicians, activeId, onSelect, currentView, onViewChange, currentUser, onSignOut, unreadStatus = {}, isCollapsed = false, onToggleCollapse }: SidebarProps) {
+    const [isBackingUp, setIsBackingUp] = useState(false);
+
+    const handleBackup = async () => {
+        if (!confirm('האם אתה בטוח שברצונך להוריד גיבוי מלא של מסד הנתונים? פעולה זו עשויה לקחת מספר שניות.')) return;
+        setIsBackingUp(true);
+        try {
+            await api.downloadBackup();
+        } catch (e: any) {
+            alert('שגיאה בגיבוי: ' + e.message);
+        } finally {
+            setIsBackingUp(false);
+        }
+    };
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 border-r border-gray-200 relative group transition-all duration-300">
@@ -148,6 +163,21 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <Star size={18} /> {!isCollapsed && "⏱️ היסטוריה"}
                 </button>
+                {currentUser?.role === 'admin' && (
+                    <button
+                        onClick={handleBackup}
+                        disabled={isBackingUp}
+                        className={clsx(
+                            "flex items-center rounded-xl text-sm font-bold transition-all mt-4",
+                            isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
+                            "bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white"
+                        )}
+                        title={isCollapsed ? "גיבוי נתונים" : undefined}
+                    >
+                        <Database size={18} className={clsx(isBackingUp && "animate-pulse text-blue-400")} /> 
+                        {!isCollapsed && (isBackingUp ? "מוריד גיבוי..." : "📥 הורד גיבוי")}
+                    </button>
+                )}
                 {/* Analytics button hidden for now
                 <button
                     onClick={() => onViewChange('analytics')}

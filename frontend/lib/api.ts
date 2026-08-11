@@ -381,5 +381,35 @@ export const api = {
         });
         if (!res.ok) throw new Error('Failed to sync RSVPs');
         return res.json();
+    },
+    
+    // --- Admin ---
+    async downloadBackup(): Promise<void> {
+        const res = await fetchWithAuth(`${API_Base}/backup/full`);
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to download backup');
+        }
+        
+        // Get the filename from the Content-Disposition header if possible
+        const disposition = res.headers.get('Content-Disposition');
+        let filename = 'haydebot_backup.json';
+        if (disposition && disposition.indexOf('filename=') !== -1) {
+            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+            const matches = filenameRegex.exec(disposition);
+            if (matches != null && matches[1]) { 
+                filename = matches[1].replace(/['"]/g, '');
+            }
+        }
+        
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
     }
 };
