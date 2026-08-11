@@ -99,7 +99,14 @@ export default function PendingFollowUpsModal({ pendingNotes, leads, onClose, on
                                 <div key={note.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
-                                            <h3 className="font-bold text-slate-800 text-lg">{lead.fields.Name || 'ללא שם'}</h3>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-bold text-slate-800 text-lg">{lead.fields.Name || 'ללא שם'}</h3>
+                                                {lead.fields.Owner && (
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-100">
+                                                        מוביל: {lead.fields.Owner}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <p className="text-slate-500 text-sm">{lead.fields.Phone}</p>
                                         </div>
                                         <div className="text-left">
