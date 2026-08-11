@@ -597,10 +597,19 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 {items.map(lead => {
                                     const effectiveStatus = getEffectiveStatus(lead.fields.Commission_Status);
                                     const badge = getCommissionBadge(lead.fields.Commission_Status);
+                                    const hasPendingFollowUp = pendingFollowUps.some(n => n.fields.Lead_ID === lead.id);
 
                                     return (
-                                    <div key={lead.id} className="flex items-center px-4 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white">
-                                        <div className="flex-1 min-w-[120px] flex flex-col justify-center">
+                                    <div key={lead.id} className={clsx(
+                                        "flex items-center px-4 py-2 text-xs border-b transition-colors relative",
+                                        hasPendingFollowUp ? "bg-red-50 hover:bg-red-100 border-b-red-100 border-l-4 border-l-red-500" : "bg-white hover:bg-slate-50 border-slate-50"
+                                    )}>
+                                        <div className="flex-1 min-w-[120px] flex flex-col justify-center relative">
+                                            {hasPendingFollowUp && (
+                                                <span className="absolute -right-3 top-1 text-[10px] animate-bounce" title="פולו-אפ פתוח!">
+                                                    ⏰
+                                                </span>
+                                            )}
                                             <button 
                                                 onClick={() => onOpenDetails?.(lead.id)}
                                                 className="font-bold text-slate-600 text-right hover:text-blue-600 transition-colors"
@@ -978,9 +987,17 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 {/* Leads Table */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                        <h2 className="font-bold text-base md:text-lg text-slate-800">
+                        <h2 className="font-bold text-base md:text-lg text-slate-800 flex items-center gap-3">
                             לידים פעילים ({activeLeads.length})
-                            {hasActiveFilters && <span className="text-xs text-slate-400 font-medium mr-2">מסונן</span>}
+                            {hasActiveFilters && <span className="text-xs text-slate-400 font-medium">מסונן</span>}
+                            {pendingFollowUps.length > 0 && (
+                                <button 
+                                    onClick={() => setShowPendingModal(true)}
+                                    className="bg-red-100 hover:bg-red-200 text-red-700 rounded-full px-3 py-1 text-xs font-bold shrink-0 flex items-center gap-1 transition-colors border border-red-200 shadow-sm animate-pulse"
+                                >
+                                    ⏰ {pendingFollowUps.length} פולו-אפים
+                                </button>
+                            )}
                         </h2>
                         <span className="text-xs text-slate-400 flex items-center gap-1">
                             <Clock size={12} /> עדכון אחרון: {new Date().toLocaleTimeString()}
@@ -1043,10 +1060,19 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                         activeLeads.map((lead) => {
                             const statusInfo = STATUS_MAP[lead.fields.Status] || { label: lead.fields.Status, class: 'bg-gray-50 text-gray-700 border-gray-200' };
                             const ownerColor = OWNER_COLORS[lead.fields.Owner || ''] || 'bg-slate-100 text-slate-600';
+                            const hasPendingFollowUp = pendingFollowUps.some(n => n.fields.Lead_ID === lead.id);
 
                             return (
-                                <div key={lead.id} className="flex items-center px-4 md:px-6 py-2 text-xs border-b border-slate-50 hover:bg-slate-50 transition-colors bg-white group">
-                                    <div className="flex-1 min-w-[100px] md:min-w-[120px] flex flex-col justify-center overflow-hidden pr-2">
+                                <div key={lead.id} className={clsx(
+                                    "flex items-center px-4 md:px-6 py-2 text-xs border-b transition-colors group relative",
+                                    hasPendingFollowUp ? "bg-red-50 hover:bg-red-100 border-b-red-100 border-l-4 border-l-red-500" : "bg-white hover:bg-slate-50 border-slate-50"
+                                )}>
+                                    <div className="flex-1 min-w-[100px] md:min-w-[120px] flex flex-col justify-center overflow-hidden pr-2 relative">
+                                        {hasPendingFollowUp && (
+                                            <span className="absolute -right-1 top-1 text-[10px] animate-bounce" title="פולו-אפ פתוח!">
+                                                ⏰
+                                            </span>
+                                        )}
                                         <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
                                             <button 
                                                 onClick={() => onOpenDetails?.(lead.id)}
@@ -1230,6 +1256,14 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                         </div>
                     </div>
                 </div>
+            )}
+            {showPendingModal && (
+                <PendingFollowUpsModal
+                    pendingNotes={pendingFollowUps}
+                    leads={leads}
+                    onClose={() => setShowPendingModal(false)}
+                    onRefresh={handleRefreshFollowUps}
+                />
             )}
         </div>
     );
