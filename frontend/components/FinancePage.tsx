@@ -14,7 +14,7 @@ interface FinancePageProps {
     onMenuClick?: () => void;
 }
 
-const PAYMENT_STATUSES = ['תשלום', 'לא שולם', 'חלקי'];
+const PAYMENT_STATUSES = ['שולם', 'לא שולם', 'חלקי'];
 
 interface FormErrors {
     Description?: string;
@@ -324,7 +324,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                 <div className="w-24 shrink-0 flex flex-col items-end px-2">
                     <span className={clsx(
                         "text-[9px] px-1.5 py-0.5 rounded-full font-bold mb-0.5",
-                        e.fields.Payment_Status === 'תשלום' ? 'bg-green-100 text-green-700' : e.fields.Payment_Status === 'חלקי' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                        e.fields.Payment_Status === 'שולם' || e.fields.Payment_Status === 'תשלום' ? 'bg-green-100 text-green-700' : e.fields.Payment_Status === 'חלקי' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                     )}>{e.fields.Payment_Status}</span>
                     <span className="text-[9px] text-slate-400 text-center">{e.fields.Payment_Method}</span>
                 </div>

@@ -160,7 +160,7 @@ export const STAR_ASSIGNEES = ['אילן', 'קובי', 'כולם'] as const;
 
 // ── Payment Statuses ────────────────────────────────────────────────
 
-export const PAYMENT_STATUSES = ['תשלום', 'לא שולם', 'חלקי'];
+export const PAYMENT_STATUSES = ['שולם', 'לא שולם', 'חלקי'];
 
 // ── View Types ──────────────────────────────────────────────────────
 
