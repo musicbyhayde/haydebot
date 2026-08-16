@@ -1086,47 +1086,83 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         >
                                             <Paperclip size={16} />
                                         </button>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => {
-                                                    const dateInput = document.getElementById('follow-up-date-input') as HTMLInputElement;
-                                                    if (dateInput) {
-                                                        dateInput.showPicker?.();
-                                                        dateInput.focus();
-                                                    }
-                                                }}
-                                                className={clsx(
-                                                    "p-1.5 rounded-lg transition-colors",
-                                                    followUpDate 
-                                                        ? "text-blue-500 bg-blue-50 hover:bg-blue-100" 
-                                                        : "text-slate-400 hover:text-blue-500 hover:bg-slate-100"
-                                                )}
-                                                title={followUpDate ? `תזכורת: ${followUpDate}` : "הוסף תאריך פולו-אפ"}
-                                            >
-                                                <Bell size={16} />
-                                            </button>
-                                            <input
-                                                id="follow-up-date-input"
-                                                type="date"
-                                                value={followUpDate}
-                                                onChange={(e) => setFollowUpDate(e.target.value)}
-                                                min={new Date().toISOString().split('T')[0]}
-                                                className={clsx(
-                                                    "text-[10px] font-medium border rounded-lg px-1.5 py-1 focus:ring-1 focus:ring-blue-400 outline-none transition-all w-[105px]",
-                                                    followUpDate 
-                                                        ? "border-blue-200 bg-blue-50 text-blue-700" 
-                                                        : "border-slate-200 text-slate-400"
-                                                )}
-                                            />
-                                            {followUpDate && (
-                                                <button 
-                                                    onClick={() => setFollowUpDate('')} 
-                                                    className="text-slate-300 hover:text-red-400 transition-colors"
-                                                >
-                                                    <X size={12} />
-                                                </button>
-                                            )}
-                                        </div>
+                                        {(() => {
+                                            const openFollowUp = notes.find(n => n.fields.Follow_Up_Date && !n.fields.Follow_Up_Completed);
+                                            
+                                            if (openFollowUp) {
+                                                return (
+                                                    <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 px-2 py-1.5 rounded-lg text-[10px] font-bold text-orange-700">
+                                                        <span>⚠️ יש פולו-אפ פתוח</span>
+                                                        <div className="flex gap-1.5 mr-1">
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    setActionNote({ noteId: openFollowUp.id, action: 'done' });
+                                                                    setTimeout(() => document.getElementById(`note-${openFollowUp.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                                                                }}
+                                                                className="bg-green-600 hover:bg-green-700 text-white px-2 py-0.5 rounded transition-colors"
+                                                            >
+                                                                סגור
+                                                            </button>
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    setActionNote({ noteId: openFollowUp.id, action: 'postpone' });
+                                                                    setTimeout(() => document.getElementById(`note-${openFollowUp.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                                                                }}
+                                                                className="bg-white hover:bg-slate-50 border border-orange-200 text-slate-700 px-2 py-0.5 rounded transition-colors"
+                                                            >
+                                                                דחה
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => {
+                                                            const dateInput = document.getElementById('follow-up-date-input') as HTMLInputElement;
+                                                            if (dateInput) {
+                                                                dateInput.showPicker?.();
+                                                                dateInput.focus();
+                                                            }
+                                                        }}
+                                                        className={clsx(
+                                                            "p-1.5 rounded-lg transition-colors",
+                                                            followUpDate 
+                                                                ? "text-blue-500 bg-blue-50 hover:bg-blue-100" 
+                                                                : "text-slate-400 hover:text-blue-500 hover:bg-slate-100"
+                                                        )}
+                                                        title={followUpDate ? `תזכורת: ${followUpDate}` : "הוסף תאריך פולו-אפ"}
+                                                    >
+                                                        <Bell size={16} />
+                                                    </button>
+                                                    <input
+                                                        id="follow-up-date-input"
+                                                        type="date"
+                                                        value={followUpDate}
+                                                        onChange={(e) => setFollowUpDate(e.target.value)}
+                                                        min={new Date().toISOString().split('T')[0]}
+                                                        className={clsx(
+                                                            "text-[10px] font-medium border rounded-lg px-1.5 py-1 focus:ring-1 focus:ring-blue-400 outline-none transition-all w-[105px]",
+                                                            followUpDate 
+                                                                ? "border-blue-200 bg-blue-50 text-blue-700" 
+                                                                : "border-slate-200 text-slate-400"
+                                                        )}
+                                                    />
+                                                    {followUpDate && (
+                                                        <button 
+                                                            onClick={() => setFollowUpDate('')} 
+                                                            className="text-slate-300 hover:text-red-400 transition-colors"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                     <button
                                         onClick={handleAddNote}
@@ -1143,7 +1179,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 <p className="text-center text-slate-400 text-sm py-8">אין עדכונים עדיין</p>
                             ) : (
                                 notes.map((note) => (
-                                    <div key={note.id} className="group bg-white border border-slate-100 rounded-xl p-4 shadow-sm relative hover:border-slate-200 transition-all">
+                                    <div key={note.id} id={`note-${note.id}`} className="group bg-white border border-slate-100 rounded-xl p-4 shadow-sm relative hover:border-slate-200 transition-all">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-400 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold">
