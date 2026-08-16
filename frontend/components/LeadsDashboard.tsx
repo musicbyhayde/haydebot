@@ -1263,6 +1263,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                     leads={leads}
                     onClose={() => setShowPendingModal(false)}
                     onRefresh={handleRefreshFollowUps}
+                    onOpenDetails={onOpenDetails}
                 />
             )}
         </div>

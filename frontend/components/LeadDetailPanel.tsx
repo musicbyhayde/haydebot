@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle } from 'lucide-react';
 import { api, CalendarEventPayload } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
@@ -72,6 +72,12 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         newStatus: string;
         taskCount: number;
     } | null>(null);
+
+    // Follow-up Actions State
+    const [actionNote, setActionNote] = useState<{ noteId: string, action: 'done' | 'postpone' } | null>(null);
+    const [newSummary, setNewSummary] = useState('');
+    const [postponeDate, setPostponeDate] = useState('');
+    const [actionSubmitting, setActionSubmitting] = useState<string | null>(null);
 
     // Finance Tab State
     const [finances, setFinances] = useState<FinanceEntry[]>([]);
@@ -307,6 +313,50 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         } catch (e) {
             console.error(e);
             error('שגיאה במחיקת ההערה');
+        }
+    };
+
+    const handleMarkFollowUpDone = async (noteId: string) => {
+        if (!newSummary.trim()) {
+            error('אנא הזן סיכום קצר');
+            return;
+        }
+        setActionSubmitting(noteId);
+        try {
+            await api.updateNote(noteId, { follow_up_completed: true });
+            await api.createNote(lead.id, {
+                content: newSummary,
+                author: currentUserName || 'מערכת (פולו-אפ)',
+            });
+            success('הפולו-אפ טופל בהצלחה');
+            setActionNote(null);
+            setNewSummary('');
+            fetchNotes();
+        } catch (err) {
+            console.error(err);
+            error('שגיאה בעדכון');
+        } finally {
+            setActionSubmitting(null);
+        }
+    };
+
+    const handlePostponeFollowUp = async (noteId: string) => {
+        if (!postponeDate) {
+            error('אנא בחר תאריך חדש');
+            return;
+        }
+        setActionSubmitting(noteId);
+        try {
+            await api.updateNote(noteId, { follow_up_date: postponeDate });
+            success('הפולו-אפ נדחה בהצלחה');
+            setActionNote(null);
+            setPostponeDate('');
+            fetchNotes();
+        } catch (err) {
+            console.error(err);
+            error('שגיאה בדחיית הפולו-אפ');
+        } finally {
+            setActionSubmitting(null);
         }
     };
 
@@ -1211,6 +1261,84 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     );
                                                 })()}
                                             </>
+                                        )}
+
+                                        {/* Pending Follow Up Actions */}
+                                        {note.fields.Follow_Up_Date && !note.fields.Follow_Up_Completed && (
+                                            <div className="mt-4 pt-3 border-t border-slate-100">
+                                                {actionNote?.noteId !== note.id && (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => setActionNote({ noteId: note.id, action: 'done' })}
+                                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded-lg font-bold transition-colors flex items-center justify-center gap-1"
+                                                        >
+                                                            <CheckCircle size={14} /> טופל
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setActionNote({ noteId: note.id, action: 'postpone' })}
+                                                            className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs py-2 rounded-lg font-bold transition-colors flex items-center justify-center gap-1"
+                                                        >
+                                                            <Calendar size={14} /> דחה פולו-אפ
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                
+                                                {actionNote?.noteId === note.id && actionNote.action === 'done' && (
+                                                    <div className="bg-white p-3 rounded-lg border border-green-200 animate-in slide-in-from-top-2">
+                                                        <label className="block text-xs font-bold text-slate-700 mb-1">סיכום טיפול / שיחה:</label>
+                                                        <textarea 
+                                                            className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-green-500 outline-none mb-2 resize-none"
+                                                            rows={3}
+                                                            value={newSummary}
+                                                            onChange={e => setNewSummary(e.target.value)}
+                                                            placeholder="מה קרה בפולו-אפ?"
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <button 
+                                                                onClick={() => handleMarkFollowUpDone(note.id)}
+                                                                disabled={actionSubmitting === note.id}
+                                                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex-1"
+                                                            >
+                                                                {actionSubmitting === note.id ? 'שומר...' : 'שמור סיכום וסגור'}
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => { setActionNote(null); setNewSummary(''); }}
+                                                                className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                                            >
+                                                                ביטול
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {actionNote?.noteId === note.id && actionNote.action === 'postpone' && (
+                                                    <div className="bg-white p-3 rounded-lg border border-blue-200 animate-in slide-in-from-top-2">
+                                                        <label className="block text-xs font-bold text-slate-700 mb-1">תאריך פולו-אפ חדש:</label>
+                                                        <input 
+                                                            type="date"
+                                                            className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none mb-2"
+                                                            value={postponeDate}
+                                                            min={new Date().toISOString().split('T')[0]}
+                                                            onChange={e => setPostponeDate(e.target.value)}
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <button 
+                                                                onClick={() => handlePostponeFollowUp(note.id)}
+                                                                disabled={actionSubmitting === note.id}
+                                                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex-1"
+                                                            >
+                                                                {actionSubmitting === note.id ? 'שומר...' : 'שמור תאריך'}
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => { setActionNote(null); setPostponeDate(''); }}
+                                                                className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                                            >
+                                                                ביטול
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 ))

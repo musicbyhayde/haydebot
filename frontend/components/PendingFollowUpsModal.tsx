@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Lead, Note } from '@/types';
 import { api } from '@/lib/api';
-import { X, Calendar, CheckCircle } from 'lucide-react';
+import { X, Calendar, CheckCircle, ExternalLink } from 'lucide-react';
 import { useToast } from '@/components/ui';
 
 interface PendingFollowUpsModalProps {
@@ -9,9 +9,10 @@ interface PendingFollowUpsModalProps {
     leads: Lead[];
     onClose: () => void;
     onRefresh: () => void;
+    onOpenDetails?: (leadId: string) => void;
 }
 
-export default function PendingFollowUpsModal({ pendingNotes, leads, onClose, onRefresh }: PendingFollowUpsModalProps) {
+export default function PendingFollowUpsModal({ pendingNotes, leads, onClose, onRefresh, onOpenDetails }: PendingFollowUpsModalProps) {
     const { success, error } = useToast();
     const [submitting, setSubmitting] = useState<string | null>(null);
     const [actionNote, setActionNote] = useState<{ noteId: string, leadId: string, action: 'done' | 'postpone' } | null>(null);
@@ -101,6 +102,16 @@ export default function PendingFollowUpsModal({ pendingNotes, leads, onClose, on
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <h3 className="font-bold text-slate-800 text-lg">{lead.fields.Name || 'ללא שם'}</h3>
+                                                <button
+                                                    onClick={() => {
+                                                        onOpenDetails?.(lead.id);
+                                                        onClose();
+                                                    }}
+                                                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium transition-colors flex items-center gap-1 ml-2"
+                                                    title="פתח תיק ליד"
+                                                >
+                                                    <ExternalLink size={12} /> תיק ליד
+                                                </button>
                                                 {lead.fields.Owner && (
                                                     <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-100">
                                                         מוביל: {lead.fields.Owner}
