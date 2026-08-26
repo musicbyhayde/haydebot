@@ -1,6 +1,6 @@
 from supabase import create_client, Client
 from app.core.config import get_settings
-from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate, VideoCreate, VideoUpdate
+from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate, VideoCreate, VideoUpdate, BusinessContactCreate, BusinessContactUpdate
 from typing import List, Optional
 import uuid
 from datetime import datetime, timedelta
@@ -636,6 +636,51 @@ class SupabaseService:
         except Exception as e:
             print(f"Critical Error deleting video {video_id}: {e}")
             raise e
+
+    # ─── Business Contacts CRUD ───────────────────────────
+
+    def get_business_contacts(self) -> List[dict]:
+        """Fetch all business contacts."""
+        if not self.client: return []
+        response = self.client.table("business_contacts").select("*").order("created_at", desc=True).execute()
+        return self._to_airtable_list(response.data)
+
+    def create_business_contact(self, contact: "BusinessContactCreate") -> dict:
+        """Create a new business contact."""
+        if not self.client: return {}
+        data = contact.model_dump(exclude_none=True, by_alias=True, mode='json')
+        # Map to lowercase DB columns
+        db_data = {
+            "id": self._generate_id(),
+            "name": data.get("Name"),
+            "phone": data.get("Phone"),
+            "role": data.get("Role"),
+            "company": data.get("Company"),
+            "summary": data.get("Summary"),
+            "lead_id": data.get("Lead_ID")
+        }
+        response = self.client.table("business_contacts").insert(db_data).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def update_business_contact(self, contact_id: str, data: "BusinessContactUpdate") -> dict:
+        """Update an existing business contact."""
+        if not self.client: return {}
+        update_data_raw = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        db_data = {}
+        if "Name" in update_data_raw: db_data["name"] = update_data_raw["Name"]
+        if "Phone" in update_data_raw: db_data["phone"] = update_data_raw["Phone"]
+        if "Role" in update_data_raw: db_data["role"] = update_data_raw["Role"]
+        if "Company" in update_data_raw: db_data["company"] = update_data_raw["Company"]
+        if "Summary" in update_data_raw: db_data["summary"] = update_data_raw["Summary"]
+        if "Lead_ID" in update_data_raw: db_data["lead_id"] = update_data_raw["Lead_ID"]
+        
+        response = self.client.table("business_contacts").update(db_data).eq("id", contact_id).execute()
+        return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def delete_business_contact(self, contact_id: str):
+        """Delete a business contact."""
+        if not self.client: return
+        self.client.table("business_contacts").delete().eq("id", contact_id).execute()
 
     # ─── Compatibility (MockTable) ────────────────────────
 

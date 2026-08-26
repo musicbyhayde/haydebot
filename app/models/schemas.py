@@ -248,3 +248,26 @@ class CalendarEventUpdate(BaseSchema):
     description: Optional[str] = None
     event_date: Optional[str] = None
     team_emails: Optional[List[str]] = None
+
+class BusinessContactBase(BaseSchema):
+    name: str = Field(..., alias="Name")
+    phone: str = Field(..., alias="Phone")
+    role: Optional[str] = Field(None, alias="Role")
+    company: Optional[str] = Field(None, alias="Company")
+    summary: Optional[str] = Field(None, alias="Summary")
+    lead_id: Optional[str] = Field(None, alias="Lead_ID")
+
+class BusinessContactCreate(BusinessContactBase):
+    pass
+
+class BusinessContactUpdate(BaseSchema):
+    name: Optional[str] = Field(None, alias="Name")
+    phone: Optional[str] = Field(None, alias="Phone")
+    role: Optional[str] = Field(None, alias="Role")
+    company: Optional[str] = Field(None, alias="Company")
+    summary: Optional[str] = Field(None, alias="Summary")
+    lead_id: Optional[str] = Field(None, alias="Lead_ID")
+
+class BusinessContactResponse(BusinessContactBase):
+    id: str
+    created_at: Optional[datetime] = Field(None, alias="Created_At")

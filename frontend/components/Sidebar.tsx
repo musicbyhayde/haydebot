@@ -1,5 +1,5 @@
 import { Lead, Musician } from '@/types';
-import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo, BarChart3, Film, LayoutDashboard, Database } from 'lucide-react';
+import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo, BarChart3, Film, LayoutDashboard, Database, Briefcase } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
@@ -11,8 +11,8 @@ interface SidebarProps {
     musicians: Musician[];
     activeId: string | null;
     onSelect: (id: string) => void;
-    currentView: 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos';
-    onViewChange: (view: 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos') => void;
+    currentView: 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos' | 'business-contacts';
+    onViewChange: (view: 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos' | 'business-contacts') => void;
     currentUser?: AppUser | null;
     onSignOut?: () => void;
     unreadStatus?: Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>;
@@ -129,6 +129,17 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                     title={isCollapsed ? "בנק סרטונים" : undefined}
                 >
                     <Film size={18} /> {!isCollapsed && "בנק סרטונים"}
+                </button>
+                <button
+                    onClick={() => onViewChange('business-contacts')}
+                    className={clsx(
+                        "flex items-center rounded-xl text-sm font-bold transition-all",
+                        isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
+                        currentView === 'business-contacts' ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                    title={isCollapsed ? "אנשי קשר עסקיים" : undefined}
+                >
+                    <Briefcase size={18} /> {!isCollapsed && "💼 אנשי קשר עסקיים"}
                 </button>
                 <button
                     onClick={() => onViewChange('finance')}

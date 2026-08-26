@@ -1114,3 +1114,61 @@ async def get_full_database_backup():
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
+
+# ─── Business Contacts ───────────────────────────────
+
+@protected_router.get("/business-contacts")
+async def get_business_contacts():
+    return airtable_service.get_business_contacts()
+
+@protected_router.post("/business-contacts")
+async def create_business_contact(request: Request):
+    body = await request.json()
+    from app.models.schemas import BusinessContactCreate
+    contact = BusinessContactCreate(**body)
+    return airtable_service.create_business_contact(contact)
+
+@protected_router.patch("/business-contacts/{contact_id}")
+async def update_business_contact(contact_id: str, request: Request):
+    body = await request.json()
+    from app.models.schemas import BusinessContactUpdate
+    data = BusinessContactUpdate(**{k: v for k, v in body.items() if v is not None})
+    return airtable_service.update_business_contact(contact_id, data)
+
+@protected_router.delete("/business-contacts/{contact_id}")
+async def delete_business_contact(contact_id: str):
+    airtable_service.delete_business_contact(contact_id)
+    return {"status": "deleted"}
+
+@protected_router.post("/business-contacts/from-lead/{lead_id}")
+async def create_business_contact_from_lead(lead_id: str):
+    # 1. Fetch lead
+    lead = airtable_service.leads_table.get(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+        
+    # 2. Fetch notes
+    notes = airtable_service.get_notes_for_lead(lead_id)
+    notes_text = ""
+    for n in notes:
+        author = n.get("fields", {}).get("Author", "")
+        content = n.get("fields", {}).get("Content", "")
+        date = n.get("fields", {}).get("Created_At", "")
+        notes_text += f"[{date}] {author}: {content}\n"
+        
+    # 3. Generate summary
+    from app.services.ai import ai_service
+    summary = ai_service.summarize_lead_notes(notes_text)
+    
+    # 4. Create contact
+    from app.models.schemas import BusinessContactCreate
+    contact = BusinessContactCreate(
+        Name=lead.get("fields", {}).get("Name", "ללא שם"),
+        Phone=lead.get("fields", {}).get("Phone", ""),
+        Role="מפיק / איש תרבות",
+        Company="",
+        Summary=summary,
+        Lead_ID=lead_id
+    )
+    result = airtable_service.create_business_contact(contact)
+    return result

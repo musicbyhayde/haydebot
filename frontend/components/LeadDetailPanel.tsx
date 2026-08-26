@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle, Briefcase } from 'lucide-react';
 import { api, CalendarEventPayload } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
@@ -118,6 +118,9 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [savingTeam, setSavingTeam] = useState(false);
     const [syncingCalendar, setSyncingCalendar] = useState(false);
     const [teamVersion, setTeamVersion] = useState(0);
+    
+    // Business Contact Creation
+    const [creatingBusinessContact, setCreatingBusinessContact] = useState(false);
 
     useEffect(() => {
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
@@ -654,6 +657,19 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         }
     };
 
+    const handleCreateBusinessContact = async () => {
+        setCreatingBusinessContact(true);
+        try {
+            await api.createBusinessContactFromLead(lead.id);
+            success('איש קשר עסקי נוצר בהצלחה מתוך הליד!');
+        } catch (e) {
+            console.error('Failed to create business contact:', e);
+            error('שגיאה ביצירת איש קשר עסקי מהליד');
+        } finally {
+            setCreatingBusinessContact(false);
+        }
+    };
+
 
     const formatDate = (d: string) => {
         try {
@@ -760,6 +776,15 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 >
                                     <FileText size={12} />
                                     הצעת מחיר
+                                </button>
+                                <button 
+                                    onClick={handleCreateBusinessContact}
+                                    disabled={creatingBusinessContact}
+                                    className="p-1 px-2 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-lg border border-blue-100 hover:bg-blue-100 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                    title="צור איש קשר עסקי מתוך ליד"
+                                >
+                                    <Briefcase size={12} />
+                                    {creatingBusinessContact ? 'מייצר...' : 'שמור איש קשר'}
                                 </button>
                             </h2>
                             {lead.fields.Event_Date && (

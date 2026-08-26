@@ -10,6 +10,7 @@ import MusiciansPage from "@/components/MusiciansPage";
 import AnalyticsPage from "@/components/AnalyticsPage";
 import HistoryPage from "@/components/HistoryPage";
 import VideosPage from "@/components/VideosPage";
+import BusinessContactsPage from "@/components/BusinessContactsPage";
 import AdminDashboard from "@/components/AdminDashboard";
 import LeadDetailPanel from "@/components/LeadDetailPanel";
 import BottomNav from "@/components/BottomNav";
@@ -25,7 +26,7 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos'>('home');
+  const [view, setView] = useState<'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos' | 'business-contacts'>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [unreadStatus, setUnreadStatus] = useState<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>>({});
@@ -220,7 +221,7 @@ export default function Home() {
     );
   }
 
-  const showSidebar = mobileMenuOpen || (view !== 'home' && view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && view !== 'history' && activeId === null);
+  const showSidebar = mobileMenuOpen || (view !== 'home' && view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && view !== 'history' && view !== 'business-contacts' && activeId === null);
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
@@ -320,6 +321,11 @@ export default function Home() {
         ) : view === 'videos' ? (
           <VideosPage
             onMenuClick={() => setMobileMenuOpen(true)}
+          />
+        ) : view === 'business-contacts' ? (
+          <BusinessContactsPage
+            onMenuClick={() => setMobileMenuOpen(true)}
+            currentUser={currentUser}
           />
         ) : (
           <ChatWindow

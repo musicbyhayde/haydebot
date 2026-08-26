@@ -154,3 +154,16 @@ export interface FinanceSummaryItem {
     cash_balance: number;
     bank_balance: number;
 }
+
+export interface BusinessContact {
+    id: string;
+    fields: {
+        Name: string;
+        Phone: string;
+        Role?: string;
+        Company?: string;
+        Summary?: string;
+        Lead_ID?: string;
+        Created_At?: string;
+    };
+}

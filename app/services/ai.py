@@ -81,4 +81,26 @@ class AIService:
             print(f"AI Runtime Error: {e}")
             return {"valid": True, "extracted_value": user_text, "reply": None}
 
+    def summarize_lead_notes(self, notes_text: str) -> str:
+        if not self.enabled:
+            return "אין אפשרות לייצר סיכום אוטומטי - המודל אינו פעיל."
+            
+        system_prompt = """
+        אתה עוזר AI במערכת ניהול לידים. המשתמש מבקש ליצור "איש קשר עסקי" (מפיק / איש תרבות) מתוך הליד.
+        המשימה שלך: לקרוא את רשימת ההערות והתקשורת עם הליד, ולכתוב פסקת סיכום קצרה (2-3 משפטים) בעברית שמתארת את ההתקשרות עם האדם הזה.
+        אל תמציא פרטים שלא קיימים. התמקד במהותו של הקשר ובסטטוס שלו (למשל: "מפיק שדיברנו איתו באוקטובר 2023 לגבי הופעה, סגרנו בסוף הופעה בסכום X / התקשורת נפסקה"). 
+        אם אין מספיק מידע, תכתוב: "אין מספיק מידע בהערות הליד כדי לייצר סיכום."
+        החזר רק את טקסט הסיכום, ללא שום טקסט מקדים או עוטף.
+        """
+        
+        try:
+            print(f"DEBUG: Calling Gemini API for summarization")
+            response = self.client.generate_content(
+                f"{system_prompt}\n\nהערות:\n{notes_text}",
+            )
+            return response.text.strip()
+        except Exception as e:
+            print(f"AI Runtime Error during summarization: {e}")
+            return "שגיאה ביצירת הסיכום האוטומטי."
+
 ai_service = AIService()

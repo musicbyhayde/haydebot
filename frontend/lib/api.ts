@@ -1,4 +1,4 @@
-import { Lead, Message, Note, FinanceEntry, Task, Activity, Musician, Video, MusicianStats, Analytics, FinanceSummaryItem } from '@/types';
+import { Lead, Message, Note, FinanceEntry, Task, Activity, Musician, Video, MusicianStats, Analytics, FinanceSummaryItem, BusinessContact } from '@/types';
 
 export interface CalendarEventPayload {
     summary?: string;
@@ -386,6 +386,48 @@ export const api = {
             method: 'POST',
         });
         if (!res.ok) throw new Error('Failed to sync RSVPs');
+        return res.json();
+    },
+    // --- Business Contacts ---
+    async getBusinessContacts(): Promise<BusinessContact[]> {
+        const res = await fetchWithAuth(`${API_Base}/business-contacts`);
+        if (!res.ok) throw new Error('Failed to fetch business contacts');
+        return res.json();
+    },
+
+    async createBusinessContact(data: Partial<BusinessContact['fields']>): Promise<BusinessContact> {
+        const res = await fetchWithAuth(`${API_Base}/business-contacts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to create business contact');
+        return res.json();
+    },
+
+    async updateBusinessContact(id: string, data: Partial<BusinessContact['fields']>): Promise<BusinessContact> {
+        const res = await fetchWithAuth(`${API_Base}/business-contacts/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to update business contact');
+        return res.json();
+    },
+
+    async deleteBusinessContact(id: string): Promise<void> {
+        const res = await fetchWithAuth(`${API_Base}/business-contacts/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete business contact');
+    },
+
+    async createBusinessContactFromLead(leadId: string): Promise<BusinessContact> {
+        const res = await fetchWithAuth(`${API_Base}/business-contacts/from-lead/${leadId}`, {
+            method: 'POST',
+        });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Failed to create business contact from lead');
+        }
         return res.json();
     },
     
