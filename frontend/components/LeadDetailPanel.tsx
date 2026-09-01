@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle, Briefcase } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle, Briefcase, AlertTriangle } from 'lucide-react';
 import { api, CalendarEventPayload } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
@@ -118,6 +118,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const [savingTeam, setSavingTeam] = useState(false);
     const [syncingCalendar, setSyncingCalendar] = useState(false);
     const [teamVersion, setTeamVersion] = useState(0);
+    const [conflictingMusicians, setConflictingMusicians] = useState<Record<string, string>>({});
     
     // Business Contact Creation
     const [creatingBusinessContact, setCreatingBusinessContact] = useState(false);
@@ -196,6 +197,19 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             const data = await api.getMusicians();
             // Filter to include both POOL and REFERRER musicians
             setAvailableTeamMusicians(data.filter(m => (m.fields.Type === 'POOL' || m.fields.Type === 'REFERRER') && m.fields.Is_Active !== false));
+            
+            if (lead.fields.Event_Date) {
+                const leads = await api.getLeads();
+                const conflicts: Record<string, string> = {};
+                leads.forEach(l => {
+                    if (l.id !== lead.id && l.fields.Event_Date === lead.fields.Event_Date) {
+                        l.fields.Musician_Team?.forEach(mId => {
+                            conflicts[mId] = l.fields.Name || 'אירוע אחר';
+                        });
+                    }
+                });
+                setConflictingMusicians(conflicts);
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -1604,9 +1618,14 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                             <option value="">בחר נגן להוספה...</option>
                                             {availableTeamMusicians
                                                 .filter(m => !(lead.fields.Musician_Team || []).includes(m.id))
-                                                .map(m => (
-                                                    <option key={m.id} value={m.id}>{m.fields.Name} ({m.fields.Phone})</option>
-                                                ))
+                                                .map(m => {
+                                                    const conflict = conflictingMusicians[m.id];
+                                                    return (
+                                                        <option key={m.id} value={m.id}>
+                                                            {m.fields.Name} ({m.fields.Phone}) {conflict ? `⚠️ תפוס ב-${conflict}` : ''}
+                                                        </option>
+                                                    );
+                                                })
                                             }
                                         </select>
                                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
@@ -1648,6 +1667,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <span className="text-sm font-bold text-slate-800 truncate">{m.fields.Name}</span>
                                                         <span className="text-[10px] text-slate-400 font-mono whitespace-nowrap">{m.fields.Phone}</span>
+                                                        {conflictingMusicians[mId] && (
+                                                            <span title={`תפוס ב-${conflictingMusicians[mId]}`} className="text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded text-[9px] font-bold border border-amber-200 shrink-0">
+                                                                ⚠️ תפוס באירוע אחר
+                                                            </span>
+                                                        )}
                                                     </div>
 
                                                     {/* Left side: RSVP + Delete */}

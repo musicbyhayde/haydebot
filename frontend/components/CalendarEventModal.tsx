@@ -158,8 +158,8 @@ export default function CalendarEventModal({
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            rows={2}
-                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none"
+                            rows={5}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-y min-h-[100px]"
                         />
                         <p className="text-[9px] text-slate-400 font-medium italic">הנגנים יראו את התיאור הזה ביומן שלהם.</p>
                     </div>
