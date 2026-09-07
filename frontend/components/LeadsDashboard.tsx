@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Lead, Task } from '@/types';
-import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, ChevronUp, ChevronsUpDown, Search, X, Filter } from 'lucide-react';
+import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, ChevronUp, ChevronsUpDown, Search, X, Filter, MessageCircle } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import AddLeadModal from './AddLeadModal';
 import LeadDetailPanel from './LeadDetailPanel';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
-import { toDisplayPhone, normalizeEventDate, parseDateToSortable } from '@/lib/formatters';
+import { toDisplayPhone, normalizeEventDate, parseDateToSortable, toDbPhone } from '@/lib/formatters';
 import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
 import { Note } from '@/types';
@@ -460,7 +460,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         תקציב / סיבה {localSorts[tableKey]?.column === 'budget' ? (localSorts[tableKey]?.order === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ChevronsUpDown size={12} className="text-slate-300"/>}
                                     </button>
                                 </div>
-                                <div className="w-12 text-center flex-shrink-0">פרטים</div>
+                                <div className="w-16 text-center flex-shrink-0">פרטים</div>
                             </div>
 
                             {/* Rows */}
@@ -496,7 +496,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     <div className="w-32 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Closing_Amount ? `₪${lead.fields.Closing_Amount.toLocaleString()}` : (lead.fields.Lost_Reason || '—')}
                                     </div>
-                                    <div className="w-12 flex justify-center">
+                                    <div className="w-16 flex justify-center gap-2">
+                                        <button onClick={() => window.open(`https://wa.me/${toDbPhone(lead.fields.Phone)}`)} className="text-green-500 hover:text-green-600 transition-colors" title="שלח ווטסאפ">
+                                            <MessageCircle size={14} />
+                                        </button>
                                         <button onClick={() => onOpenDetails?.(lead.id)} className="text-slate-400 hover:text-blue-600 transition-colors" title="פרטים">
                                             <FileText size={14} />
                                         </button>
@@ -591,7 +594,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                              <ChevronsUpDown size={12} className="text-slate-300" />}
                                         </button>
                                     </div>
-                                    <div className="w-28 text-center">פעולות</div>
+                                    <div className="w-32 text-center">פעולות</div>
                                 </div>
                                 {/* Rows */}
                                 {items.map(lead => {
@@ -646,7 +649,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                 {badge.label}
                                             </span>
                                         </div>
-                                        <div className="w-28 flex justify-center gap-1">
+                                        <div className="w-32 flex justify-center gap-1 items-center">
+                                            <button onClick={() => window.open(`https://wa.me/${toDbPhone(lead.fields.Phone)}`)} className="text-green-500 hover:text-green-600 transition-colors p-1" title="שלח ווטסאפ">
+                                                <MessageCircle size={14} />
+                                            </button>
                                             {/* ממתין לאישור: show "confirm closed" + "cancel" */}
                                             {effectiveStatus === 'ממתין לאישור' && (
                                                 <>
@@ -1130,7 +1136,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
                                         ) : <span className="text-slate-300">—</span>}
                                     </div>
-                                    <div className="w-24 md:w-28 shrink-0 flex items-center justify-end gap-1 md:gap-1.5">
+                                    <div className="w-32 shrink-0 flex items-center justify-end gap-1 md:gap-1.5">
+                                        <button onClick={() => window.open(`https://wa.me/${toDbPhone(lead.fields.Phone)}`)} className="text-green-500 hover:text-green-600 transition-colors p-1" title="שלח ווטסאפ">
+                                            <MessageCircle size={14} />
+                                        </button>
                                         <button
                                             onClick={() => onOpenDetails?.(lead.id)}
                                             className="text-slate-400 hover:text-blue-600 transition-colors p-1"

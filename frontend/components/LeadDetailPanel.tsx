@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle, Briefcase, AlertTriangle } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle, Briefcase, AlertTriangle, MessageCircle } from 'lucide-react';
 import { api, CalendarEventPayload } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
@@ -775,6 +775,14 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         <div className="flex items-center gap-2.5 flex-wrap">
                             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                 {lead.fields.Name || lead.fields.Phone}
+                                <button 
+                                    onClick={() => window.open(`https://wa.me/${toDbPhone(lead.fields.Phone)}`)}
+                                    className="p-1 px-2 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center gap-1.5"
+                                    title="שלח הודעת ווטסאפ באפליקציה הפרטית"
+                                >
+                                    <MessageCircle size={12} />
+                                    ווטסאפ - פרטי
+                                </button>
                                 <button 
                                     onClick={() => setIsIntroModalOpen(true)}
                                     className="p-1 px-2 bg-green-50 text-green-700 text-[10px] font-bold rounded-lg border border-green-100 hover:bg-green-100 transition-all flex items-center gap-1.5"
@@ -1973,6 +1981,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     onClose={() => setIsIntroModalOpen(false)}
                     leadId={lead.id}
                     initialName={lead.fields.Name || ''}
+                    leadPhone={lead.fields.Phone}
                 />
                 
                 {/* Proposal Modal */}

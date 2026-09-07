@@ -5,6 +5,7 @@ import { X, Send, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
 import { Video } from '@/types';
+import { toDbPhone } from '@/lib/formatters';
 import { useToast } from '@/components/ui';
 
 interface SendMaterialsModalProps {
@@ -12,9 +13,10 @@ interface SendMaterialsModalProps {
     onClose: () => void;
     leadId: string;
     initialName: string;
+    leadPhone?: string;
 }
 
-export default function SendMaterialsModal({ isOpen, onClose, leadId, initialName }: SendMaterialsModalProps) {
+export default function SendMaterialsModal({ isOpen, onClose, leadId, initialName, leadPhone }: SendMaterialsModalProps) {
     const { error, success } = useToast();
     const [introCustomName, setIntroCustomName] = useState(initialName);
     const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
@@ -47,21 +49,27 @@ export default function SendMaterialsModal({ isOpen, onClose, leadId, initialNam
             error('אנא הזן שם ללקוח');
             return;
         }
-        setSending(true);
-        try {
-            await api.sendIntro(leadId, {
-                custom_name: introCustomName,
-                video_urls: selectedVideos
-            });
-            success('החומרים נשלחו בהצלחה בווטסאפ! ✨');
-            onClose();
-            setSelectedVideos([]);
-        } catch (e) {
-            console.error('Error sending materials:', e);
-            error('שגיאה בשליחת החומרים. וודא שהתבנית מאושרת במטא.');
-        } finally {
-            setSending(false);
-        }
+        
+        let text = `היי ${introCustomName}, מה שלומך?\nמצורפים החומרים שביקשת:\n\n`;
+        
+        selectedVideos.forEach(url => {
+            const v = videoOptions.find(opt => opt.fields.URL === url);
+            if (v) {
+                text += `${v.fields.Label}:\n${url}\n\n`;
+            } else {
+                text += `${url}\n\n`;
+            }
+        });
+        
+        text += 'נשמח לשמוע ממך בהקדם! צוות היידה 🎸';
+
+        const encodedText = encodeURIComponent(text);
+        const waUrl = `https://wa.me/${toDbPhone(leadPhone)}?text=${encodedText}`;
+        
+        window.open(waUrl);
+        success('הועברת לווטסאפ לשליחת החומרים!');
+        onClose();
+        setSelectedVideos([]);
     };
 
     if (!isOpen) return null;
