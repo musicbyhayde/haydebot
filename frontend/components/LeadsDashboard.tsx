@@ -1305,7 +1305,6 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                     currentUserName={currentUser?.displayName || ''}
                     onClose={() => setTransferModalLead(null)}
                     onTransferred={(updatedLead) => {
-                        setLeads(prev => prev.map(l => l.id === updatedLead.id ? { ...l, fields: { ...l.fields, Owner: updatedLead.fields.Owner } } : l));
                         setTransferModalLead(null);
                         onRefresh?.();
                     }}
