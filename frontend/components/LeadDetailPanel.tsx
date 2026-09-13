@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle, Briefcase, AlertTriangle, MessageCircle } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle, Briefcase, AlertTriangle, MessageCircle, ArrowLeftRight, UserCheck, UserMinus } from 'lucide-react';
 import { api, CalendarEventPayload } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
 import SendMaterialsModal from './SendMaterialsModal';
 import CalendarEventModal from './CalendarEventModal';
 import ProposalModal from './ProposalModal';
+import TransferLeadModal from './TransferLeadModal';
+import { OWNERS, OWNER_COLORS } from '@/lib/constants';
 import { toDisplayPhone, toDbPhone, formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
 import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
@@ -122,6 +124,129 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     
     // Business Contact Creation
     const [creatingBusinessContact, setCreatingBusinessContact] = useState(false);
+
+    // Lead Transfer & Tenure State
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [claimingOwnership, setClaimingOwnership] = useState(false);
+    const [selectedTenureFilter, setSelectedTenureFilter] = useState<string>('all');
+
+    const handleTransferred = (updatedLead: Lead, newNote?: Note) => {
+        Object.assign(lead.fields, updatedLead.fields);
+        setEditData(prev => ({ ...prev, Owner: updatedLead.fields.Owner }));
+        if (newNote) {
+            setNotes(prev => [newNote, ...prev.filter(n => n.id !== newNote.id)]);
+        } else {
+            fetchNotes();
+        }
+        onStatusChange(lead.id, lead.fields.Status);
+    };
+
+    const handleClaimOwnership = () => {
+        setIsTransferModalOpen(true);
+    };
+
+    const parseTransferNote = (content: string, author: string, noteId: string, createdAt: string) => {
+        if (!content) return null;
+        if (content.startsWith('🔄 העברת מוביל:')) {
+            const lines = content.split('\n');
+            const header = lines[0];
+            const match = header.match(/מ-(.*?)\s+ל-(.*)$/);
+            const from = match ? match[1].trim() : undefined;
+            const to = match ? match[2].trim() : undefined;
+            let handoverNote: string | undefined;
+            const noteIdx = content.indexOf('💬 הערת העברה:');
+            if (noteIdx !== -1) {
+                handoverNote = content.substring(noteIdx + '💬 הערת העברה:'.length).trim();
+            }
+            return {
+                noteId,
+                date: new Date(createdAt).getTime(),
+                from,
+                to,
+                actor: author,
+                handoverNote,
+                type: 'transfer' as const,
+            };
+        } else if (content.startsWith('👤 שיוך מוביל:')) {
+            const lines = content.split('\n');
+            const header = lines[0];
+            const match = header.match(/שיוך מוביל:\s*(.*?)\s+הוגדר/);
+            const to = match ? match[1].trim() : undefined;
+            let handoverNote: string | undefined;
+            const noteIdx = content.indexOf('💬 הערת העברה:');
+            if (noteIdx !== -1) {
+                handoverNote = content.substring(noteIdx + '💬 הערת העברה:'.length).trim();
+            }
+            return {
+                noteId,
+                date: new Date(createdAt).getTime(),
+                to,
+                actor: author,
+                handoverNote,
+                type: 'assignment' as const,
+            };
+        } else if (content.startsWith('⚠️ הסרת מוביל:')) {
+            return {
+                noteId,
+                date: new Date(createdAt).getTime(),
+                actor: author,
+                type: 'removal' as const,
+            };
+        }
+        return null;
+    };
+
+    const transferEvents = useMemo(() => {
+        return notes
+            .map(n => parseTransferNote(n.fields.Content, n.fields.Author, n.id, n.fields.Created_At))
+            .filter((e): e is NonNullable<ReturnType<typeof parseTransferNote>> => e !== null)
+            .sort((a, b) => a.date - b.date);
+    }, [notes]);
+
+    const getOwnerAtTimestamp = (timestamp: string): string => {
+        const time = new Date(timestamp).getTime();
+        let current: string | undefined = undefined;
+        for (const ev of transferEvents) {
+            if (ev.date <= time) {
+                current = ev.to || '';
+            } else {
+                break;
+            }
+        }
+        if (current !== undefined) {
+            return current || 'ללא מוביל';
+        }
+        if (transferEvents.length > 0 && transferEvents[0].from) {
+            return transferEvents[0].from;
+        }
+        return lead.fields.Owner || 'ללא מוביל';
+    };
+
+    const allLeadTenureOwners = useMemo(() => {
+        const ownersSet = new Set<string>();
+        if (lead.fields.Owner) ownersSet.add(lead.fields.Owner);
+        for (const ev of transferEvents) {
+            if (ev.from && ev.from !== 'ללא מוביל') ownersSet.add(ev.from);
+            if (ev.to && ev.to !== 'ללא מוביל') ownersSet.add(ev.to);
+        }
+        for (const n of notes) {
+            const o = getOwnerAtTimestamp(n.fields.Created_At);
+            if (o && o !== 'ללא מוביל') ownersSet.add(o);
+        }
+        return Array.from(ownersSet);
+    }, [lead.fields.Owner, transferEvents, notes]);
+
+    const filteredNotes = useMemo(() => {
+        if (selectedTenureFilter === 'all') return notes;
+        return notes.filter(n => {
+            const owner = getOwnerAtTimestamp(n.fields.Created_At);
+            return owner === selectedTenureFilter;
+        });
+    }, [notes, selectedTenureFilter, transferEvents]);
+
+    const getNotesCountForOwner = (owner: string) => {
+        return notes.filter(n => getOwnerAtTimestamp(n.fields.Created_At) === owner).length;
+    };
 
     useEffect(() => {
         setClosingAmount(lead.fields.Closing_Amount?.toString() || '');
@@ -817,6 +942,53 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             )}
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">{toDisplayPhone(lead.fields.Phone)} · {lead.fields.Service || '—'}</p>
+
+                        {/* Owner Badge & Quick Transfer */}
+                        <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-slate-100 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">מוביל:</span>
+                                {lead.fields.Owner ? (
+                                    <span className={clsx(
+                                        "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold shadow-2xs",
+                                        OWNER_COLORS[lead.fields.Owner] || 'bg-slate-100 text-slate-700'
+                                    )}>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                        {lead.fields.Owner}
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center text-[11px] text-slate-400 border border-dashed border-slate-300 px-2 py-0.5 rounded-md">
+                                        ללא מוביל
+                                    </span>
+                                )}
+                            </div>
+
+                            {lead.fields.Owner ? (
+                                <button
+                                    onClick={() => setIsTransferModalOpen(true)}
+                                    className="p-1 px-2 text-[10px] font-bold text-slate-600 hover:text-blue-700 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-lg transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
+                                    title="העבר טיפול בליד למוביל אחר עם הערת העברה"
+                                >
+                                    <ArrowLeftRight size={11} className="text-blue-500" /> העבר טיפול
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={handleClaimOwnership}
+                                        disabled={claimingOwnership}
+                                        className="p-1 px-2.5 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                        title="קח בעלות על הליד"
+                                    >
+                                        <UserCheck size={12} /> {claimingOwnership ? 'משייך...' : `שייך אליי (${currentUserName || 'אילן'})`}
+                                    </button>
+                                    <button
+                                        onClick={() => setIsTransferModalOpen(true)}
+                                        className="p-1 px-2 text-[10px] font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all cursor-pointer"
+                                    >
+                                        בחר מוביל...
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="flex items-center gap-2 relative">
                         <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
@@ -1221,11 +1393,137 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 </div>
                             </div>
 
+                            {/* Owner Tenure Filter Bar */}
+                            {allLeadTenureOwners.length > 1 && (
+                                <div className="flex items-center gap-1.5 p-2 bg-slate-50 border border-slate-200/80 rounded-xl overflow-x-auto text-xs">
+                                    <span className="text-[10px] font-bold text-slate-500 shrink-0 mr-1">סינון לפי תקופה:</span>
+                                    <button
+                                        onClick={() => setSelectedTenureFilter('all')}
+                                        className={clsx(
+                                            "px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer",
+                                            selectedTenureFilter === 'all' 
+                                                ? "bg-slate-800 text-white shadow-2xs" 
+                                                : "bg-white text-slate-600 hover:bg-slate-200/60 border border-slate-200"
+                                        )}
+                                    >
+                                        כל העדכונים ({notes.length})
+                                    </button>
+                                    {allLeadTenureOwners.map(owner => {
+                                        const count = getNotesCountForOwner(owner);
+                                        const isSelected = selectedTenureFilter === owner;
+                                        const colorClass = OWNER_COLORS[owner] || 'bg-slate-200 text-slate-700';
+                                        return (
+                                            <button
+                                                key={owner}
+                                                onClick={() => setSelectedTenureFilter(owner)}
+                                                className={clsx(
+                                                    "px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer",
+                                                    isSelected
+                                                        ? `${colorClass} ring-2 ring-current shadow-2xs`
+                                                        : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                                                )}
+                                            >
+                                                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                                תקופת {owner} ({count})
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
                             {/* Notes Feed */}
-                            {notes.length === 0 ? (
-                                <p className="text-center text-slate-400 text-sm py-8">אין עדכונים עדיין</p>
+                            {filteredNotes.length === 0 ? (
+                                <p className="text-center text-slate-400 text-sm py-8">
+                                    {selectedTenureFilter !== 'all' ? `אין עדכונים בתקופת ${selectedTenureFilter}` : 'אין עדכונים עדיין'}
+                                </p>
                             ) : (
-                                notes.map((note) => (
+                                filteredNotes.map((note) => {
+                                    const transferInfo = parseTransferNote(note.fields.Content, note.fields.Author, note.id, note.fields.Created_At);
+
+                                    if (transferInfo) {
+                                        return (
+                                            <div key={note.id} id={`note-${note.id}`} className="group relative rounded-2xl border-2 border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/30 p-4 shadow-xs overflow-hidden transition-all hover:border-indigo-200">
+                                                {/* Top Accent Gradient Bar */}
+                                                <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+                                                
+                                                <div className="flex items-center justify-between mb-3 pt-1">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shadow-2xs">
+                                                            <ArrowLeftRight size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-xs font-bold text-indigo-950">
+                                                                    {transferInfo.type === 'transfer' ? 'העברת טיפול בליד' : transferInfo.type === 'assignment' ? 'שיוך מוביל ליד' : 'הסרת מוביל'}
+                                                                </span>
+                                                                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-700">
+                                                                    ציון דרך
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                                                <Clock size={10} /> {formatDate(note.fields.Created_At)} · בוצע ע"י {note.fields.Author}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Delete button on hover */}
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button 
+                                                            onClick={() => handleDeleteNote(note.id)}
+                                                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                                                            title="מחק"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Visual Transfer Bar */}
+                                                {transferInfo.type === 'transfer' && transferInfo.from && transferInfo.to && (
+                                                    <div className="flex items-center justify-center gap-3 py-2 px-4 bg-white/90 border border-indigo-100/90 rounded-xl mb-3 shadow-2xs">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[10px] text-slate-400 font-bold">מ:</span>
+                                                            <span className={clsx("px-2.5 py-0.5 rounded-lg text-xs font-bold shadow-2xs", OWNER_COLORS[transferInfo.from] || 'bg-slate-100 text-slate-700')}>
+                                                                {transferInfo.from}
+                                                            </span>
+                                                        </div>
+                                                        <ArrowLeftRight size={14} className="text-indigo-400 shrink-0" />
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[10px] text-slate-400 font-bold">אל:</span>
+                                                            <span className={clsx("px-2.5 py-0.5 rounded-lg text-xs font-bold shadow-2xs", OWNER_COLORS[transferInfo.to] || 'bg-slate-100 text-slate-700')}>
+                                                                {transferInfo.to}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {transferInfo.type === 'assignment' && transferInfo.to && (
+                                                    <div className="flex items-center justify-center gap-2 py-2 px-4 bg-white/90 border border-indigo-100/90 rounded-xl mb-3 shadow-2xs text-xs font-bold text-slate-700">
+                                                        <span>מוביל הליד שויך ל:</span>
+                                                        <span className={clsx("px-2.5 py-0.5 rounded-lg text-xs font-bold shadow-2xs", OWNER_COLORS[transferInfo.to] || 'bg-slate-100 text-slate-700')}>
+                                                            {transferInfo.to}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {/* Handover Note Callout */}
+                                                {transferInfo.handoverNote && (
+                                                    <div className="bg-white/90 p-3 rounded-xl border border-indigo-100 shadow-2xs">
+                                                        <span className="block text-[10px] font-bold text-indigo-900 mb-1">
+                                                            💬 הערת העברה ודגשים:
+                                                        </span>
+                                                        <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                                            {transferInfo.handoverNote}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
+                                    const noteOwner = getOwnerAtTimestamp(note.fields.Created_At);
+
+                                    return (
                                     <div key={note.id} id={`note-${note.id}`} className="group bg-white border border-slate-100 rounded-xl p-4 shadow-sm relative hover:border-slate-200 transition-all">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">
@@ -1234,9 +1532,21 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-slate-700">{note.fields.Author}</span>
-                                                    <span className="text-[9px] text-slate-400 flex items-center gap-1">
-                                                        <Clock size={8} /> {formatDate(note.fields.Created_At)}
-                                                    </span>
+                                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                                        <span className="text-[9px] text-slate-400 flex items-center gap-1">
+                                                            <Clock size={8} /> {formatDate(note.fields.Created_At)}
+                                                        </span>
+                                                        {noteOwner && noteOwner !== 'ללא מוביל' && (
+                                                            <span className={clsx(
+                                                                "text-[9px] font-bold px-1.5 py-0.5 rounded-md border",
+                                                                OWNER_COLORS[noteOwner] 
+                                                                    ? `${OWNER_COLORS[noteOwner]} border-current/20` 
+                                                                    : "bg-slate-100 text-slate-600 border-slate-200"
+                                                            )}>
+                                                                מוביל: {noteOwner}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     {note.fields.Follow_Up_Date && (() => {
                                                         const fuParts = note.fields.Follow_Up_Date.split('-');
                                                         const fuDisplay = fuParts.length === 3 ? `${fuParts[2]}.${fuParts[1]}` : note.fields.Follow_Up_Date;
@@ -1424,7 +1734,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                             </div>
                                         )}
                                     </div>
-                                ))
+                                );
+                            })
                             )}
                         </div>
                     )}
@@ -1568,14 +1879,56 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                     />
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-slate-500 mr-1">מוביל (בעלים)</label>
-                                    <input
-                                        type="text"
-                                        value={editData.Owner || ''}
-                                        onChange={(e) => setEditData({ ...editData, Owner: e.target.value })}
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
+                                <div className="flex flex-col gap-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-bold text-slate-500 mr-1">מוביל (בעלים)</label>
+                                        <span className="text-[10px] text-slate-400 font-medium">* שינוי מחייב תיעוד</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-1.5">
+                                        {OWNERS.map((o) => {
+                                            const isCurrent = lead.fields.Owner === o;
+                                            const colorClass = OWNER_COLORS[o] || 'bg-slate-100 text-slate-700';
+                                            return (
+                                                <button
+                                                    key={o}
+                                                    type="button"
+                                                    onClick={() => setIsTransferModalOpen(true)}
+                                                    className={clsx(
+                                                        "py-2 px-2.5 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                                                        isCurrent
+                                                            ? `${colorClass} border-current ring-1 ring-offset-1`
+                                                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                    )}
+                                                    title={isCurrent ? 'מוביל נוכחי' : `לחץ להעברה ל-${o} עם תיעוד`}
+                                                >
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                                    {o}
+                                                    {isCurrent && <span className="text-[9px] opacity-75">(נוכחי)</span>}
+                                                </button>
+                                            );
+                                        })}
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsTransferModalOpen(true)}
+                                            className={clsx(
+                                                "py-2 px-2.5 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-1 cursor-pointer",
+                                                !lead.fields.Owner
+                                                    ? "bg-slate-200 text-slate-700 border-slate-300 ring-1"
+                                                    : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
+                                            )}
+                                            title={!lead.fields.Owner ? 'ללא מוביל נוכחי' : 'לחץ להסרת מוביל עם תיעוד'}
+                                        >
+                                            ללא מוביל
+                                            {!lead.fields.Owner && <span className="text-[9px] opacity-75">(נוכחי)</span>}
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsTransferModalOpen(true)}
+                                        className="mt-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center justify-center gap-1 py-1.5 bg-blue-50/50 hover:bg-blue-50 border border-blue-100 rounded-lg transition-all cursor-pointer"
+                                    >
+                                        <ArrowLeftRight size={12} /> העברת בעלות או שיוך עם הערת תיעוד
+                                    </button>
                                 </div>
                             </div>
 
@@ -2012,6 +2365,14 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     teamEmails={(availableTeamMusicians.filter(m => (lead.fields.Musician_Team || []).includes(m.id)).map(m => m.fields.Email)).filter((e): e is string => !!e)}
                     isUpdate={isCalendarUpdate}
                     existingEventData={existingCalendarData}
+                />
+
+                <TransferLeadModal
+                    isOpen={isTransferModalOpen}
+                    lead={lead}
+                    currentUserName={currentUserName}
+                    onClose={() => setIsTransferModalOpen(false)}
+                    onTransferred={handleTransferred}
                 />
 
             </div>

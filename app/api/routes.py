@@ -159,6 +159,15 @@ async def update_lead(lead_id: str, request: Request):
             lead_id=lead_id
         ))
 
+    if "Owner" in body and not body.get("Status"):
+        new_owner = body.get("Owner")
+        airtable_service.create_activity(ActivityCreate(
+            actor="מערכת",
+            action_type="עדכון מוביל",
+            description=f"מוביל עודכן ל-{new_owner if new_owner else 'ללא מוביל'}",
+            lead_id=lead_id
+        ))
+
     # Trigger Bouzouki protocol check if needed
     from app.services.logic import bot_logic
     import asyncio
@@ -176,6 +185,74 @@ async def update_lead(lead_id: str, request: Request):
             print(f"Error updating Google Calendar on close: {e}")
 
     return result
+
+@protected_router.post("/leads/{lead_id}/transfer")
+async def transfer_lead_owner(lead_id: str, request: Request):
+    """Transfer or assign lead ownership with audit note and activity logging."""
+    body = await request.json()
+    new_owner = (body.get("new_owner") or "").strip()
+    previous_owner = (body.get("previous_owner") or "").strip()
+    handover_note = (body.get("handover_note") or "").strip()
+    actor = (body.get("actor") or "").strip() or previous_owner or new_owner or "מערכת"
+
+    if not handover_note:
+        raise HTTPException(status_code=400, detail="חובה להזין הערת העברה או תיעוד")
+
+    if new_owner == previous_owner:
+        raise HTTPException(status_code=400, detail="לא ניתן להעביר מוביל לאותו מוביל")
+
+    # Update lead Owner in database
+    data = LeadUpdate(owner=new_owner if new_owner else None)
+    result = airtable_service.update_lead(lead_id, data)
+
+    # Format the note text
+    if previous_owner and new_owner:
+        note_content = f"🔄 העברת מוביל: הטיפול בליד הועבר מ-{previous_owner} ל-{new_owner}"
+        activity_desc = f"העברת מוביל מ-{previous_owner} ל-{new_owner}"
+        action_type = "העברת מוביל"
+    elif new_owner and not previous_owner:
+        note_content = f"👤 שיוך מוביל: {new_owner} הוגדר/ה כמוביל/ת הליד"
+        activity_desc = f"שייך/ה את הליד ל-{new_owner}"
+        action_type = "שיוך מוביל"
+    elif previous_owner and not new_owner:
+        note_content = f"⚠️ הסרת מוביל: הוסר השיוך של {previous_owner}"
+        activity_desc = f"הסיר/ה את המוביל ({previous_owner})"
+        action_type = "הסרת מוביל"
+    else:
+        note_content = "🔄 עדכון מוביל ליד"
+        activity_desc = "עדכון מוביל ליד"
+        action_type = "עדכון מוביל"
+
+    if handover_note:
+        note_content += f"\n\n💬 הערת העברה: {handover_note}"
+        activity_desc += f" ({handover_note[:30]}...)" if len(handover_note) > 30 else f" ({handover_note})"
+
+    created_note = None
+    try:
+        note = NoteCreate(
+            lead_id=lead_id,
+            author=actor,
+            content=note_content,
+        )
+        created_note = airtable_service.create_note(note)
+    except Exception as e:
+        print(f"Error creating handover note for lead {lead_id}: {e}")
+
+    try:
+        airtable_service.create_activity(ActivityCreate(
+            actor=actor,
+            action_type=action_type,
+            description=activity_desc,
+            lead_id=lead_id
+        ))
+    except Exception as e:
+        print(f"Error creating activity for lead {lead_id}: {e}")
+
+    return {
+        "status": "success",
+        "lead": result,
+        "note": created_note
+    }
 
 @protected_router.post("/leads/{lead_id}/read")
 async def mark_lead_as_read(lead_id: str):

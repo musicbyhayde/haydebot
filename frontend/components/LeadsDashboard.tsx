@@ -5,6 +5,7 @@ import { Lead, Task } from '@/types';
 import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, ChevronUp, ChevronsUpDown, Search, X, Filter, MessageCircle } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import AddLeadModal from './AddLeadModal';
+import TransferLeadModal from './TransferLeadModal';
 import LeadDetailPanel from './LeadDetailPanel';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
@@ -120,6 +121,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [collectLead, setCollectLead] = useState<Lead | null>(null);
     const [collectOwner, setCollectOwner] = useState<string>(currentUser?.displayName || 'אילן');
     const [collectAmount, setCollectAmount] = useState('');
+    const [transferModalLead, setTransferModalLead] = useState<Lead | null>(null);
     
     // Pending Follow-Ups
     const [pendingFollowUps, setPendingFollowUps] = useState<Note[]>([]);
@@ -1115,10 +1117,31 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     </div>
                                     <div className="w-16 shrink-0 hidden md:flex items-center">
                                         {lead.fields.Owner ? (
-                                            <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-bold", ownerColor)}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setTransferModalLead(lead);
+                                                }}
+                                                className={clsx(
+                                                    "text-[10px] px-1.5 py-0.5 rounded-md font-bold transition-all hover:ring-2 hover:ring-offset-1 hover:ring-slate-300 cursor-pointer text-right",
+                                                    ownerColor
+                                                )}
+                                                title="לחץ להעברת טיפול בליד"
+                                            >
                                                 {lead.fields.Owner}
-                                            </span>
-                                        ) : <span className="text-slate-300">—</span>}
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setTransferModalLead(lead);
+                                                }}
+                                                className="text-[10px] text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-slate-300 px-1.5 py-0.5 rounded-md transition-all cursor-pointer"
+                                                title="שייך מוביל לליד"
+                                            >
+                                                + שייך
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="w-28 shrink-0 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Service ? (
@@ -1273,6 +1296,19 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                     onClose={() => setShowPendingModal(false)}
                     onRefresh={handleRefreshFollowUps}
                     onOpenDetails={onOpenDetails}
+                />
+            )}
+            {transferModalLead && (
+                <TransferLeadModal
+                    isOpen={true}
+                    lead={transferModalLead}
+                    currentUserName={currentUser?.displayName || ''}
+                    onClose={() => setTransferModalLead(null)}
+                    onTransferred={(updatedLead) => {
+                        setLeads(prev => prev.map(l => l.id === updatedLead.id ? { ...l, fields: { ...l.fields, Owner: updatedLead.fields.Owner } } : l));
+                        setTransferModalLead(null);
+                        onRefresh?.();
+                    }}
                 />
             )}
         </div>

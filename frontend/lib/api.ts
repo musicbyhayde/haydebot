@@ -53,6 +53,16 @@ export const api = {
         return res.json();
     },
 
+    async transferLead(leadId: string, data: { new_owner: string; previous_owner?: string; handover_note?: string; actor: string }): Promise<{ status: string; lead: Lead; note?: Note }> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/transfer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed to transfer lead');
+        return res.json();
+    },
+
     async markLeadAsRead(leadId: string): Promise<{ status: string }> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/read`, {
             method: 'POST',

@@ -85,6 +85,34 @@ describe('api.updateLead', () => {
     });
 });
 
+describe('api.transferLead', () => {
+    it('sends POST to /leads/:id/transfer with correct payload', async () => {
+        const payload = {
+            new_owner: 'אילן',
+            previous_owner: 'קובי',
+            handover_note: 'בדיקת העברה',
+            actor: 'קובי',
+        };
+        mockFetch.mockResolvedValueOnce(okJson({ status: 'success', lead: { id: 'rec1', fields: { Owner: 'אילן' } } }));
+
+        const result = await api.transferLead('rec1', payload);
+        expect(mockFetch).toHaveBeenCalledWith(
+            expect.stringContaining('/leads/rec1/transfer'),
+            expect.objectContaining({
+                method: 'POST',
+                headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(payload),
+            })
+        );
+        expect(result.status).toBe('success');
+    });
+
+    it('throws on error', async () => {
+        mockFetch.mockResolvedValueOnce(errorResponse());
+        await expect(api.transferLead('rec1', { new_owner: 'אילן', actor: 'קובי' })).rejects.toThrow('Failed to transfer lead');
+    });
+});
+
 
 // ═══════════════════════════════════════════════════════
 //  Messages

@@ -31,6 +31,7 @@ jest.mock('@/lib/api', () => ({
             },
         ]),
         createNote: jest.fn().mockResolvedValue({ id: 'new', fields: {} }),
+        transferLead: jest.fn().mockResolvedValue({ status: 'success', lead: { id: 'lead1', fields: { Owner: 'אילן' } } }),
         getMessages: jest.fn().mockResolvedValue([]),
         getMusicians: jest.fn().mockResolvedValue([]),
         getTasks: jest.fn().mockResolvedValue([]),

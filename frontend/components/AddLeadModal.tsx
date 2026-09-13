@@ -137,6 +137,7 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
                             <select className={inputClass} value={form.Owner} onChange={(e) => setForm({ ...form, Owner: e.target.value })}>
                                 <option value="אילן">אילן</option>
                                 <option value="קובי">קובי</option>
+                                <option value="">ללא מוביל</option>
                             </select>
                         </div>
                         <div>
