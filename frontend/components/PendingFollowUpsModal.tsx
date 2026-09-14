@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Lead, Note } from '@/types';
 import { api } from '@/lib/api';
-import { X, Calendar, CheckCircle, ExternalLink } from 'lucide-react';
+import { X, Calendar, CheckCircle, ExternalLink, Phone } from 'lucide-react';
 import { useToast } from '@/components/ui';
+import { toDisplayPhone } from '@/lib/formatters';
 
 interface PendingFollowUpsModalProps {
     pendingNotes: Note[];
@@ -118,8 +119,20 @@ export default function PendingFollowUpsModal({ pendingNotes, leads, onClose, on
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-slate-500 text-sm">{lead.fields.Phone}</p>
-                                        </div>
+                                             {lead.fields.Phone ? (
+                                                 <a 
+                                                     href={`tel:${toDisplayPhone(lead.fields.Phone)}`}
+                                                     className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-mono flex items-center gap-1 mt-0.5"
+                                                     title="חייג לליד"
+                                                     dir="ltr"
+                                                 >
+                                                     <Phone size={13} className="text-blue-500" />
+                                                     {toDisplayPhone(lead.fields.Phone)}
+                                                 </a>
+                                             ) : (
+                                                 <p className="text-slate-400 text-sm">—</p>
+                                             )}
+                                         </div>
                                         <div className="text-left">
                                             <p className="text-xs text-red-600 font-semibold bg-red-100 px-2 py-1 rounded-full">
                                                 תאריך יעד: {note.fields.Follow_Up_Date}

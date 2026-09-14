@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle, Briefcase, AlertTriangle, MessageCircle, ArrowLeftRight, UserCheck, UserMinus } from 'lucide-react';
+import { X, Send, FileText, Clock, Paperclip, Image, File, RefreshCw, RotateCcw, BellOff, Wrench, Trash2, Pencil, Calendar, ExternalLink, Save, Check, Bell, CheckCircle, Briefcase, AlertTriangle, MessageCircle, ArrowLeftRight, UserCheck, UserMinus, Phone } from 'lucide-react';
 import { api, CalendarEventPayload } from '@/lib/api';
 import { Lead, Note, FinanceEntry, Task, Musician } from '@/types';
 import clsx from 'clsx';
@@ -623,6 +623,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     Lead_ID: lead.id
                 });
             }
+            success(financeEditId ? 'התנועה עודכנה בהצלחה' : 'התנועה נוספה בהצלחה');
             setFinanceAmount('');
             setFinanceDesc('');
             setFinanceOwner('');
@@ -753,6 +754,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         if (!isConfirmed) return;
         try {
             await api.deleteFinanceEntry(id);
+            success('התנועה נמחקה בהצלחה');
             fetchFinances();
         } catch (e) {
             console.error(e);
@@ -941,7 +943,23 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 </span>
                             )}
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">{toDisplayPhone(lead.fields.Phone)} · {lead.fields.Service || '—'}</p>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+                            {lead.fields.Phone ? (
+                                <a 
+                                    href={`tel:${toDisplayPhone(lead.fields.Phone)}`}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline font-mono font-medium flex items-center gap-1"
+                                    title="לחץ לחיוג מהיר"
+                                    dir="ltr"
+                                >
+                                    <Phone size={11} className="text-blue-500" />
+                                    {toDisplayPhone(lead.fields.Phone)}
+                                </a>
+                            ) : (
+                                <span>—</span>
+                            )}
+                            <span>·</span>
+                            <span>{lead.fields.Service || '—'}</span>
+                        </div>
 
                         {/* Owner Badge & Quick Transfer */}
                         <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-slate-100 flex-wrap">
@@ -1825,7 +1843,19 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-slate-500 mr-1">טלפון</label>
+                                    <div className="flex justify-between items-center mr-1">
+                                        <label className="text-[10px] font-bold text-slate-500">טלפון</label>
+                                        {editData.Phone && (
+                                            <a
+                                                href={`tel:${toDisplayPhone(editData.Phone)}`}
+                                                className="text-[10px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 hover:underline"
+                                                title="חייג למספר זה"
+                                            >
+                                                <Phone size={10} />
+                                                חייג כעת
+                                            </a>
+                                        )}
+                                    </div>
                                     <input
                                         type="tel"
                                         value={toDisplayPhone(editData.Phone)}
@@ -2229,60 +2259,78 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 </div>
 
                 {financeModalOpen && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm md:rounded-r-2xl">
-                        <div className="w-full max-w-sm bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
-                            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <div 
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+                        onClick={() => setFinanceModalOpen(false)}
+                    >
+                        <div 
+                            className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" 
+                            dir="rtl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                                 <h3 className="text-sm font-bold text-slate-800">{financeEditId ? 'עריכת תנועה' : 'הוספת תנועה'}</h3>
-                                <button onClick={() => setFinanceModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                                    <X size={16} />
+                                <button onClick={() => setFinanceModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <X size={18} />
                                 </button>
                             </div>
-                            <div className="p-4 space-y-3">
+                            <div className="p-5 space-y-3.5">
                                 <div className="flex items-center gap-2 mb-2">
                                     <button
+                                        type="button"
                                         onClick={() => setFinanceType('income')}
                                         className={clsx(
-                                            "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border",
-                                            financeType === 'income' ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                            "flex-1 py-2 text-xs font-bold rounded-lg transition-colors border",
+                                            financeType === 'income' ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
                                         )}
                                     >
                                         + הכנסה
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={() => setFinanceType('expense')}
                                         className={clsx(
-                                            "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border",
-                                            financeType === 'expense' ? "bg-red-100 text-red-800 border-red-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                                            "flex-1 py-2 text-xs font-bold rounded-lg transition-colors border",
+                                            financeType === 'expense' ? "bg-red-100 text-red-800 border-red-300" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
                                         )}
                                     >
                                         - הוצאה
                                     </button>
                                 </div>
-                                <input
-                                    type="number"
-                                    placeholder="סכום (₪)"
-                                    value={financeAmount}
-                                    onChange={(e) => setFinanceAmount(e.target.value)}
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                    dir="ltr"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="תיאור (למשל: מקדמה, דלק...)"
-                                    value={financeDesc}
-                                    onChange={(e) => setFinanceDesc(e.target.value)}
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                                <select
-                                    value={financePaymentMethod}
-                                    onChange={(e) => setFinancePaymentMethod(e.target.value as 'חשבון' | 'מזומן')}
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
-                                >
-                                    <option value="חשבון">העברה / אשראי / ביט</option>
-                                    <option value="מזומן">מזומן</option>
-                                </select>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 mb-1">סכום (₪)</label>
+                                    <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={financeAmount}
+                                        onChange={(e) => setFinanceAmount(e.target.value)}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        dir="ltr"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 mb-1">תיאור</label>
+                                    <input
+                                        type="text"
+                                        placeholder="למשל: מקדמה, דלק, הגברה..."
+                                        value={financeDesc}
+                                        onChange={(e) => setFinanceDesc(e.target.value)}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 mb-1">אמצעי תשלום</label>
+                                    <select
+                                        value={financePaymentMethod}
+                                        onChange={(e) => setFinancePaymentMethod(e.target.value as 'חשבון' | 'מזומן')}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
+                                    >
+                                        <option value="חשבון">העברה / אשראי / ביט</option>
+                                        <option value="מזומן">מזומן</option>
+                                    </select>
+                                </div>
                                 <div className="pt-1">
-                                    <label className="block text-[10px] font-bold text-slate-500 mb-1.5">שיוך לשותף (לאיזה יומן?)</label>
+                                    <label className="block text-[11px] font-bold text-slate-500 mb-1.5">שיוך לשותף (לאיזה יומן?)</label>
                                     <div className="flex gap-2">
                                         <button
                                             type="button"
@@ -2309,7 +2357,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                            <div className="p-3.5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
                                 <button
                                     onClick={() => setFinanceModalOpen(false)}
                                     className="px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700 transition-colors"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Lead, Task } from '@/types';
-import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, ChevronUp, ChevronsUpDown, Search, X, Filter, MessageCircle } from 'lucide-react';
+import { Calendar, MapPin, Music, Users, ArrowRight, CheckCircle, Clock, AlertCircle, Menu, Plus, FileText, ChevronDown, ChevronUp, ChevronsUpDown, Search, X, Filter, MessageCircle, Phone } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
 import AddLeadModal from './AddLeadModal';
 import TransferLeadModal from './TransferLeadModal';
@@ -482,7 +482,18 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                 </span>
                                             )}
                                         </div>
-                                        <span className="text-[10px] text-slate-400">{toDisplayPhone(lead.fields.Phone)}</span>
+                                        {lead.fields.Phone ? (
+                                            <a
+                                                href={`tel:${toDisplayPhone(lead.fields.Phone)}`}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-[10px] text-slate-400 hover:text-blue-600 hover:underline transition-colors font-mono self-start text-right"
+                                                title="לחץ לחיוג מהיר"
+                                            >
+                                                {toDisplayPhone(lead.fields.Phone)}
+                                            </a>
+                                        ) : (
+                                            <span className="text-[10px] text-slate-400 self-start text-right">—</span>
+                                        )}
                                     </div>
                                     <div className="w-24 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Service || '—'}
@@ -621,7 +632,18 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             >
                                                 {lead.fields.Name || 'ללא שם'}
                                             </button>
-                                            <span className="text-[10px] text-slate-400">{toDisplayPhone(lead.fields.Phone)}</span>
+                                            {lead.fields.Phone ? (
+                                                <a
+                                                    href={`tel:${toDisplayPhone(lead.fields.Phone)}`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-[10px] text-slate-400 hover:text-blue-600 hover:underline transition-colors font-mono self-start text-right"
+                                                    title="לחץ לחיוג מהיר"
+                                                >
+                                                    {toDisplayPhone(lead.fields.Phone)}
+                                                </a>
+                                            ) : (
+                                                <span className="text-[10px] text-slate-400 self-start text-right">—</span>
+                                            )}
                                         </div>
                                         <div className="w-24 hidden md:flex items-center text-slate-500 font-medium">
                                             {lead.fields.Event_Date ? normalizeEventDate(lead.fields.Event_Date) : <span className="text-slate-300">—</span>}
@@ -1095,7 +1117,18 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                 </span>
                                             )}
                                         </div>
-                                        <span className="text-[10px] text-slate-400 truncate">{toDisplayPhone(lead.fields.Phone)}</span>
+                                        {lead.fields.Phone ? (
+                                            <a
+                                                href={`tel:${toDisplayPhone(lead.fields.Phone)}`}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-[10px] text-slate-400 hover:text-blue-600 hover:underline transition-colors font-mono truncate self-start text-right"
+                                                title="לחץ לחיוג מהיר"
+                                            >
+                                                {toDisplayPhone(lead.fields.Phone)}
+                                            </a>
+                                        ) : (
+                                            <span className="text-[10px] text-slate-400 truncate self-start text-right">—</span>
+                                        )}
                                     </div>
                                     <div className="w-20 md:w-24 shrink-0 flex items-center">
                                         <select
