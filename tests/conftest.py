@@ -9,6 +9,7 @@ from unittest.mock import patch, MagicMock
 from datetime import datetime
 from fastapi.testclient import TestClient
 from copy import deepcopy
+import app.api.routes
 
 
 # ─── In-Memory Mock Service ──────────────────────────────
@@ -199,6 +200,24 @@ class MockSupabaseService:
     def upload_media(self, file_bytes, file_name, mime_type):
         return f"https://mock-storage.supabase.co/media/{file_name}"
 
+    # ── Activities ────────────────────
+
+    def create_activity(self, activity):
+        if hasattr(activity, 'model_dump'):
+            data = activity.model_dump(exclude_none=True, mode='json')
+        else:
+            data = dict(activity)
+        data["id"] = self._gen_id()
+        data["created_at"] = datetime.now().isoformat()
+        self._stores.setdefault("activities", []).append(data)
+        return self._to_airtable_format(data)
+
+    def get_activities(self, lead_id=None, limit=50):
+        acts = self._stores.get("activities", [])
+        if lead_id:
+            acts = [a for a in acts if a.get("lead_id") == lead_id]
+        return self._to_airtable_list(acts[:limit])
+
     # ── Mock Table ────────────────────
     class _MockTable:
         def __init__(self, service, table_name):
@@ -206,13 +225,13 @@ class MockSupabaseService:
             self.table_name = table_name
 
         def get(self, record_id):
-            for rec in self.service._stores[self.table_name]:
+            for rec in self.service._stores.get(self.table_name, []):
                 if rec["id"] == record_id:
                     return self.service._to_airtable_format(rec)
             return None
 
         def all(self, formula=None, sort=None):
-            return self.service._to_airtable_list(self.service._stores[self.table_name])
+            return self.service._to_airtable_list(self.service._stores.get(self.table_name, []))
 
     @property
     def leads_table(self):
@@ -237,6 +256,10 @@ class MockSupabaseService:
     @property
     def tasks_table(self):
         return self._MockTable(self, "tasks")
+
+    @property
+    def activities_table(self):
+        return self._MockTable(self, "activities")
 
 # ─── Fixtures ─────────────────────────────────────────
 
@@ -269,5 +292,6 @@ def test_client(mock_service):
         # Prevent scheduler from running
         with patch("app.core.scheduler.scheduler"):
             from app.main import app
-            client = TestClient(app)
+            from app.core.config import get_settings
+            client = TestClient(app, headers={"X-API-Key": get_settings().API_KEY})
             yield client

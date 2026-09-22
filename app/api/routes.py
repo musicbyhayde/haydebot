@@ -195,7 +195,18 @@ async def transfer_lead_owner(lead_id: str, request: Request):
     handover_note = (body.get("handover_note") or "").strip()
     actor = (body.get("actor") or "").strip() or previous_owner or new_owner or "מערכת"
 
-    if not handover_note:
+    # Determine if this is a first-time claim on a new orphan lead (no previous owner)
+    is_first_claim_new = not previous_owner
+    if is_first_claim_new:
+        # Verify the lead is actually status "New"
+        try:
+            current_lead = airtable_service.leads_table.get(lead_id)
+            lead_status = current_lead.get("fields", {}).get("Status", "")
+            is_first_claim_new = lead_status == "New"
+        except Exception:
+            is_first_claim_new = False
+
+    if not handover_note and not is_first_claim_new:
         raise HTTPException(status_code=400, detail="חובה להזין הערת העברה או תיעוד")
 
     if new_owner == previous_owner:

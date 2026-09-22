@@ -28,6 +28,10 @@ export default function TransferLeadModal({
     const [handoverNote, setHandoverNote] = useState<string>('');
     const [submitting, setSubmitting] = useState<boolean>(false);
 
+    // Note is optional only for first-time claim on a new orphan lead
+    const isFirstClaimNew = !currentOwner && lead.fields.Status === 'New';
+    const noteRequired = !isFirstClaimNew;
+
     // Default selection: the other owner if assigned, or current logged-in user if unassigned
     useEffect(() => {
         if (isOpen) {
@@ -50,7 +54,7 @@ export default function TransferLeadModal({
             return;
         }
 
-        if (!handoverNote.trim()) {
+        if (!handoverNote.trim() && noteRequired) {
             error('חובה להזין הערת תיעוד / סיבת ההעברה');
             return;
         }
@@ -60,7 +64,7 @@ export default function TransferLeadModal({
             const result = await api.transferLead(lead.id, {
                 new_owner: selectedOwner,
                 previous_owner: currentOwner,
-                handover_note: handoverNote.trim(),
+                handover_note: handoverNote.trim() || (isFirstClaimNew ? `שיוך ראשוני של ליד חדש ל-${selectedOwner}` : ''),
                 actor: currentUserName || 'מערכת',
             });
 
@@ -210,9 +214,9 @@ export default function TransferLeadModal({
                     <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
                             <span>
-                                הערת תיעוד / דגשים להמשך טיפול <span className="text-red-500 font-extrabold">* (חובה)</span>
+                                הערת תיעוד / דגשים להמשך טיפול {noteRequired && <span className="text-red-500 font-extrabold">* (חובה)</span>}{!noteRequired && <span className="text-slate-400 font-normal">(אופציונלי)</span>}
                             </span>
-                            {!handoverNote.trim() && (
+                            {!handoverNote.trim() && noteRequired && (
                                 <span className="text-[10px] text-amber-600 font-semibold">שדה חובה</span>
                             )}
                         </label>
@@ -225,7 +229,7 @@ export default function TransferLeadModal({
                             }
                             rows={3}
                             className={`w-full text-xs p-3 bg-slate-50 border rounded-xl focus:ring-2 focus:bg-white outline-none resize-none transition-all placeholder:text-slate-400 leading-relaxed ${
-                                !handoverNote.trim() 
+                                !handoverNote.trim() && noteRequired
                                     ? 'border-amber-300 focus:ring-amber-400' 
                                     : 'border-slate-200 focus:ring-blue-500'
                             }`}
@@ -249,7 +253,7 @@ export default function TransferLeadModal({
                     <button
                         type="button"
                         onClick={handleTransfer}
-                        disabled={submitting || selectedOwner === currentOwner || !handoverNote.trim()}
+                        disabled={submitting || selectedOwner === currentOwner || (!handoverNote.trim() && noteRequired)}
                         className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {submitting ? (
