@@ -123,6 +123,21 @@ def _count(method: str) -> None:
         print(f"AUTH stats since boot: {dict(_counts)}")
 
 
+_last_legacy_log = {"t": 0.0}
+
+
+def _log_legacy_caller(request: Request, has_bearer: bool) -> None:
+    """At most once a minute: who still uses the legacy key (to find non-dashboard callers)."""
+    now = time.monotonic()
+    if now - _last_legacy_log["t"] < 60:
+        return
+    _last_legacy_log["t"] = now
+    ua = (request.headers.get("user-agent") or "-")[:120]
+    origin = request.headers.get("origin") or "-"
+    print(f"AUTH legacy-key caller: {request.method} {request.url.path} origin={origin} "
+          f"bearer={'yes' if has_bearer else 'no'} ua={ua}")
+
+
 def legacy_key_accepted() -> bool:
     s = get_settings()
     return bool(s.LEGACY_DEFAULT_API_KEY_ENABLED and not s.REQUIRE_USER_AUTH)
@@ -162,6 +177,7 @@ async def require_auth(request: Request) -> str:
     if legacy_key_accepted() and _consteq(api_key, LEGACY_DEFAULT_API_KEY):
         request.state.auth_method = "legacy_key"
         _count("legacy_key")
+        _log_legacy_caller(request, has_bearer=auth_header.lower().startswith("bearer "))
         return "legacy_key"
 
     if supabase_down:
