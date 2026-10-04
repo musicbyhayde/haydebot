@@ -47,7 +47,7 @@ def test_valid_key_whoami_and_audit(bot_env, client):
     key = bot_env.table.add("grok", ["leads:read", "finance:read", "bogus:scope"])
     r = client.get("/api/bot/v1/whoami?q=x&token=abc", headers={**hdr(key), "User-Agent": "grok-test"})
     assert r.status_code == 200
-    assert r.json()["data"] == {"bot": "grok", "read_only": True,
+    assert r.json()["data"] == {"bot": "grok", "read_only": True, "writes_enabled": False,
                                 "scopes": ["finance:read", "finance:summary", "leads:read"]}
     (row,) = bot_env.audited()
     assert row["bot_name"] == "grok" and row["key_id"] == "id-grok"
@@ -223,7 +223,7 @@ def test_cli_create_prints_key_once_and_sql_with_hash_only():
     assert r.stdout.count(key) == 1
 
 
-@pytest.mark.parametrize("scopes", ["notes:write", "whatsapp:send", "leads:read,nope"])
+@pytest.mark.parametrize("scopes", ["messages:send", "whatsapp:send", "leads:read,nope", "finance:write"])
 def test_cli_rejects_unknown_or_reserved_scopes(scopes):
     r = _cli("create", "--name", "grok", "--scopes", scopes)
     assert r.returncode != 0 and "hbk_" not in r.stdout

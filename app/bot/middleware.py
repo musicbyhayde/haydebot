@@ -1,4 +1,5 @@
-"""ASGI middleware: writes one bot_audit_log row per /api/bot/* request (status + latency)."""
+"""ASGI middleware: writes one bot_audit_log row per /api/bot/* request (status + latency;
+for writes also a payload summary under params._write)."""
 from __future__ import annotations
 
 import logging
@@ -11,6 +12,13 @@ from app.bot.ratelimit import limiter
 from app.core.config import get_settings
 
 logger = logging.getLogger("haydebot.bot.audit")
+
+
+def _params(scope, state) -> dict:
+    params = audit.sanitize_params(dict(parse_qsl(scope.get("query_string", b"").decode("latin-1"))))
+    if state.get("bot_write"):  # write endpoints: summary of what was (or would be) changed
+        params["_write"] = state["bot_write"]
+    return params
 
 
 class BotAuditMiddleware:
@@ -53,7 +61,7 @@ class BotAuditMiddleware:
             "bot_name": state.get("bot_name"),
             "method": scope.get("method", "?"),
             "path": scope.get("path", "")[:300],
-            "params": audit.sanitize_params(dict(parse_qsl(scope.get("query_string", b"").decode("latin-1")))),
+            "params": _params(scope, state),
             "status": status_code,
             "latency_ms": int((time.perf_counter() - start) * 1000),
             "error_code": state.get("bot_error_code"),

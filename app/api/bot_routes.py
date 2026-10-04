@@ -1,23 +1,29 @@
-"""Bot API v1 - read-only, vendor-neutral HTTPS + JSON for bots / AI agents.
+"""Bot API v1 - vendor-neutral HTTPS + JSON for bots / AI agents: reads, plus a few narrow writes.
 
 Auth: per-bot key ('Authorization: Bearer <key>', see app/bot/auth.py). Every request is audited
 (app/bot/middleware.py). Errors: {"error": {"status", "code", "message"}} (app/bot/errors.py).
 Lists: {"data": [...], "page": {"total", "limit", "offset", "next_offset"}}; single: {"data": {...}}.
-No endpoint here writes data, sends messages to customers, or exposes the full backup.
-Handlers are plain `def` so the (blocking) database reads run in the threadpool.
+Writes (POST/PATCH/DELETE, bottom of this file) need a write scope AND BOT_API_WRITE_ENABLED=true;
+they support dry_run=true and the Idempotency-Key header (app/bot/writes.py, app/bot/idempotency.py).
+No endpoint sends messages to customers, deletes leads, writes finance or exposes the backup.
+Handlers are plain `def` so the (blocking) database calls run in the threadpool.
 """
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
-from typing import Literal, Optional
+from datetime import date, datetime, timedelta
+from typing import Any, Callable, Literal, Optional, Union
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Body, Depends, Path, Query, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.bot import data
 from app.bot import guide as guide_mod
-from app.bot.auth import BotContext, bot_context, docs_access, require_scopes
+from app.bot import idempotency as idem
+from app.bot import writes
+from app.bot.auth import BotContext, WriteContext, bot_context, docs_access, require_scopes, require_write
+from app.bot.scopes import WRITE_SCOPES
 from app.core.config import get_settings
 from app.bot.errors import BotError
 
@@ -55,10 +61,12 @@ def _run(fn, *args, **kwargs):
 
 # ─── meta ─────────────────────────────────────────────────────────────────────────────
 @bot_router.get("/whoami", tags=["meta"], operation_id="whoami", responses=ERRORS,
-                summary="Which bot am I and what may I read")
+                summary="Which bot am I, what may I read / write")
 def whoami(ctx: BotContext = Depends(bot_context)):
     """Name and scopes of the calling key. Cheap way to test a key."""
-    return {"data": {"bot": ctx.name, "scopes": sorted(ctx.scopes), "read_only": True}}
+    can_write = any(sc in WRITE_SCOPES for sc in ctx.scopes)
+    return {"data": {"bot": ctx.name, "scopes": sorted(ctx.scopes), "read_only": not can_write,
+                     "writes_enabled": bool(get_settings().BOT_API_WRITE_ENABLED) and can_write}}
 
 
 @bot_router.get("/guide", tags=["meta"], operation_id="getGuide", responses=ERRORS,
@@ -68,7 +76,9 @@ def get_guide(format: Literal["json", "markdown"] = Query("json", description="m
     """Natural-language + JSON description of the business domain (statuses, services, Hebrew terms),
     every endpoint with its scopes, recommended usage and example questions. No business data."""
     caller = {"bot": ctx.name, "scopes": sorted(ctx.scopes)} if ctx else None
-    g = guide_mod.build_guide(bot_router, BOT_API_PREFIX, get_settings().PUBLIC_BASE_URL, caller)
+    s = get_settings()
+    g = guide_mod.build_guide(bot_router, BOT_API_PREFIX, s.PUBLIC_BASE_URL, caller,
+                              writes_enabled=bool(s.BOT_API_WRITE_ENABLED))
     if format == "markdown":
         return PlainTextResponse(guide_mod.guide_markdown(g), media_type="text/markdown; charset=utf-8")
     return {"data": g}
@@ -218,3 +228,287 @@ def list_finance_entries(owner: Optional[str] = Query(None, max_length=50),
     """Ledger rows, newest first."""
     return _run(data.finance_entries, ctx, owner=owner, entry_type=type, date_from=date_from,
                 date_to=date_to, limit=limit, offset=offset)
+
+
+
+# ═══ writes ═══════════════════════════════════════════════════════════════════════════
+WRITE_ERRORS = {
+    **ERRORS,
+    403: {"description": "Key lacks the write scope (insufficient_scope), or writing is switched off "
+                         "on the server (writes_disabled)"},
+    404: {"description": "No such lead / note / task / musician, or the bot API is switched off"},
+    409: {"description": "Conflict: idempotency_key_reused / idempotency_in_progress, status_locked, "
+                         "invalid_transition, status_mismatch, musician_busy, musician_unavailable, no_follow_up"},
+    429: {"description": "Rate limit or write limit exceeded (see Retry-After)"},
+}
+NOTE_ID = Path(..., min_length=1, max_length=64, description="Note id (from GET /leads/{id}/notes)")
+TASK_ID = Path(..., min_length=1, max_length=64, description="Task id (from GET /tasks)")
+MUSICIAN_ID = Path(..., min_length=1, max_length=64, description="Musician id (from GET /musicians)")
+Partner = Literal[writes.PARTNERS]  # type: ignore[valid-type]
+BotStatus = Literal[writes.BOT_SETTABLE_STATUSES]  # type: ignore[valid-type]
+
+
+class _In(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+def _date_window(v: Optional[date], past_days: int, future_days: int, what: str) -> Optional[date]:
+    if v is None:
+        return v
+    t = data.today()
+    if not (t - timedelta(days=past_days) <= v <= t + timedelta(days=future_days)):
+        raise ValueError(f"{what} must be between {t - timedelta(days=past_days)} and {t + timedelta(days=future_days)}")
+    return v
+
+
+class NoteIn(_In):
+    content: str = Field(..., min_length=1, max_length=2000, description="The update text (Hebrew is fine)")
+    follow_up_date: Optional[date] = Field(None, description="Optional reminder date YYYY-MM-DD (today..+365 days)")
+
+    @field_validator("follow_up_date")
+    @classmethod
+    def _fu(cls, v):
+        return _date_window(v, 0, 365, "follow_up_date")
+
+
+class FollowUpIn(_In):
+    completed: Optional[bool] = Field(None, description="true = reminder handled; false = reopen")
+    follow_up_date: Optional[date] = Field(None, description="New reminder date YYYY-MM-DD (postpone)")
+
+    @field_validator("follow_up_date")
+    @classmethod
+    def _fu(cls, v):
+        return _date_window(v, 0, 365, "follow_up_date")
+
+    @model_validator(mode="after")
+    def _one(self):
+        if self.completed is None and self.follow_up_date is None:
+            raise ValueError("send completed and/or follow_up_date")
+        return self
+
+
+class TaskIn(_In):
+    title: str = Field(..., min_length=1, max_length=200)
+    assignee: Optional[Partner] = Field(None, description="Partner responsible (Hebrew first name)")
+    due_date: Optional[date] = Field(None, description="YYYY-MM-DD (stored like the dashboard: DD.MM.YYYY)")
+    lead_id: Optional[str] = Field(None, min_length=1, max_length=64, description="Link the task to a lead")
+
+    @field_validator("due_date")
+    @classmethod
+    def _due(cls, v):
+        return _date_window(v, 30, 730, "due_date")
+
+
+class TaskPatchIn(_In):
+    completed: Optional[bool] = Field(None, description="true = done, false = reopen")
+    due_date: Optional[date] = None
+    assignee: Optional[Partner] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+
+    @field_validator("due_date")
+    @classmethod
+    def _due(cls, v):
+        return _date_window(v, 30, 730, "due_date")
+
+    @model_validator(mode="after")
+    def _one(self):
+        if all(getattr(self, k) is None for k in ("completed", "due_date", "assignee", "title")):
+            raise ValueError("send at least one of completed, due_date, assignee, title")
+        return self
+
+
+class CrewIn(_In):
+    musician_id: str = Field(..., min_length=1, max_length=64, description="From GET /musicians")
+    allow_conflict: bool = Field(False, description="Add even if the musician is on another event that day")
+
+
+class StatusIn(_In):
+    status: BotStatus = Field(..., description="New status. Not allowed for bots: New, Processing, Distributed, "
+                                                "Assigned, Closed, Referred. Completed only from Closed.")
+    lost_reason: Optional[str] = Field(None, min_length=1, max_length=300, description="Only with status Lost")
+    expected_status: Optional[str] = Field(None, max_length=30,
+                                           description="Optional safety check: fail with 409 if the current status differs")
+
+
+class OwnerIn(_In):
+    owner: Partner = Field(..., description="New owner (partner)")
+    handover_note: str = Field(..., min_length=3, max_length=500,
+                               description="Why / what the new owner should know; saved as a note on the lead")
+
+
+class EventIn(_In):
+    event_date: Optional[date] = Field(None, description="YYYY-MM-DD (stored like the dashboard: DD.MM.YYYY)")
+    location: Optional[str] = Field(None, min_length=1, max_length=200)
+    guests: Optional[Union[int, str]] = Field(None, description="Number of guests (or a short text like '150-200')")
+
+    @field_validator("event_date")
+    @classmethod
+    def _ev(cls, v):
+        return _date_window(v, 365, 365 * 5, "event_date")
+
+    @field_validator("guests")
+    @classmethod
+    def _guests(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, int) and not 1 <= v <= 100_000:
+            raise ValueError("guests must be 1..100000")
+        v = str(v).strip()
+        if not 1 <= len(v) <= 50:
+            raise ValueError("guests: 1-50 characters")
+        return v
+
+    @model_validator(mode="after")
+    def _one(self):
+        if self.event_date is None and self.location is None and self.guests is None:
+            raise ValueError("send at least one of event_date, location, guests")
+        return self
+
+
+def _short(v: Any, n: int = 120) -> Any:
+    if isinstance(v, str):
+        return v if len(v) <= n else v[:n] + "…"
+    if isinstance(v, dict):
+        return {str(k)[:40]: _short(x, n) for k, x in list(v.items())[:20]}
+    if isinstance(v, (list, tuple)):
+        return [_short(x, n) for x in list(v)[:20]]
+    return v
+
+
+def _write(request: Request, w: WriteContext, action: str, body: Optional[BaseModel],
+           fn: Callable[[], "writes.Result"], create: bool = False) -> JSONResponse:
+    """Common path of every write: audit summary, idempotency (replay / conflict), 4xx-only errors."""
+    payload_in = body.model_dump(mode="json", exclude_none=True) if body is not None else {}
+    summary = {"action": action, "dry_run": w.dry_run, "body": _short(payload_in),
+               "idem": w.idempotency_key[:100] if w.idempotency_key else None}
+    request.state.bot_write = summary
+    fp = idem.fingerprint(request.method, request.url.path, payload_in)
+    slot = None
+    if not w.dry_run:
+        if w.idempotency_key:
+            slot, ttl = f"{w.bot.key_id}|{request.method}|{request.url.path}|{w.idempotency_key}", idem.EXPLICIT_TTL
+        elif create:  # duplicate guard for creates sent without an Idempotency-Key
+            slot, ttl = f"{w.bot.key_id}|auto|{fp}", idem.IMPLICIT_TTL
+    if slot:
+        cached = idem.begin(slot, fp, ttl)
+        if cached:
+            status, payload = cached
+            payload["write"]["replayed"] = True
+            summary.update(replayed=True, result_id=payload["write"].get("result_id"))
+            return JSONResponse(payload, status_code=status, headers={"Idempotent-Replayed": "true"})
+    try:
+        res = _run(fn)
+    except BaseException:
+        if slot:
+            idem.abort(slot)
+        raise
+    payload = {"data": res.data,
+               "write": {"action": action, "actor": w.actor, "dry_run": w.dry_run, "changed": res.changed,
+                         "changes": res.changes, "warnings": res.warnings, "result_id": res.result_id,
+                         "replayed": res.replayed}}
+    summary.update(changed=res.changed, changes=_short(res.changes), result_id=res.result_id,
+                   replayed=res.replayed, warnings=_short(res.warnings))
+    if slot:
+        idem.complete(slot, res.status, payload)
+    return JSONResponse(payload, status_code=res.status,
+                        headers={"Idempotent-Replayed": "true"} if res.replayed else None)
+
+
+def _write_doc(text: str) -> str:
+    return (text + "\n\nWrite endpoint: needs BOT_API_WRITE_ENABLED on the server. Add ?dry_run=true to "
+            "validate and preview without writing. Send an Idempotency-Key header (e.g. a UUID) so a retry "
+            "never writes twice. Shown in the dashboard as done by 'bot:<your key name>'.")
+
+
+# ─── notes ────────────────────────────────────────────────────────────────────────────
+@bot_router.post("/leads/{lead_id}/notes", tags=["write: notes"], operation_id="addLeadNote",
+                 status_code=201, responses=WRITE_ERRORS, summary="Add a note / update to a lead",
+                 description=_write_doc("Adds an internal note (עדכון) to the lead, optionally with a "
+                                        "follow-up reminder date. Author = bot:<key name>."))
+def add_lead_note(request: Request, lead_id: str = LEAD_ID, body: NoteIn = Body(...),
+                  w: WriteContext = Depends(require_write("notes:write"))):
+    return _write(request, w, "note.create", body,
+                  lambda: writes.add_note(w, lead_id, body.content, body.follow_up_date), create=True)
+
+
+@bot_router.patch("/notes/{note_id}/follow-up", tags=["write: notes"], operation_id="updateFollowUp",
+                  responses=WRITE_ERRORS, summary="Mark a follow-up reminder done, reopen or postpone it",
+                  description=_write_doc("Changes only the reminder of a note (never its text). A new "
+                                         "follow_up_date without 'completed' reopens the reminder."))
+def update_follow_up(request: Request, note_id: str = NOTE_ID, body: FollowUpIn = Body(...),
+                     w: WriteContext = Depends(require_write("notes:write"))):
+    return _write(request, w, "note.follow_up", body,
+                  lambda: writes.update_follow_up(w, note_id, body.completed, body.follow_up_date))
+
+
+# ─── tasks ────────────────────────────────────────────────────────────────────────────
+@bot_router.post("/tasks", tags=["write: tasks"], operation_id="createTask", status_code=201,
+                 responses=WRITE_ERRORS, summary="Create a team task",
+                 description=_write_doc("Creates a task (optionally for a partner, with a due date, linked "
+                                        "to a lead)."))
+def create_task(request: Request, body: TaskIn = Body(...),
+                w: WriteContext = Depends(require_write("tasks:write"))):
+    return _write(request, w, "task.create", body,
+                  lambda: writes.create_task(w, body.title, body.assignee, body.due_date, body.lead_id),
+                  create=True)
+
+
+@bot_router.patch("/tasks/{task_id}", tags=["write: tasks"], operation_id="updateTask",
+                  responses=WRITE_ERRORS, summary="Mark a task done / reopen it, or change due date, assignee, title",
+                  description=_write_doc("Partial update of a task. Tasks cannot be deleted through the API."))
+def update_task(request: Request, task_id: str = TASK_ID, body: TaskPatchIn = Body(...),
+                w: WriteContext = Depends(require_write("tasks:write"))):
+    return _write(request, w, "task.update", body,
+                  lambda: writes.update_task(w, task_id, completed=body.completed, due_date=body.due_date,
+                                             assignee=body.assignee, title=body.title))
+
+
+# ─── crew ─────────────────────────────────────────────────────────────────────────────
+@bot_router.post("/leads/{lead_id}/crew", tags=["write: crew"], operation_id="addCrewMusician",
+                 responses=WRITE_ERRORS, summary="Add a musician to the crew of a lead's event",
+                 description=_write_doc("Adds the musician to the event crew (צוות). Refuses with 409 "
+                                        "musician_busy if the musician is on another event the same day, unless "
+                                        "allow_conflict=true. Calendar invites are NOT sent or updated."))
+def add_crew_musician(request: Request, lead_id: str = LEAD_ID, body: CrewIn = Body(...),
+                      w: WriteContext = Depends(require_write("crew:write"))):
+    return _write(request, w, "crew.add", body,
+                  lambda: writes.crew_add(w, lead_id, body.musician_id, body.allow_conflict))
+
+
+@bot_router.delete("/leads/{lead_id}/crew/{musician_id}", tags=["write: crew"], operation_id="removeCrewMusician",
+                   responses=WRITE_ERRORS, summary="Remove a musician from the crew of a lead's event",
+                   description=_write_doc("Takes the musician off the event crew. Calendar invites are NOT "
+                                          "changed."))
+def remove_crew_musician(request: Request, lead_id: str = LEAD_ID, musician_id: str = MUSICIAN_ID,
+                         w: WriteContext = Depends(require_write("crew:write"))):
+    return _write(request, w, "crew.remove", None, lambda: writes.crew_remove(w, lead_id, musician_id))
+
+
+# ─── leads ────────────────────────────────────────────────────────────────────────────
+@bot_router.patch("/leads/{lead_id}/status", tags=["write: leads"], operation_id="setLeadStatus",
+                  responses=WRITE_ERRORS, summary="Change a lead's pipeline status (never to Closed)",
+                  description=_write_doc("Allowed: " + ", ".join(writes.BOT_SETTABLE_STATUSES) + ". A Closed "
+                                         "deal can only become Completed; Completed / Referred leads are locked."))
+def set_lead_status(request: Request, lead_id: str = LEAD_ID, body: StatusIn = Body(...),
+                    w: WriteContext = Depends(require_write("leads:write"))):
+    return _write(request, w, "lead.status", body,
+                  lambda: writes.set_status(w, lead_id, body.status, body.lost_reason, body.expected_status))
+
+
+@bot_router.patch("/leads/{lead_id}/owner", tags=["write: leads"], operation_id="setLeadOwner",
+                  responses=WRITE_ERRORS, summary="Hand a lead over to a partner (with a hand-over note)",
+                  description=_write_doc("Same as the dashboard's transfer: sets Owner, saves the hand-over "
+                                         "note on the lead and logs the activity."))
+def set_lead_owner(request: Request, lead_id: str = LEAD_ID, body: OwnerIn = Body(...),
+                   w: WriteContext = Depends(require_write("leads:write"))):
+    return _write(request, w, "lead.owner", body,
+                  lambda: writes.set_owner(w, lead_id, body.owner, body.handover_note))
+
+
+@bot_router.patch("/leads/{lead_id}/event", tags=["write: leads"], operation_id="setLeadEventDetails",
+                  responses=WRITE_ERRORS, summary="Update event date / location / guests of a lead",
+                  description=_write_doc("The Google Calendar event (if any) is NOT updated."))
+def set_lead_event(request: Request, lead_id: str = LEAD_ID, body: EventIn = Body(...),
+                   w: WriteContext = Depends(require_write("leads:write"))):
+    return _write(request, w, "lead.event", body,
+                  lambda: writes.set_event(w, lead_id, body.event_date, body.location, body.guests))

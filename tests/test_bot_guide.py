@@ -31,7 +31,10 @@ def test_guide_content(bot_env, c):
     assert eps["/leads/{lead_id}/messages"]["scopes"] == ["leads:read", "messages:read"]
     assert eps["/finance/entries"]["scopes"] == ["finance:read"]
     assert all(e["summary"] for e in g["endpoints"])
-    assert "notes:write" in g["scopes"]["planned_not_available"]
+    assert g["scopes"]["planned_not_available"] == {}
+    assert set(g["scopes"]["write"]) == {"notes:write", "tasks:write", "crew:write", "leads:write"}
+    assert eps["/leads/{lead_id}/crew"]["method"] == "POST" and eps["/leads/{lead_id}/crew"]["write"] is True
+    assert eps["/leads/{lead_id}/crew"]["scopes"] == ["crew:write"]
     assert g["how_to_call"]["base_url"].endswith("/api/bot/v1")
     # no business data / user identities in the guide
     for banned in ("אילן", "קובי", "@gmail.com", "9725"):
@@ -42,7 +45,8 @@ def test_guide_markdown(bot_env, c):
     key = bot_env.table.add("grok", ["leads:read"])
     r = c.get("/api/bot/v1/guide?format=markdown", headers=hdr(key))
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/markdown")
-    assert "## Endpoints (GET)" in r.text and "Quote_Sent" in r.text and "/attention" in r.text
+    assert "## Endpoints" in r.text and "GET /attention" in r.text and "Quote_Sent" in r.text
+    assert "POST /leads/{lead_id}/notes" in r.text and "read-only" in r.text   # writes off by default
 
 
 def test_docs_public_mode(bot_env, c, monkeypatch):
@@ -75,17 +79,24 @@ def test_openapi_spec(bot_env, c, monkeypatch):
     op_ids = []
     for path, item in spec["paths"].items():
         assert path.startswith("/api/bot/v1/")
-        assert set(item) == {"get"}, path
-        op = item["get"]
-        op_ids.append(op["operationId"])
-        assert op.get("summary") and op.get("tags")
-        for code, resp in op["responses"].items():
-            if code[0] in "45":
-                assert resp["content"]["application/json"]["schema"] == {"$ref": "#/components/schemas/Error"}
+        assert set(item) <= {"get", "post", "patch", "delete"}, path
+        for method, op in item.items():
+            op_ids.append(op["operationId"])
+            assert op.get("summary") and op.get("tags")
+            for code, resp in op["responses"].items():
+                if code[0] in "45":
+                    assert resp["content"]["application/json"]["schema"] == {"$ref": "#/components/schemas/Error"}
+            # no documented 5xx: DO's edge would replace the body
+            assert not [c for c in op["responses"] if c.startswith("5")]
+            assert "424" in op["responses"] and "404" in op["responses"]
+            if method != "get":
+                assert op["x-write"] is True and "409" in op["responses"]
+                names = {p["name"] for p in op.get("parameters", [])}
+                assert {"dry_run", "Idempotency-Key"} <= names, path
+                assert any(s.endswith(":write") for s in op["x-required-scopes"])
+            else:
+                assert "x-write" not in op
     assert len(op_ids) == len(set(op_ids))
-    for item in spec["paths"].values():   # no documented 5xx: DO's edge would replace the body
-        assert not [c for c in item["get"]["responses"] if c.startswith("5")]
-        assert "424" in item["get"]["responses"] and "404" in item["get"]["responses"]
     assert {"listLeads", "getLead", "getLeadMessages", "getAttention", "getFinanceSummary", "getGuide"} <= set(op_ids)
     assert spec["paths"]["/api/bot/v1/leads/{lead_id}/messages"]["get"]["x-required-scopes"] == ["leads:read", "messages:read"]
     assert "/api/bot/v1/openapi.json" not in spec["paths"]

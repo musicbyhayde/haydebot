@@ -326,11 +326,28 @@ def test_no_write_methods(api, method):
     assert r.status_code == 405 and r.json()["error"]["code"] == "method_not_allowed"
 
 
-def test_router_is_get_only_and_has_no_send_or_backup():
+WRITE_ROUTES = {
+    ("POST", "/api/bot/v1/leads/{lead_id}/notes"), ("PATCH", "/api/bot/v1/notes/{note_id}/follow-up"),
+    ("POST", "/api/bot/v1/tasks"), ("PATCH", "/api/bot/v1/tasks/{task_id}"),
+    ("POST", "/api/bot/v1/leads/{lead_id}/crew"), ("DELETE", "/api/bot/v1/leads/{lead_id}/crew/{musician_id}"),
+    ("PATCH", "/api/bot/v1/leads/{lead_id}/status"), ("PATCH", "/api/bot/v1/leads/{lead_id}/owner"),
+    ("PATCH", "/api/bot/v1/leads/{lead_id}/event"),
+}
+
+
+def test_router_writes_are_an_explicit_allowlist_and_no_send_or_backup():
     from app.api.bot_routes import bot_router
+    from app.bot.guide import route_scopes
+    from app.bot.scopes import WRITE_SCOPES
+    writes = set()
     for route in bot_router.routes:
-        assert route.methods <= {"GET", "HEAD"}, route.path
-        assert not any(w in route.path for w in ("send", "backup", "upload", "webhook"))
+        assert not any(w in route.path for w in ("send", "backup", "upload", "webhook", "message", "finance/")) \
+            or route.methods <= {"GET", "HEAD"}, route.path
+        for m in route.methods - {"GET", "HEAD"}:
+            writes.add((m, route.path))
+            # every write route needs exactly one write scope
+            assert [s for s in route_scopes(route) if s in WRITE_SCOPES], route.path
+    assert writes == WRITE_ROUTES
 
 
 def test_message_meta_query_is_paginated_and_content_free():

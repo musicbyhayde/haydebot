@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.bot import audit, keys
+from app.bot import audit, idempotency, keys
+from app.bot.auth import reset_write_limits
 from app.bot.keyformat import generate_key
 from app.bot.ratelimit import limiter
 from app.core.config import get_settings
@@ -38,6 +39,9 @@ def bot_env(monkeypatch):
     monkeypatch.setattr(s, "BOT_DOCS_PUBLIC", False)
     monkeypatch.setattr(s, "BOT_RATE_LIMIT_PER_MINUTE", 60)
     monkeypatch.setattr(s, "BOT_ANON_RATE_LIMIT_PER_MINUTE", 20)
+    monkeypatch.setattr(s, "BOT_API_WRITE_ENABLED", False)
+    monkeypatch.setattr(s, "BOT_WRITE_RATE_LIMIT_PER_MINUTE", 10)
+    monkeypatch.setattr(s, "BOT_WRITE_DAILY_LIMIT", 200)
     table = KeyTable()
     rows: list[dict] = []
     touched: list[str] = []
@@ -46,6 +50,8 @@ def bot_env(monkeypatch):
     monkeypatch.setattr(audit, "_insert", lambda row: rows.append(row))
     keys.invalidate_cache()
     limiter.reset()
+    reset_write_limits()
+    idempotency.reset()
 
     class Env:
         pass
@@ -60,6 +66,8 @@ def bot_env(monkeypatch):
     audit.flush()
     keys.invalidate_cache()
     limiter.reset()
+    reset_write_limits()
+    idempotency.reset()
 
 
 def hdr(key):

@@ -20,7 +20,7 @@ BOT_PREFIX = "/api/bot/"
 
 ERROR_CODES = {
     400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found",
-    405: "method_not_allowed", 422: "invalid_request", 424: "failed_dependency", 429: "rate_limited",
+    405: "method_not_allowed", 409: "conflict", 413: "payload_too_large", 422: "invalid_request", 424: "failed_dependency", 429: "rate_limited",
     500: "internal_error", 502: "upstream_error", 503: "unavailable",
 }
 

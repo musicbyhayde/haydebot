@@ -8,19 +8,21 @@ our JSON error. So: switched off -> 404 bot_api_disabled; key table unreachable 
 
 Separate from the dashboard auth (app/core/auth.py): bot keys are NOT accepted on /api/v1, and the
 dashboard JWT / server API_KEY are NOT accepted here. Order of checks:
-kill switch (BOT_API_ENABLED) -> key present/known/active/not expired -> rate limit -> scope.
+kill switch (BOT_API_ENABLED) -> key present/known/active/not expired -> rate limit -> scope
+-> for writes: write switch (BOT_API_WRITE_ENABLED, skipped for dry_run=true) -> write rate limits.
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Query, Request
 
 from app.bot import keys
 from app.bot.errors import BotError
-from app.bot.ratelimit import limiter
+from app.bot.idempotency import IDEM_PATTERN
+from app.bot.ratelimit import SlidingWindowLimiter, limiter
 from app.core.config import get_settings
 
 logger = logging.getLogger("haydebot.bot.auth")
@@ -120,3 +122,60 @@ async def docs_access(request: Request) -> BotContext | None:
         _anon_limit(request)
         return None
     return authenticate(request)
+
+
+# ─── writes ───────────────────────────────────────────────────────────────────────────
+write_limiter = SlidingWindowLimiter(window=60.0)
+daily_write_limiter = SlidingWindowLimiter(window=86400.0)
+
+
+def reset_write_limits() -> None:
+    write_limiter.reset()
+    daily_write_limiter.reset()
+
+
+@dataclass(frozen=True)
+class WriteContext:
+    bot: BotContext
+    dry_run: bool
+    idempotency_key: Optional[str]
+
+    @property
+    def actor(self) -> str:
+        """How the dashboard shows who did it (note author / activity actor)."""
+        return "bot:" + self.bot.name
+
+
+def require_write(scope: str) -> Callable:
+    """Dependency factory for write endpoints: key with `scope`, writes switched on (unless
+    dry_run), within the per-key write limits. Adds the dry_run query param and the optional
+    Idempotency-Key header to the endpoint."""
+    async def dep(
+        dry_run: bool = Query(False, description="true = validate and show what would change, write nothing"),
+        idempotency_key: Optional[str] = Header(
+            None, alias="Idempotency-Key", max_length=100, pattern=IDEM_PATTERN,
+            description="Recommended: a unique id per intended write (e.g. a UUID). Retrying with the "
+                        "same id never writes twice; the first result is returned again."),
+        ctx: BotContext = Depends(require_scopes(scope)),
+    ) -> WriteContext:
+        s = get_settings()
+        if not dry_run and not s.BOT_API_WRITE_ENABLED:
+            raise BotError(403, "writes_disabled",
+                           "Writing through the bot API is switched off by the owner "
+                           "(dry_run=true previews still work).")
+        retry = write_limiter.hit("key:" + ctx.key_id, s.BOT_WRITE_RATE_LIMIT_PER_MINUTE)
+        if retry:
+            raise BotError(429, "rate_limited",
+                           f"Write limit of {s.BOT_WRITE_RATE_LIMIT_PER_MINUTE} writes/minute exceeded.",
+                           {"Retry-After": str(retry)})
+        if not dry_run:
+            retry = daily_write_limiter.hit("key:" + ctx.key_id, s.BOT_WRITE_DAILY_LIMIT)
+            if retry:
+                raise BotError(429, "rate_limited",
+                               f"Daily write limit of {s.BOT_WRITE_DAILY_LIMIT} writes exceeded.",
+                               {"Retry-After": str(retry)})
+        return WriteContext(bot=ctx, dry_run=dry_run, idempotency_key=idempotency_key)
+    dep.__name__ = "require_write_" + scope.replace(":", "_")
+    dep.required_scopes = (scope,)
+    dep.is_write = True
+    return dep
