@@ -61,8 +61,18 @@ def normalize_date_value(raw_value: str) -> str:
 
 
 
-# Lead statuses in which a reset word ("היי", "תפריט", ...) may restart the bot flow (fix #6).
-RESETTABLE_STATUSES = {LeadStatus.NEW.value, LeadStatus.PROCESSING.value}
+# fix #6 — greeting / menu words vs. an ongoing deal.
+# "Bot still collecting the initial details" (intake) = the conversation state is one of the
+# intake questions AND the lead is still New (status is set to Processing / Manual only when the
+# intake finishes: handle_guests_input / SVC_TALK). Anything else = details already collected.
+INTAKE_STATES = {
+    ConversationState.START.value, ConversationState.AWAITING_SERVICE.value,
+    ConversationState.AWAITING_DATE.value, ConversationState.AWAITING_LOCATION.value,
+    ConversationState.AWAITING_GUESTS.value,
+}
+INTAKE_STATUSES = {LeadStatus.NEW.value}
+GREETING_WORDS = {"שלום", "היי"}
+MENU_WORDS = {"התחל מחדש", "תפריט", "menu", "restart"}
 
 class PersistentDict(dict):
     """A dict that auto-saves to a JSON file on every mutation.
@@ -364,17 +374,24 @@ class HaydeBotLogic:
             except Exception as e:
                 print(f"Error parsing bot_mute_until: {e}")
 
-        # 4. Detect Global Commands (e.g., Restart/Menu)
+        # 4. Detect Global Commands (e.g., Restart/Menu) — fix #6
         clean_text = text.lower().strip()
-        if clean_text in ["התחל מחדש", "תפריט", "שלום", "היי", "menu", "restart"]:
-             # fix #6: a greeting/menu word must not wipe an active deal. Reset only while the
-             # lead is still in the early bot stage; otherwise just alert the team.
-             if fields.get("Status") in RESETTABLE_STATUSES or not fields.get("Status"):
-                 await self.handle_reset_command(phone, lead_id)
+        greeting_during_intake = False
+        if clean_text in GREETING_WORDS or clean_text in MENU_WORDS:
+             if self._is_in_intake(fields):
+                 if clean_text in MENU_WORDS:
+                     # explicit "menu"/"restart" during intake: restart the intake (unchanged)
+                     await self.handle_reset_command(phone, lead_id)
+                     return
+                 # a plain greeting during intake: keep the intake going (no reset, no alert);
+                 # the current question is re-asked below, after the resume check.
+                 greeting_during_intake = True
              else:
-                 print(f"Reset word from lead {lead_id} in status {fields.get('Status')} - not resetting")
-                 self._alert_admins_customer_message(phone, name, text, media_url, fields.get("Status"))
-             return
+                 # details already collected: never wipe the deal; tell the team instead
+                 print(f"Greeting/menu word from lead {lead_id} past intake "
+                       f"(status={fields.get('Status')}, state={fields.get('Conversation_State')}) - not resetting")
+                 self._alert_admins_customer_message(phone, name, text, media_url, fields)
+                 return
         
         # 4. Smart Resume Check
         last_interaction_str = fields.get("Last_Interaction")
@@ -404,6 +421,10 @@ class HaydeBotLogic:
         airtable_service.update_lead(lead_id, LeadUpdate(last_interaction=datetime.now()))
 
         # 6. State Machine Router
+        if greeting_during_intake:
+             await self._reask_intake_question(phone, lead_id, state)
+             return
+
         if interactive_id == "RESUME_YES":
              await self.send_state_question(phone, state)
              return
@@ -971,16 +992,46 @@ class HaydeBotLogic:
         return next((l for l in active_leads 
                     if self._phones_match(l["fields"].get("Phone"), phone)), None)
 
-    def _alert_admins_customer_message(self, phone, name, text, media_url=None, status=None):
-        """Tell admins a customer with an active deal wrote (same channel as the muted-bot alert)."""
+    @staticmethod
+    def _is_in_intake(fields: dict) -> bool:
+        """True while the bot is still collecting the initial details (see INTAKE_STATES)."""
+        state = fields.get("Conversation_State") or ConversationState.START.value
+        state = getattr(state, "value", state)
+        status = fields.get("Status") or LeadStatus.NEW.value
+        return state in INTAKE_STATES and status in INTAKE_STATUSES
+
+    async def _reask_intake_question(self, phone: str, lead_id: str, state):
+        """Greeting mid-intake: repeat the question the bot is waiting for, keep all answers."""
+        state = getattr(state, "value", state) or ConversationState.START.value
+        if state == ConversationState.START.value:
+            await self.handle_start_state(phone, lead_id, None, "")
+        else:
+            await self.send_state_question(phone, ConversationState(state))
+
+    def _alert_admins_customer_message(self, phone, name, text, media_url=None, fields: dict = None):
+        """A customer whose details were already collected wrote a greeting/menu word.
+        Sent with the approved admin_system_alert_v2 template (same path as the other admin
+        alerts, e.g. "לקוח חוזר"), because free text to admins fails outside Meta's 24h window."""
         if not settings.NOTIFICATION_NUMBERS:
             return
-        preview = "[מדיה]" if media_url else f'"{text}"'
-        alert_msg = (f"🔔 הודעה חדשה מ-{name or phone} (ליד בסטטוס {status}):\n\n{preview}\n\n"
-                     f"הבוט לא איפס את השיחה. היכנס לפנל הניהול כדי להשיב.")
+        fields = fields or {}
+        lead_name = fields.get("Name") or name or "לא ידוע"
+        status = fields.get("Status") or "לא ידוע"
+        preview = "[מדיה]" if media_url else (text[:80] if text else "")
+        alert_body = (
+            f"לקוח עם פרטים שכבר נאספו כתב שוב: {lead_name} / {phone}   "
+            f"סטטוס: {status}   "
+            f"הודעה: {preview}   "
+            f"הבוט לא איפס את השיחה, יש להשיב מהפנל"
+        )
+        sanitized_body = self._sanitize_template_param(alert_body)
         for admin_phone in settings.NOTIFICATION_NUMBERS.split(","):
-            if admin_phone.strip() and phone != admin_phone.strip():
-                whatsapp_service.send_message(admin_phone.strip(), alert_msg)
+            admin_phone = admin_phone.strip()
+            if admin_phone and admin_phone != phone:
+                whatsapp_service.send_template(
+                    admin_phone, "admin_system_alert_v2", "he",
+                    parameters=["לקוח פעיל כתב שוב", sanitized_body]
+                )
 
     async def handle_reset_command(self, phone: str, lead_id: str):
         """Reset lead state and show menu."""
