@@ -19,9 +19,15 @@ async def lifespan(app: FastAPI):
         print("SECURITY WARNING: API_KEY is set to the public legacy value; set a strong random key")
     scheduler.start()
     
-    # Schedule Weekly Summary (Sunday at 10:00 AM)
+    # Weekly Summary (Sunday 10:00 Asia/Jerusalem). It never actually ran before (async job on
+    # the threadpool executor). It messages admins AND musicians, so it is opt-in.
     from app.services.logic import bot_logic
-    scheduler.add_job(bot_logic.send_weekly_summary, 'cron', day_of_week='sun', hour=10, minute=0)
+    if settings.WEEKLY_SUMMARY_ENABLED:
+        scheduler.add_job(bot_logic.send_weekly_summary, 'cron', day_of_week='sun', hour=10, minute=0,
+                          id='weekly_summary', replace_existing=True, executor='asyncio')
+        print("SCHEDULER: weekly summary enabled (Sun 10:00 Asia/Jerusalem)")
+    else:
+        print("SCHEDULER: weekly summary disabled (set WEEKLY_SUMMARY_ENABLED=true to enable)")
     
     # Register Google Calendar Watch for real-time RSVP push notifications
     try:

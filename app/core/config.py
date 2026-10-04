@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     NOTIFICATION_EMAIL: str = "musicbyhayde@gmail.com"
 
+    # Scheduled jobs (opt-in; see app/core/scheduler.py)
+    WEEKLY_SUMMARY_ENABLED: bool = False
+
     # Outbound network timeouts (seconds). Optional; safe defaults.
     HTTP_CONNECT_TIMEOUT: float = 5.0
     HTTP_READ_TIMEOUT: float = 20.0
