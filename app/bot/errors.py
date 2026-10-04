@@ -3,6 +3,8 @@
     {"error": {"status": 403, "code": "insufficient_scope", "message": "..."}}
 
 Other paths keep FastAPI's default error responses.
+Expected failures use 4xx only (incl. 424 for "database unreachable, retry"): DigitalOcean's edge
+replaces any 5xx with an HTML 504 page, so a 5xx body would never reach the bot.
 """
 from __future__ import annotations
 
@@ -18,7 +20,7 @@ BOT_PREFIX = "/api/bot/"
 
 ERROR_CODES = {
     400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found",
-    405: "method_not_allowed", 422: "invalid_request", 429: "rate_limited",
+    405: "method_not_allowed", 422: "invalid_request", 424: "failed_dependency", 429: "rate_limited",
     500: "internal_error", 502: "upstream_error", 503: "unavailable",
 }
 

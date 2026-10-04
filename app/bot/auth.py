@@ -2,6 +2,10 @@
 
     Authorization: Bearer hbk_xxxxxxxx_...      (X-Bot-Key: ... also accepted)
 
+Status codes are all 4xx on purpose: DigitalOcean's edge replaces ANY 5xx from the app with its own
+HTML 504 page (the original status only survives in the X-Do-Orig-Status header), which would hide
+our JSON error. So: switched off -> 404 bot_api_disabled; key table unreachable -> 424 + Retry-After.
+
 Separate from the dashboard auth (app/core/auth.py): bot keys are NOT accepted on /api/v1, and the
 dashboard JWT / server API_KEY are NOT accepted here. Order of checks:
 kill switch (BOT_API_ENABLED) -> key present/known/active/not expired -> rate limit -> scope.
@@ -46,7 +50,7 @@ def _extract_key(request: Request) -> str | None:
 
 def ensure_enabled() -> None:
     if not get_settings().BOT_API_ENABLED:
-        raise BotError(503, "bot_api_disabled", "The bot API is switched off (BOT_API_ENABLED=false).")
+        raise BotError(404, "bot_api_disabled", "The bot API is switched off.")
 
 
 def _anon_limit(request: Request) -> None:
@@ -71,7 +75,7 @@ def authenticate(request: Request) -> BotContext:
     try:
         bot = keys.lookup(key)
     except keys.KeyStoreUnavailable:
-        raise BotError(503, "key_store_unavailable", "Cannot verify keys right now, retry shortly.",
+        raise BotError(424, "key_store_unavailable", "Cannot verify keys right now, retry shortly.",
                        {"Retry-After": "30"})
     if bot is not None:
         request.state.bot_key_id, request.state.bot_name = bot.id, bot.name

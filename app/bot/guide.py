@@ -61,7 +61,8 @@ USAGE = [
     "Phones are masked (***1234) unless the key has pii:read. Treat all data as confidential.",
     "This API is READ-ONLY. It cannot send WhatsApp messages, change anything or export backups - "
     "never tell the user you did such things; suggest them as next steps for a human instead.",
-    "On 429 wait Retry-After seconds. On 401/403 do not retry; tell the user the key/scope is missing.",
+    "On 429 or 424 wait Retry-After seconds and retry. On 401/403 do not retry; tell the user the "
+    "key/scope is missing. 404 bot_api_disabled means the owner switched the API off.",
 ]
 
 EXAMPLES = [
@@ -119,8 +120,10 @@ def build_guide(router, prefix: str, base_url: str, caller: Optional[dict] = Non
             "base_url": base_url.rstrip("/") + prefix,
             "auth": "HTTP header 'Authorization: Bearer <your bot key>'",
             "format": "HTTPS + JSON. Single item: {data:{...}}; list: {data:[...], page:{total,limit,offset,next_offset}}",
-            "errors": "{error:{status, code, message}}; codes: missing_key, invalid_key, key_expired, "
-                      "insufficient_scope, rate_limited, not_found, invalid_request, upstream_error, bot_api_disabled",
+            "errors": "{error:{status, code, message}}. 401 missing_key / invalid_key / key_expired; "
+                      "403 insufficient_scope; 404 not_found or bot_api_disabled (API switched off); "
+                      "422 invalid_request; 424 key_store_unavailable / upstream_error (database briefly "
+                      "unreachable - retry after Retry-After); 429 rate_limited",
             "rate_limit": "per key, default 60 requests/minute; 429 + Retry-After when exceeded",
             "openapi": base_url.rstrip("/") + prefix + "/openapi.json",
             "timezone": "Asia/Jerusalem",

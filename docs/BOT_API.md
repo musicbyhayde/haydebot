@@ -8,12 +8,14 @@ Plain HTTPS + JSON for any bot or AI agent (Grok, ChatGPT, Claude, n8n, scripts)
 - **Self-description:** `GET /api/bot/v1/guide` (JSON, or `?format=markdown`) and
   `GET /api/bot/v1/openapi.json` (OpenAPI 3.1, bot routes only, importable as tools).
 - **Responses:** `{data: ...}`; lists add `page: {total, limit, offset, next_offset}`.
-  **Errors:** `{error: {status, code, message}}`.
+  **Errors:** `{error: {status, code, message}}`, always 4xx: 401 key problems, 403 scope, 404 not found
+  or `bot_api_disabled`, 422 bad params, 424 database briefly unreachable (retry after `Retry-After`),
+  429 rate limit. No 5xx on purpose: DigitalOcean's edge replaces any 5xx body with an HTML 504 page.
 - **Read-only:** GET only. No sending messages to customers, no writes, no full backup.
   `notes:write` / `tasks:write` are reserved names for a later phase.
 - **Scopes:** `leads:read, messages:read, notes:read, tasks:read, musicians:read,
   finance:summary, finance:read, pii:read` (`python scripts/bot_keys.py scopes`).
-- **Safety:** `BOT_API_ENABLED` kill switch (default off), per-key + per-IP rate limits, audit row per
+- **Safety:** `BOT_API_ENABLED` kill switch (default off; when off every bot route answers 404 `bot_api_disabled`), per-key + per-IP rate limits, audit row per
   request in `public.bot_audit_log`, revoke = `active=false` (applies within ~60s), optional `expires_at`.
 
 ## Keys

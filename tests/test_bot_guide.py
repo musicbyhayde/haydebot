@@ -57,8 +57,9 @@ def test_docs_public_mode(bot_env, c, monkeypatch):
 def test_docs_off_with_kill_switch(bot_env, c, monkeypatch):
     monkeypatch.setattr(bot_env.settings, "BOT_DOCS_PUBLIC", True)
     monkeypatch.setattr(bot_env.settings, "BOT_API_ENABLED", False)
-    assert c.get("/api/bot/v1/guide").status_code == 503
-    assert c.get("/api/bot/v1/openapi.json").status_code == 503
+    for path in ("/api/bot/v1/guide", "/api/bot/v1/openapi.json"):
+        r = c.get(path)
+        assert r.status_code == 404 and r.json()["error"]["code"] == "bot_api_disabled"
 
 
 def test_openapi_spec(bot_env, c, monkeypatch):
@@ -82,6 +83,9 @@ def test_openapi_spec(bot_env, c, monkeypatch):
             if code[0] in "45":
                 assert resp["content"]["application/json"]["schema"] == {"$ref": "#/components/schemas/Error"}
     assert len(op_ids) == len(set(op_ids))
+    for item in spec["paths"].values():   # no documented 5xx: DO's edge would replace the body
+        assert not [c for c in item["get"]["responses"] if c.startswith("5")]
+        assert "424" in item["get"]["responses"] and "404" in item["get"]["responses"]
     assert {"listLeads", "getLead", "getLeadMessages", "getAttention", "getFinanceSummary", "getGuide"} <= set(op_ids)
     assert spec["paths"]["/api/bot/v1/leads/{lead_id}/messages"]["get"]["x-required-scopes"] == ["leads:read", "messages:read"]
     assert "/api/bot/v1/openapi.json" not in spec["paths"]

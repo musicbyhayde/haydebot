@@ -36,7 +36,8 @@ def test_kill_switch_off_by_default_and_not_audited(bot_env, client, monkeypatch
     key = bot_env.table.add("grok", ["leads:read"])
     monkeypatch.setattr(bot_env.settings, "BOT_API_ENABLED", False)
     r = client.get("/api/bot/v1/whoami", headers=hdr(key))
-    assert r.status_code == 503 and err(r) == "bot_api_disabled"
+    assert r.status_code == 404 and err(r) == "bot_api_disabled"
+    assert r.json()["error"]["message"] == "The bot API is switched off."
     assert bot_env.audited() == []
     assert bot_env.table.reads == 0  # key table not even read
 
@@ -112,7 +113,7 @@ def test_key_store_down_fails_closed_but_uses_recent_copy(bot_env, client):
     key = bot_env.table.add("grok", ["leads:read"])
     bot_env.table.fail = TimeoutError("db down")
     r = client.get("/api/bot/v1/whoami", headers=hdr(key))
-    assert r.status_code == 503 and err(r) == "key_store_unavailable"
+    assert r.status_code == 424 and err(r) == "key_store_unavailable" and r.headers["retry-after"] == "30"
     bot_env.table.fail = None
     assert client.get("/api/bot/v1/whoami", headers=hdr(key)).status_code == 200
     keys._state["expires"] = 0

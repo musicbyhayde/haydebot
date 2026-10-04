@@ -303,10 +303,11 @@ def test_finance_summary_and_entries(api):
 
 
 # --- cross-cutting -----------------------------------------------------------------------
-def test_upstream_failure_is_502_without_details(api):
+def test_upstream_failure_is_424_without_details(api):
     api.fake.fail = True
     r = api("/leads")
-    assert r.status_code == 502 and r.json()["error"]["code"] == "upstream_error" and "db down" not in r.text
+    assert r.status_code == 424 and r.json()["error"]["code"] == "upstream_error" and "db down" not in r.text
+    assert r.headers["retry-after"] == "10"
 
 
 def test_every_request_is_audited(api):

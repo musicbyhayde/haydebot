@@ -30,9 +30,12 @@ bot_router = APIRouter(prefix=BOT_API_PREFIX)
 ERRORS = {
     401: {"description": "Missing, invalid, revoked or expired key"},
     403: {"description": "Key lacks a required scope"},
+    404: {"description": "Not found, or the bot API is switched off (code bot_api_disabled)"},
+    424: {"description": "Database temporarily unreachable (key_store_unavailable / upstream_error); "
+                         "retry after Retry-After seconds"},
     429: {"description": "Rate limit exceeded (see Retry-After)"},
-    503: {"description": "Bot API switched off or key store unavailable"},
 }
+NOT_FOUND = {**ERRORS, 404: {"description": "No such lead, or the bot API is switched off (bot_api_disabled)"}}
 LIMIT = Query(50, ge=1, le=200, description="Page size (max 200)")
 OFFSET = Query(0, ge=0, le=100_000, description="Items to skip; use page.next_offset for the next page")
 LEAD_ID = Path(..., min_length=1, max_length=64, description="Lead id, e.g. rec1a2b3c4d5e6f7a")
@@ -45,7 +48,9 @@ def _run(fn, *args, **kwargs):
         raise
     except Exception as e:  # database / network problem; details stay in the server log
         logger.warning("BOT_API: %s failed: %s", getattr(fn, "__name__", "?"), type(e).__name__)
-        raise BotError(502, "upstream_error", "Could not read the data right now, retry shortly.")
+        # 424, not 5xx: DigitalOcean's edge would replace a 5xx body with an HTML page
+        raise BotError(424, "upstream_error", "Could not read the data right now, retry shortly.",
+                       {"Retry-After": "10"})
 
 
 # ─── meta ─────────────────────────────────────────────────────────────────────────────
@@ -102,7 +107,7 @@ def list_leads(
 
 
 @bot_router.get("/leads/{lead_id}", tags=["leads"], operation_id="getLead",
-                responses={**ERRORS, 404: {"description": "No such lead"}}, summary="One lead in detail")
+                responses=NOT_FOUND, summary="One lead in detail")
 def get_lead(lead_id: str = LEAD_ID, ctx: BotContext = Depends(require_scopes("leads:read"))):
     """Lead detail: event, status, assigned musicians (names with musicians:read), RSVPs,
     lost reason; quote and commission only with finance:read."""
@@ -110,7 +115,7 @@ def get_lead(lead_id: str = LEAD_ID, ctx: BotContext = Depends(require_scopes("l
 
 
 @bot_router.get("/leads/{lead_id}/messages", tags=["leads"], operation_id="getLeadMessages",
-                responses={**ERRORS, 404: {"description": "No such lead"}},
+                responses=NOT_FOUND,
                 summary="WhatsApp conversation of a lead (read only)")
 def get_lead_messages(lead_id: str = LEAD_ID,
                       order: Literal["newest", "oldest"] = Query("newest"),
@@ -122,7 +127,7 @@ def get_lead_messages(lead_id: str = LEAD_ID,
 
 
 @bot_router.get("/leads/{lead_id}/notes", tags=["leads"], operation_id="getLeadNotes",
-                responses={**ERRORS, 404: {"description": "No such lead"}}, summary="Internal notes on a lead")
+                responses=NOT_FOUND, summary="Internal notes on a lead")
 def get_lead_notes(lead_id: str = LEAD_ID, limit: int = LIMIT, offset: int = OFFSET,
                    ctx: BotContext = Depends(require_scopes("leads:read", "notes:read"))):
     """Team notes, newest first, with optional follow-up date."""
