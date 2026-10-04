@@ -60,6 +60,10 @@ def normalize_date_value(raw_value: str) -> str:
     return raw_value
 
 
+
+# Lead statuses in which a reset word ("היי", "תפריט", ...) may restart the bot flow (fix #6).
+RESETTABLE_STATUSES = {LeadStatus.NEW.value, LeadStatus.PROCESSING.value}
+
 class PersistentDict(dict):
     """A dict that auto-saves to a JSON file on every mutation.
     Survives process restarts so pending musician actions aren't lost."""
@@ -318,7 +322,13 @@ class HaydeBotLogic:
         # 4. Detect Global Commands (e.g., Restart/Menu)
         clean_text = text.lower().strip()
         if clean_text in ["התחל מחדש", "תפריט", "שלום", "היי", "menu", "restart"]:
-             await self.handle_reset_command(phone, lead_id)
+             # fix #6: a greeting/menu word must not wipe an active deal. Reset only while the
+             # lead is still in the early bot stage; otherwise just alert the team.
+             if fields.get("Status") in RESETTABLE_STATUSES or not fields.get("Status"):
+                 await self.handle_reset_command(phone, lead_id)
+             else:
+                 print(f"Reset word from lead {lead_id} in status {fields.get('Status')} - not resetting")
+                 self._alert_admins_customer_message(phone, name, text, media_url, fields.get("Status"))
              return
         
         # 4. Smart Resume Check
@@ -915,6 +925,17 @@ class HaydeBotLogic:
         active_leads = airtable_service.get_active_leads() # Already sorted by last interaction
         return next((l for l in active_leads 
                     if self._phones_match(l["fields"].get("Phone"), phone)), None)
+
+    def _alert_admins_customer_message(self, phone, name, text, media_url=None, status=None):
+        """Tell admins a customer with an active deal wrote (same channel as the muted-bot alert)."""
+        if not settings.NOTIFICATION_NUMBERS:
+            return
+        preview = "[מדיה]" if media_url else f'"{text}"'
+        alert_msg = (f"🔔 הודעה חדשה מ-{name or phone} (ליד בסטטוס {status}):\n\n{preview}\n\n"
+                     f"הבוט לא איפס את השיחה. היכנס לפנל הניהול כדי להשיב.")
+        for admin_phone in settings.NOTIFICATION_NUMBERS.split(","):
+            if admin_phone.strip() and phone != admin_phone.strip():
+                whatsapp_service.send_message(admin_phone.strip(), alert_msg)
 
     async def handle_reset_command(self, phone: str, lead_id: str):
         """Reset lead state and show menu."""
