@@ -1192,33 +1192,45 @@ class HaydeBotLogic:
                         parameters=["לקוח חוזר", sanitized_body]
                     )
 
+    def _log_outbound(self, content: str, res, lead_id: str = None, musician_id: str = None):
+        """Store an outbound message; mark it Failed if Meta rejected it (fix #3)."""
+        from app.services.whatsapp import send_failed
+        failed = send_failed(res)
+        msg = dict(
+            lead=[lead_id] if lead_id else None,
+            musician=[musician_id] if musician_id else None,
+            direction="Outbound",
+            content=content,
+            timestamp=datetime.now(),
+        )
+        if not failed:
+            airtable_service.create_message(MessageCreate(**msg))
+            return
+        print(f"WHATSAPP SEND FAILED lead={lead_id} musician={musician_id}: {res}")
+        try:
+            airtable_service.create_message(MessageCreate(**msg, status="Failed"))
+        except Exception as e:  # e.g. a CHECK constraint on Status: keep a visible marker instead
+            print(f"Could not store Failed status ({e}); storing with marker")
+            msg["content"] = f"⚠️ לא נשלח: {content}"
+            airtable_service.create_message(MessageCreate(**msg))
+
     def _send_message(self, phone: str, text: str, lead_id: str = None, musician_id: str = None):
-        whatsapp_service.send_message(phone, text)
+        res = whatsapp_service.send_message(phone, text)
         if lead_id or musician_id:
-            airtable_service.create_message(MessageCreate(
-                lead=[lead_id] if lead_id else None,
-                musician=[musician_id] if musician_id else None,
-                direction="Outbound",
-                content=text,
-                timestamp=datetime.now()
-            ))
+            self._log_outbound(text, res, lead_id, musician_id)
+        return res
 
     def _send_interactive(self, phone: str, text: str, btn_id: str, btn_title: str, lead_id: str = None, musician_id: str = None, buttons: list = None):
         if buttons:
-            whatsapp_service.send_interactive_buttons(phone, text, buttons)
+            res = whatsapp_service.send_interactive_buttons(phone, text, buttons)
             content = f"{text} (Buttons: {[b[1] for b in buttons]})"
         else:
-            whatsapp_service.send_interactive_button(phone, text, btn_id, btn_title)
+            res = whatsapp_service.send_interactive_button(phone, text, btn_id, btn_title)
             content = f"{text} (Button: {btn_title})"
 
         if lead_id or musician_id:
-            airtable_service.create_message(MessageCreate(
-                lead=[lead_id] if lead_id else None,
-                musician=[musician_id] if musician_id else None,
-                direction="Outbound",
-                content=content,
-                timestamp=datetime.now()
-            ))
+            self._log_outbound(content, res, lead_id, musician_id)
+        return res
 
     async def sync_calendar_rsvps(self):
         """Poll Google Calendar to update RSVP status of musicians for each lead."""

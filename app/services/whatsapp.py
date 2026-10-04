@@ -125,7 +125,14 @@ class WhatsAppService:
             return response.json()
         except requests.exceptions.HTTPError as e:
             print(f"WhatsApp API Error: {e.response.text}")
-            return {"error": str(e)}
+            out = {"error": str(e)}
+            try:  # additive: Meta's structured error (code 131047 = outside 24h window)
+                meta = (e.response.json() or {}).get("error") or {}
+                out["error_code"] = meta.get("code")
+                out["error_message"] = meta.get("message")
+            except Exception:
+                pass
+            return out
         except Exception as e:
             print(f"WhatsApp Error: {e}")
             return {"error": str(e)}
@@ -153,5 +160,21 @@ class WhatsAppService:
         except Exception as e:
             print(f"Error downloading WhatsApp media: {e}")
             return None, None
+
+def send_failed(res) -> bool:
+    """True if a WhatsAppService send result means Meta did NOT accept the message."""
+    return not isinstance(res, dict) or "error" in res or not res.get("messages")
+
+
+def describe_send_error(res) -> str:
+    """Short Hebrew explanation for the dashboard."""
+    code = res.get("error_code") if isinstance(res, dict) else None
+    if code in (131047, 131026) or (code is None and isinstance(res, dict)
+                                    and "131047" in str(res.get("error_message", ""))):
+        return ("ההודעה לא נשלחה: עברו יותר מ-24 שעות מההודעה האחרונה של הלקוח. "
+                "וואטסאפ מאפשר במצב כזה רק הודעת תבנית (למשל 'שליחת חומרים').")
+    detail = (res.get("error_message") or res.get("error")) if isinstance(res, dict) else None
+    return f"ההודעה לא נשלחה בוואטסאפ ({code or 'שגיאה'}): {detail or 'אין תגובה מ-Meta'}"
+
 
 whatsapp_service = WhatsAppService()

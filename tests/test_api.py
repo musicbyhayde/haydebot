@@ -112,8 +112,8 @@ class TestMessages:
         r = test_client.post(f"/api/v1/leads/{lead_id}/messages", json={
             "text": "Hello from test",
         })
-        # May get 200 or 500 depending on WhatsApp mock — either way, shouldn't crash
-        assert r.status_code in (200, 500)
+        # WhatsApp is mocked without a Meta message id -> reported as a failed send (fix #3)
+        assert r.status_code in (200, 502)
 
 
 # ═══════════════════════════════════════════════════════

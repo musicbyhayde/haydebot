@@ -195,7 +195,7 @@ export default function MusiciansPage({ onMenuClick }: MusiciansPageProps) {
             fetchChatMessages(chatMusicianId);
         } catch (e) {
             console.error('Failed to send message:', e);
-            error('שגיאה בשליחת הודעה');
+            error((e as { detail?: string })?.detail || 'שגיאה בשליחת הודעה');
         } finally {
             setSendingChat(false);
         }

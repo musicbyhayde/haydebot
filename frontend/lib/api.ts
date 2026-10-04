@@ -17,6 +17,27 @@ const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v
 const SEND_LEGACY_KEY = process.env.NEXT_PUBLIC_SEND_LEGACY_API_KEY !== 'false';
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'hayde-security-key';
 
+/** Error carrying the backend's human-readable `detail` (e.g. why WhatsApp rejected a send). */
+export class ApiError extends Error {
+    detail?: string;
+    status?: number;
+    constructor(message: string, detail?: string, status?: number) {
+        super(message);
+        this.name = 'ApiError';
+        this.detail = detail;
+        this.status = status;
+    }
+}
+
+async function throwWithDetail(res: Response, message: string): Promise<never> {
+    let detail: string | undefined;
+    try {
+        const body = await res.json();
+        if (body && typeof body.detail === 'string') detail = body.detail;
+    } catch { /* non-JSON body */ }
+    throw new ApiError(message, detail, res.status);
+}
+
 async function getAccessToken(): Promise<string | null> {
     try {
         if (typeof window === 'undefined' || !process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
@@ -108,7 +129,7 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text }),
         });
-        if (!res.ok) throw new Error('Failed to send message');
+        if (!res.ok) await throwWithDetail(res, 'Failed to send message');
     },
 
     // --- Musicians ---
@@ -130,7 +151,7 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text }),
         });
-        if (!res.ok) throw new Error('Failed to send musician message');
+        if (!res.ok) await throwWithDetail(res, 'Failed to send musician message');
     },
 
     async createMusician(data: Partial<Musician['fields']>): Promise<Musician> {
@@ -315,7 +336,7 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error('Failed to send intro bundle');
+        if (!res.ok) await throwWithDetail(res, 'Failed to send intro bundle');
         return res.json();
     },
 

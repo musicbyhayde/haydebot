@@ -62,3 +62,25 @@ describe('fetchWithAuth', () => {
         expect(headersOfLastCall()['Content-Type']).toBe('application/json');
     });
 });
+
+describe('send errors carry backend detail (fix #3)', () => {
+    beforeEach(() => {
+        jest.resetModules();
+        mockFetch.mockReset();
+        getSession.mockResolvedValue({ data: { session: null } });
+    });
+
+    it('sendMessage throws ApiError with detail on 502', async () => {
+        mockFetch.mockResolvedValue({ ok: false, status: 502, json: () => Promise.resolve({ detail: 'ההודעה לא נשלחה' }) });
+        const { api } = await import('@/lib/api');
+        await expect(api.sendMessage('rec1', 'hi')).rejects.toMatchObject({
+            message: 'Failed to send message', detail: 'ההודעה לא נשלחה', status: 502,
+        });
+    });
+
+    it('non-JSON error body still throws the old message', async () => {
+        mockFetch.mockResolvedValue({ ok: false, status: 500, json: () => Promise.reject(new Error('x')) });
+        const { api } = await import('@/lib/api');
+        await expect(api.sendIntro('rec1', { video_urls: [] })).rejects.toThrow('Failed to send intro bundle');
+    });
+});

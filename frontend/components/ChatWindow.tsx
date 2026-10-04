@@ -33,7 +33,7 @@ export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBa
             await onSend(inputText);
             setInputText("");
         } catch (e) {
-            error("Failed to send");
+            error((e as { detail?: string })?.detail || "Failed to send");
         } finally {
             setSending(false);
         }
@@ -200,7 +200,8 @@ export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBa
                                                 isOut ? "text-slate-500" : "text-slate-300"
                                             )}>
                                                 <span>{format(new Date(msg.fields.Timestamp), 'HH:mm')}</span>
-                                                {isOut && <CheckCheck size={14} className={clsx(msg.fields.Status === 'Read' ? "text-blue-500" : "text-slate-400")} />}
+                                                {isOut && msg.fields.Status === 'Failed' && <span className="text-red-500 font-bold">לא נשלח</span>}
+                                                {isOut && msg.fields.Status !== 'Failed' && <CheckCheck size={14} className={clsx(msg.fields.Status === 'Read' ? "text-blue-500" : "text-slate-400")} />}
                                             </div>
                                         </div>
                                     </div>

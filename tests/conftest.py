@@ -293,5 +293,6 @@ def test_client(mock_service):
         with patch("app.core.scheduler.scheduler"):
             from app.main import app
             from app.core.config import get_settings
-            client = TestClient(app, headers={"X-API-Key": get_settings().API_KEY})
+            from app.core.config import LEGACY_DEFAULT_API_KEY
+            client = TestClient(app, headers={"X-API-Key": get_settings().API_KEY or LEGACY_DEFAULT_API_KEY})
             yield client

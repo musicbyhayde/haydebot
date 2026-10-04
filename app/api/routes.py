@@ -498,6 +498,12 @@ async def delete_lead(lead_id: str, delete_calendar: bool = False):
 async def get_messages(lead_id: str):
     return airtable_service.get_messages_for_lead(lead_id)
 
+# Statuses a manual reply may switch to "Manual" (fix #8). Anything else keeps its status.
+MANUAL_SWITCHABLE_STATUSES = {
+    LeadStatus.NEW.value, LeadStatus.PROCESSING.value, LeadStatus.TALKING.value,
+    LeadStatus.COLD.value, LeadStatus.LOST.value, LeadStatus.MANUAL.value,
+}
+
 class SendMessageRequest(BaseModel):
     text: str
 
@@ -514,10 +520,24 @@ async def send_manual_message(lead_id: str, payload: SendMessageRequest):
     if not phone:
          raise HTTPException(status_code=400, detail="Lead has no phone")
 
-    mute_time = datetime.now() + timedelta(hours=24)
-    airtable_service.update_lead(lead_id, LeadUpdate(status=LeadStatus.MANUAL, bot_mute_until=mute_time))
+    from app.services.whatsapp import send_failed, describe_send_error
+    res = bot_logic._send_message(phone, payload.text, lead_id)
+    if send_failed(res):
+        # fix #3: don't report success, don't mute the bot / change status for a message
+        # the customer never received. The message is stored with Status=Failed.
+        raise HTTPException(status_code=502, detail=describe_send_error(res))
 
-    bot_logic._send_message(phone, payload.text, lead_id)
+    # fix #8: always mute the bot for 24h, but only move early-stage leads to Manual;
+    # never reopen Closed/Completed or overwrite Quote_Sent/Waiting_Payment/bouzouki states.
+    mute_time = datetime.now() + timedelta(hours=24)
+    current = lead["fields"].get("Status")
+    update = LeadUpdate(bot_mute_until=mute_time)
+    if current in MANUAL_SWITCHABLE_STATUSES or not current:
+        update = LeadUpdate(status=LeadStatus.MANUAL, bot_mute_until=mute_time)
+    try:
+        airtable_service.update_lead(lead_id, update)
+    except Exception as e:
+        print(f"Manual message sent but lead update failed for {lead_id}: {e}")
     return {"status": "sent"}
 
 @protected_router.post("/leads/{lead_id}/send-intro")
@@ -552,6 +572,10 @@ async def send_intro_template(lead_id: str, payload: SendIntroRequest):
         "he", 
         [name_to_use, video_text]
     )
+    from app.services.whatsapp import send_failed, describe_send_error
+    if send_failed(res):  # fix #3
+        print(f"send-intro failed for {lead_id}: {res}")
+        raise HTTPException(status_code=502, detail=describe_send_error(res))
     
     # Save the message to history so it appears in the chat
     try:
@@ -787,7 +811,10 @@ async def send_musician_manual_message(musician_id: str, payload: SendMessageReq
     if not phone:
          raise HTTPException(status_code=400, detail="Musician has no phone")
 
-    bot_logic._send_message(phone, payload.text, musician_id=musician_id)
+    from app.services.whatsapp import send_failed, describe_send_error
+    res = bot_logic._send_message(phone, payload.text, musician_id=musician_id)
+    if send_failed(res):  # fix #3
+        raise HTTPException(status_code=502, detail=describe_send_error(res))
     return {"status": "sent"}
 
 # ─── Finance ─────────────────────────────────────────
