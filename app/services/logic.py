@@ -111,67 +111,112 @@ class HaydeBotLogic:
     async def process_webhook(self, body: dict):
         """
         Main entry point for webhook events.
+        fix #9: handles every entry/change/message in the payload (not just the first), and a
+        failure on one message is logged with its raw payload and alerted to admins instead of
+        silently disappearing.
         """
         try:
-            entry = body.get("entry", [])[0]
-            changes = entry.get("changes", [])[0]
-            value = changes.get("value", {})
-            
-            # 1. Check for incoming messages
-            if "messages" in value:
-                message = value["messages"][0]
-                contact = value.get("contacts", [{}])[0]
-                sender_phone = message.get("from")
-                sender_name = contact.get("profile", {}).get("name", "Unknown")
-
-                # 0. Admin Detection - Completely ignore messages from admins
-                admin_numbers = settings.NOTIFICATION_NUMBERS.split(",") if settings.NOTIFICATION_NUMBERS else []
-                if any(self._phones_match(n.strip(), sender_phone) for n in admin_numbers):
-                    print(f"DEBUG: Message from admin {sender_phone}. Ignoring entirely.")
-                    return
-                
-                
-                # Identify message type and content
-                msg_type = message.get("type")
-                text_content = ""
-                interactive_id = None
-                media_url = None
-                media_type = None
-                
-                if msg_type == "text":
-                    text_content = message["text"]["body"]
-                elif msg_type == "interactive":
-                    interaction = message["interactive"]
-                    if interaction["type"] == "button_reply":
-                        interactive_id = interaction["button_reply"]["id"]
-                        text_content = interaction["button_reply"]["title"] 
-                    elif interaction["type"] == "list_reply":
-                        interactive_id = interaction["list_reply"]["id"]
-                        text_content = interaction["list_reply"]["title"]
-                elif msg_type in ["image", "audio", "video", "document", "voice"]:
-                    media_obj = message.get(msg_type, {})
-                    media_id = media_obj.get("id")
-                    if media_id:
-                        import uuid
-                        file_bytes, mime_type = whatsapp_service.download_media(media_id)
-                        if file_bytes:
-                            ext = mime_type.split('/')[-1].split(';')[0] if mime_type else "bin"
-                            file_name = f"{uuid.uuid4().hex}.{ext}"
-                            media_url = airtable_service.upload_media(file_bytes, file_name, mime_type)
-                            media_type = mime_type
-                            text_content = f"[{msg_type.upper()} RECEIVED]"
-                        else:
-                            text_content = f"[Failed to download {msg_type.upper()}]"
-                    else:
-                        text_content = f"[{msg_type.upper()} RECEIVED]"
-                else:
-                    text_content = f"[{msg_type.upper()} RECEIVED]"
-
-                # Process
-                await self.handle_incoming_message(sender_phone, sender_name, text_content, interactive_id, message.get("id"), media_url, media_type)
-
+            entries = body.get("entry") or []
         except Exception as e:
             print(f"Error processing webhook: {e}")
+            return
+        for entry in entries:
+            for change in (entry or {}).get("changes") or []:
+                value = (change or {}).get("value") or {}
+                contacts = value.get("contacts") or [{}]
+                for message in value.get("messages") or []:
+                    contact = next((c for c in contacts if c.get("wa_id") and c.get("wa_id") == message.get("from")),
+                                   contacts[0] if contacts else {})
+                    try:
+                        await self._process_single_message(message, contact)
+                    except Exception as e:
+                        await self._report_inbound_failure(message, contact, e)
+
+    async def _report_inbound_failure(self, message: dict, contact: dict, error: Exception):
+        import traceback
+        wa_id = message.get("id")
+        if wa_id:
+            # allow a later replay of this exact message to be processed
+            self.processed_messages.pop(wa_id, None)
+        raw = json.dumps({"message": message, "contact": contact}, ensure_ascii=False, default=str)
+        print(f"WEBHOOK_PROCESSING_FAILED wa_id={wa_id} error={error!r}\n{traceback.format_exc()}")
+        print(f"WEBHOOK_FAILED_PAYLOAD {raw}")
+        sender = message.get("from")
+        name = (contact or {}).get("profile", {}).get("name") or ""
+        preview = (message.get("text") or {}).get("body") or f"[{message.get('type')}]"
+        try:
+            from app.services.email import email_service
+            import html as _html
+            await email_service.send_notification(
+                f"HaydeBot: הודעה נכנסת לא עובדה ({sender})",
+                "<div dir='rtl'>"
+                f"הודעה מ-{_html.escape(name)} {_html.escape(str(sender))} לא עובדה בגלל שגיאה "
+                "ואולי לא נשמרה במערכת. כדאי לבדוק את הליד ולענות ידנית.<br>"
+                f"תוכן: {_html.escape(str(preview))}<br>שגיאה: {_html.escape(repr(error))}</div>"
+                f"<pre dir='ltr'>{_html.escape(raw)}</pre>",
+            )
+        except Exception as e2:
+            print(f"Could not email inbound failure alert: {e2}")
+        try:
+            if settings.NOTIFICATION_NUMBERS:
+                body_txt = self._sanitize_template_param(
+                    f"הודעה מ-{name} {sender} לא נקלטה במערכת: {preview}"[:900])
+                for admin_phone in settings.NOTIFICATION_NUMBERS.split(","):
+                    if admin_phone.strip():
+                        whatsapp_service.send_template(admin_phone.strip(), "admin_system_alert_v2", "he",
+                                                       parameters=["הודעה לא נקלטה", body_txt])
+        except Exception as e3:
+            print(f"Could not WhatsApp inbound failure alert: {e3}")
+
+    async def _process_single_message(self, message: dict, contact: dict):
+        sender_phone = message.get("from")
+        sender_name = contact.get("profile", {}).get("name", "Unknown")
+
+        # 0. Admin Detection - Completely ignore messages from admins
+        admin_numbers = settings.NOTIFICATION_NUMBERS.split(",") if settings.NOTIFICATION_NUMBERS else []
+        if any(self._phones_match(n.strip(), sender_phone) for n in admin_numbers):
+            print(f"DEBUG: Message from admin {sender_phone}. Ignoring entirely.")
+            return
+        
+        
+        # Identify message type and content
+        msg_type = message.get("type")
+        text_content = ""
+        interactive_id = None
+        media_url = None
+        media_type = None
+        
+        if msg_type == "text":
+            text_content = message["text"]["body"]
+        elif msg_type == "interactive":
+            interaction = message["interactive"]
+            if interaction["type"] == "button_reply":
+                interactive_id = interaction["button_reply"]["id"]
+                text_content = interaction["button_reply"]["title"] 
+            elif interaction["type"] == "list_reply":
+                interactive_id = interaction["list_reply"]["id"]
+                text_content = interaction["list_reply"]["title"]
+        elif msg_type in ["image", "audio", "video", "document", "voice"]:
+            media_obj = message.get(msg_type, {})
+            media_id = media_obj.get("id")
+            if media_id:
+                import uuid
+                file_bytes, mime_type = whatsapp_service.download_media(media_id)
+                if file_bytes:
+                    ext = mime_type.split('/')[-1].split(';')[0] if mime_type else "bin"
+                    file_name = f"{uuid.uuid4().hex}.{ext}"
+                    media_url = airtable_service.upload_media(file_bytes, file_name, mime_type)
+                    media_type = mime_type
+                    text_content = f"[{msg_type.upper()} RECEIVED]"
+                else:
+                    text_content = f"[Failed to download {msg_type.upper()}]"
+            else:
+                text_content = f"[{msg_type.upper()} RECEIVED]"
+        else:
+            text_content = f"[{msg_type.upper()} RECEIVED]"
+
+        # Process
+        await self.handle_incoming_message(sender_phone, sender_name, text_content, interactive_id, message.get("id"), media_url, media_type)
 
     async def handle_incoming_message(self, phone: str, name: str, text: str, interactive_id: str, whatsapp_id: str = None, media_url: str = None, media_type: str = None):
         if whatsapp_id:
