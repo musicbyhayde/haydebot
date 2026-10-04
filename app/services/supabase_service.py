@@ -296,11 +296,11 @@ class SupabaseService:
 
     # ─── Notes CRUD ───────────────────────────────────────
 
-    def create_note(self, note: NoteCreate) -> dict:
-        """Create a note for a lead."""
+    def create_note(self, note: NoteCreate, record_id: Optional[str] = None) -> dict:
+        """Create a note for a lead. record_id: fixed id (Bot API idempotency); default random."""
         if not self.client: return {}
         data = note.model_dump(exclude_none=True, by_alias=True, mode='json')
-        data["id"] = self._generate_id()
+        data["id"] = record_id or self._generate_id()
         data["Created_At"] = datetime.now().isoformat()
         response = self.client.table("notes").insert(data).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
@@ -431,11 +431,11 @@ class SupabaseService:
         response = self.client.table("tasks").select("*").order("Due_Date", desc=True).execute()
         return self._to_airtable_list(response.data)
 
-    def create_task(self, task: TaskCreate) -> dict:
-        """Create a new task."""
+    def create_task(self, task: TaskCreate, record_id: Optional[str] = None) -> dict:
+        """Create a new task. record_id: fixed id (Bot API idempotency); default random."""
         if not self.client: return {}
         data = task.model_dump(exclude_none=True, by_alias=True, mode='json')
-        data["id"] = self._generate_id()
+        data["id"] = record_id or self._generate_id()
         data["Created_At"] = datetime.now().isoformat()
         response = self.client.table("tasks").insert(data).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
@@ -561,11 +561,13 @@ class SupabaseService:
             results.append(item)
         return results
 
-    def create_activity(self, activity: ActivityCreate) -> dict:
-        """Create a new activity log."""
+    def create_activity(self, activity: ActivityCreate, record_id: Optional[str] = None) -> dict:
+        """Create a new activity log. record_id: fixed uuid (Bot API idempotency)."""
         if not self.client: return {}
         data = activity.model_dump(exclude_none=True, mode='json')
-        # Let Supabase auto-generate the UUID id
+        if record_id:
+            data["id"] = record_id
+        # otherwise Supabase auto-generates the UUID id
         response = self.client.table("activities").insert(data).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
 

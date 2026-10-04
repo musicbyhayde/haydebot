@@ -121,16 +121,29 @@ class MockSupabaseService:
 
     # ── Notes ─────────────────────────
 
-    def create_note(self, note):
+    def _insert(self, table, data):
+        if any(r.get("id") == data["id"] for r in self._stores.setdefault(table, [])):
+            raise Exception('duplicate key value violates unique constraint (23505)')
+        self._stores[table].append(data)
+
+    def create_note(self, note, record_id=None):
         data = note.model_dump(exclude_none=True, by_alias=True, mode='json')
-        data["id"] = self._gen_id()
+        data["id"] = record_id or self._gen_id()
         data["Created_At"] = datetime.now().isoformat()
-        self._stores["notes"].append(data)
+        self._insert("notes", data)
         return self._to_airtable_format(data)
 
     def get_notes_for_lead(self, lead_id):
         notes = [n for n in self._stores["notes"] if n.get("Lead_ID") == lead_id]
         return self._to_airtable_list(notes)
+
+    def update_note(self, note_id, note):
+        update_data = note.model_dump(exclude_none=True, by_alias=True, mode='json')
+        for rec in self._stores["notes"]:
+            if rec["id"] == note_id:
+                rec.update(update_data)
+                return self._to_airtable_format(rec)
+        raise Exception(f"Note with id {note_id} not found or update failed")
 
     # ── Finance ───────────────────────
 
@@ -177,11 +190,11 @@ class MockSupabaseService:
     def get_tasks(self):
         return self._to_airtable_list(self._stores["tasks"])
 
-    def create_task(self, task):
+    def create_task(self, task, record_id=None):
         data = task.model_dump(exclude_none=True, by_alias=True, mode='json')
-        data["id"] = self._gen_id()
+        data["id"] = record_id or self._gen_id()
         data["Created_At"] = datetime.now().isoformat()
-        self._stores["tasks"].append(data)
+        self._insert("tasks", data)
         return self._to_airtable_format(data)
 
     def update_task(self, task_id, data):
@@ -202,14 +215,14 @@ class MockSupabaseService:
 
     # ── Activities ────────────────────
 
-    def create_activity(self, activity):
+    def create_activity(self, activity, record_id=None):
         if hasattr(activity, 'model_dump'):
             data = activity.model_dump(exclude_none=True, mode='json')
         else:
             data = dict(activity)
-        data["id"] = self._gen_id()
+        data["id"] = record_id or self._gen_id()
         data["created_at"] = datetime.now().isoformat()
-        self._stores.setdefault("activities", []).append(data)
+        self._insert("activities", data)
         return self._to_airtable_format(data)
 
     def get_activities(self, lead_id=None, limit=50):

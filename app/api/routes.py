@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, BackgroundTasks, HTTPException, Query, U
 from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, VideoCreate, VideoUpdate, CalendarEventCreate, CalendarEventUpdate
 from app.core.config import get_settings
 from app.services.logic import bot_logic
+from app.services import activity_text
 from typing import List, Optional
 from pydantic import BaseModel
 import uuid
@@ -196,19 +197,20 @@ async def update_lead(lead_id: str, request: Request):
     result = airtable_service.update_lead(lead_id, data)
 
     if body.get("Status"):
+        action_type, description = activity_text.status_changed(body.get("Status"))
         airtable_service.create_activity(ActivityCreate(
             actor="מערכת",
-            action_type="שינוי סטטוס",
-            description=f"הסטטוס שונה ל-{body.get('Status')}",
+            action_type=action_type,
+            description=description,
             lead_id=lead_id
         ))
 
     if "Owner" in body and not body.get("Status"):
-        new_owner = body.get("Owner")
+        action_type, description = activity_text.owner_updated(body.get("Owner"))
         airtable_service.create_activity(ActivityCreate(
             actor="מערכת",
-            action_type="עדכון מוביל",
-            description=f"מוביל עודכן ל-{new_owner if new_owner else 'ללא מוביל'}",
+            action_type=action_type,
+            description=description,
             lead_id=lead_id
         ))
 
@@ -260,27 +262,8 @@ async def transfer_lead_owner(lead_id: str, request: Request):
     data = LeadUpdate(owner=new_owner if new_owner else None)
     result = airtable_service.update_lead(lead_id, data)
 
-    # Format the note text
-    if previous_owner and new_owner:
-        note_content = f"🔄 העברת מוביל: הטיפול בליד הועבר מ-{previous_owner} ל-{new_owner}"
-        activity_desc = f"העברת מוביל מ-{previous_owner} ל-{new_owner}"
-        action_type = "העברת מוביל"
-    elif new_owner and not previous_owner:
-        note_content = f"👤 שיוך מוביל: {new_owner} הוגדר/ה כמוביל/ת הליד"
-        activity_desc = f"שייך/ה את הליד ל-{new_owner}"
-        action_type = "שיוך מוביל"
-    elif previous_owner and not new_owner:
-        note_content = f"⚠️ הסרת מוביל: הוסר השיוך של {previous_owner}"
-        activity_desc = f"הסיר/ה את המוביל ({previous_owner})"
-        action_type = "הסרת מוביל"
-    else:
-        note_content = "🔄 עדכון מוביל ליד"
-        activity_desc = "עדכון מוביל ליד"
-        action_type = "עדכון מוביל"
-
-    if handover_note:
-        note_content += f"\n\n💬 הערת העברה: {handover_note}"
-        activity_desc += f" ({handover_note[:30]}...)" if len(handover_note) > 30 else f" ({handover_note})"
+    # Format the note text (shared with the Bot API: app/services/activity_text.py)
+    action_type, activity_desc, note_content = activity_text.owner_transfer(previous_owner, new_owner, handover_note)
 
     created_note = None
     try:
@@ -721,10 +704,11 @@ async def create_note(lead_id: str, request: Request):
     )
     result = airtable_service.create_note(note)
     
+    action_type, description = activity_text.note_added(note.content)
     airtable_service.create_activity(ActivityCreate(
         actor=note.author or "מערכת",
-        action_type="הוספת עדכון",
-        description=f"הוסיף/ה עדכון: {(note.content or '')[:30]}...",
+        action_type=action_type,
+        description=description,
         lead_id=lead_id
     ))
     
@@ -933,10 +917,11 @@ async def create_task(request: Request):
     )
     result = airtable_service.create_task(task)
     
+    action_type, description = activity_text.task_created(task.title)
     airtable_service.create_activity(ActivityCreate(
         actor=task.assignee or "מערכת",
-        action_type="משימה חדשה",
-        description=f"יצר/ה משימה: {task.title}",
+        action_type=action_type,
+        description=description,
         lead_id=task.lead_id
     ))
     return result
