@@ -1,8 +1,9 @@
-import { createBrowserClient } from '@supabase/ssr';
-import { ALLOWED_USERS } from '@/lib/allowedUsers';
+import { createSupabaseClient } from '@/lib/supabaseClient';
+import { api, ApiError } from '@/lib/api';
 
-export type { UserRole } from '@/lib/allowedUsers';
-import type { UserRole } from '@/lib/allowedUsers';
+export { createSupabaseClient };
+
+export type UserRole = 'partner' | 'admin';
 
 export interface AppUser {
     id: string;
@@ -11,31 +12,46 @@ export interface AppUser {
     displayName: string;
 }
 
-// Kept in lib/allowedUsers.ts (no browser deps) so middleware can use it too.
-// Must match DASHBOARD_ALLOWED_EMAILS / DASHBOARD_ADMIN_EMAILS on the backend.
-const USER_MAP = ALLOWED_USERS;
-
-export function createSupabaseClient() {
-    return createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+/** Signs out and sends the browser to the login page with a "not allowed" message. */
+export async function redirectNotAllowed(): Promise<void> {
+    try {
+        await signOut();
+    } finally {
+        window.location.assign('/login?error=not_allowed');
+    }
 }
 
-export async function getCurrentUser(): Promise<AppUser | null> {
+/**
+ * The logged-in dashboard user, with role and display name from the backend
+ * (GET /api/v1/me, backed by the Supabase table public.dashboard_users - no hard-coded map).
+ * - no session                      -> null
+ * - backend says 403 (not a dashboard user / deactivated) -> onNotAllowed() (sign out + login), null
+ * - backend unreachable / 5xx       -> null, session kept (UI just hides role-based items)
+ */
+export async function getCurrentUser(
+    onNotAllowed: () => Promise<void> | void = redirectNotAllowed,
+): Promise<AppUser | null> {
     const supabase = createSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user?.email) return null;
 
-    const mapped = USER_MAP[user.email];
-    if (!mapped) return null;
-
-    return {
-        id: user.id,
-        email: user.email,
-        role: mapped.role,
-        displayName: mapped.displayName,
-    };
+    try {
+        const me = await api.getMe();
+        if (me.role !== 'admin' && me.role !== 'partner') return null;
+        return {
+            id: user.id,
+            email: me.email ?? user.email,
+            role: me.role,
+            displayName: me.display_name || user.email,
+        };
+    } catch (err) {
+        if (err instanceof ApiError && err.status === 403) {
+            await onNotAllowed();
+        } else {
+            console.warn('Could not load current user from /me', err);
+        }
+        return null;
+    }
 }
 
 export async function signIn(email: string, password: string) {
@@ -48,12 +64,4 @@ export async function signIn(email: string, password: string) {
 export async function signOut() {
     const supabase = createSupabaseClient();
     await supabase.auth.signOut();
-}
-
-export function getOwnerName(email: string): string {
-    return USER_MAP[email]?.displayName ?? email;
-}
-
-export function isAdmin(email: string): boolean {
-    return USER_MAP[email]?.role === 'admin';
 }

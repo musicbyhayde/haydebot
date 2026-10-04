@@ -2,7 +2,7 @@
  * The API client authenticates with the Supabase session JWT only; no shared key.
  */
 const getSession = jest.fn();
-jest.mock('@/lib/auth', () => ({
+jest.mock('@/lib/supabaseClient', () => ({
     createSupabaseClient: () => ({ auth: { getSession } }),
 }));
 
@@ -84,3 +84,5 @@ describe('send errors carry backend detail (fix #3)', () => {
         await expect(api.sendIntro('rec1', { video_urls: [] })).rejects.toThrow('Failed to send intro bundle');
     });
 });
+
+export {}; // module scope for tsc

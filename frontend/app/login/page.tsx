@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { signIn } from '@/lib/auth';
 import { Music } from 'lucide-react';
 
@@ -9,6 +9,12 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get('error') === 'not_allowed') {
+            setError('המשתמש אינו מורשה לגשת למערכת');
+        }
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

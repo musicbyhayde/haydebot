@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isAllowedEmail } from '@/lib/allowedUsers';
 
 export async function middleware(request: NextRequest) {
     // Skip auth check for login page and static assets
@@ -46,13 +45,10 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // fix #5: a valid Supabase session is not enough - the user must be on the allow-list.
-    if (!isAllowedEmail(user.email)) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        url.search = '?error=not_allowed';
-        return NextResponse.redirect(url);
-    }
+    // Only "is there a Supabase session" is checked here - no user list. Whether this user may
+    // use the dashboard (public.dashboard_users) is enforced where the data is: the backend
+    // returns 403 for every API call (the page then signs out and goes to
+    // /login?error=not_allowed), and the RLS policies on direct Supabase reads.
 
     return supabaseResponse;
 }

@@ -1,4 +1,4 @@
-import { createSupabaseClient } from '@/lib/auth';
+import { createSupabaseClient } from '@/lib/supabaseClient';
 import { Lead, Message, Note, FinanceEntry, Task, Activity, Musician, Video, MusicianStats, Analytics, FinanceSummaryItem, BusinessContact } from '@/types';
 
 export interface CalendarEventPayload {
@@ -54,7 +54,21 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     return fetch(url, { ...options, headers });
 }
 
+export interface MeResponse {
+    email: string | null;
+    role: 'admin' | 'partner' | 'service';
+    display_name: string | null;
+    auth_method: 'jwt' | 'api_key';
+}
+
 export const api = {
+    // --- Current user (role / display name from public.dashboard_users) ---
+    async getMe(): Promise<MeResponse> {
+        const res = await fetchWithAuth(`${API_Base}/me`);
+        if (!res.ok) await throwWithDetail(res, 'Failed to load current user');
+        return res.json();
+    },
+
     // --- Leads ---
     async getPublicQuote(leadId: string): Promise<any> {
         const res = await fetch(`${API_Base}/quote/${leadId}`);
