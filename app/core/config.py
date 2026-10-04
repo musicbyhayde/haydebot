@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     NOTIFICATION_EMAIL: str = "musicbyhayde@gmail.com"
 
+    # Webhook authenticity (fix #4). Log-only until the *_ENFORCE flags are set.
+    META_APP_SECRET: Optional[str] = None   # Meta App Dashboard > App settings > Basic > App secret
+    WEBHOOK_SIGNATURE_ENFORCE: bool = False
+    CALENDAR_WEBHOOK_TOKEN: Optional[str] = None  # optional; derived from WHATSAPP_VERIFY_TOKEN if unset
+    CALENDAR_WEBHOOK_ENFORCE: bool = False
+    CALENDAR_SYNC_MIN_INTERVAL: float = 60.0
+
     # Scheduled jobs (opt-in; see app/core/scheduler.py)
     WEEKLY_SUMMARY_ENABLED: bool = False
 

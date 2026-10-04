@@ -205,10 +205,12 @@ class GoogleCalendarService:
         import uuid
         channel_id = str(uuid.uuid4())
         try:
+            from app.core.webhook_security import calendar_channel_token
             body = {
                 'id': channel_id,
                 'type': 'web_hook',
                 'address': webhook_url,
+                'token': calendar_channel_token(),  # echoed back as X-Goog-Channel-Token (fix #4)
             }
             result = self.service.events().watch(
                 calendarId=self.calendar_id,

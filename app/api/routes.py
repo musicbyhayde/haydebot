@@ -7,6 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 import uuid
 import os
+import json
 
 settings = get_settings()
 
@@ -39,8 +40,12 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     Receive incoming events from WhatsApp.
     """
+    from app.core.webhook_security import check_meta_signature
+    raw = await request.body()
+    if not check_meta_signature(raw, request.headers.get("x-hub-signature-256")):
+        raise HTTPException(status_code=403, detail="Invalid signature")
     try:
-        body = await request.json()
+        body = json.loads(raw)
         background_tasks.add_task(bot_logic.process_webhook, body)
         return {"status": "received"}
     except Exception as e:
@@ -55,9 +60,12 @@ async def google_calendar_webhook(request: Request, background_tasks: Background
       - 'sync' on initial watch registration (just acknowledge)
       - 'exists' when an event actually changes (trigger RSVP sync)
     """
+    from app.core.webhook_security import check_calendar_token
     state = request.headers.get('x-goog-resource-state', '')
     channel_id = request.headers.get('x-goog-channel-id', '')
     print(f"WEBHOOK: Google Calendar push — state={state}, channel={channel_id}")
+    if not check_calendar_token(request.headers.get('x-goog-channel-token')):
+        raise HTTPException(status_code=403, detail="Invalid channel token")
     
     if state == 'sync':
         # Initial sync verification from Google — just acknowledge
@@ -67,9 +75,37 @@ async def google_calendar_webhook(request: Request, background_tasks: Background
     if state == 'exists':
         # An event was created/updated/deleted — sync RSVPs
         print("WEBHOOK: Event change detected! Triggering RSVP sync...")
-        background_tasks.add_task(bot_logic.sync_calendar_rsvps)
+        background_tasks.add_task(_debounced_calendar_sync)
     
     return {"status": "ok"}
+
+
+# Coalesce bursts of calendar pushes: at most one RSVP sync per CALENDAR_SYNC_MIN_INTERVAL,
+# and a change that arrives while a sync is running/waiting triggers exactly one more run.
+_cal_sync = {"running": False, "dirty": False, "last": 0.0}
+
+
+async def _debounced_calendar_sync():
+    import asyncio, time
+    if _cal_sync["running"]:
+        _cal_sync["dirty"] = True
+        return
+    _cal_sync["running"] = True
+    try:
+        while True:
+            _cal_sync["dirty"] = False
+            wait = settings.CALENDAR_SYNC_MIN_INTERVAL - (time.monotonic() - _cal_sync["last"])
+            if wait > 0:
+                await asyncio.sleep(wait)
+            _cal_sync["last"] = time.monotonic()
+            try:
+                await bot_logic.sync_calendar_rsvps()
+            except Exception as e:
+                print(f"WEBHOOK: calendar RSVP sync failed: {e}")
+            if not _cal_sync["dirty"]:
+                break
+    finally:
+        _cal_sync["running"] = False
 
 # ─── Leads ────────────────────────────────────────────
 
