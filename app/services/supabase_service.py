@@ -158,6 +158,13 @@ class SupabaseService:
             print(f"Error fetching messages for lead {lead_id}: {e}")
             return []
 
+    def get_message_meta_since(self, since_iso: str) -> List[dict]:
+        """Raw (id, Lead, Direction, Timestamp) of every message since `since_iso`, newest first.
+        Read-only; used by the Bot API 'needs attention' view (no message content)."""
+        if not self.client: return []
+        return self._select_all(lambda: self.client.table("messages").select("id, Lead, Direction, Timestamp")
+                                .gte("Timestamp", since_iso).order("Timestamp", desc=True).order("id"))
+
     def get_unread_status(self) -> dict:
         """Get unread message counts and latest inbound preview for all leads."""
         if not self.client: return {}
