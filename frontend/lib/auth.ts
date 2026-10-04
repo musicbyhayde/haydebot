@@ -1,6 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { ALLOWED_USERS } from '@/lib/allowedUsers';
 
-export type UserRole = 'partner' | 'admin';
+export type { UserRole } from '@/lib/allowedUsers';
+import type { UserRole } from '@/lib/allowedUsers';
 
 export interface AppUser {
     id: string;
@@ -9,11 +11,9 @@ export interface AppUser {
     displayName: string;
 }
 
-const USER_MAP: Record<string, { role: UserRole; displayName: string }> = {
-    'ziv200@gmail.com': { role: 'admin', displayName: 'אילן' },
-    'kobile@gmail.com': { role: 'partner', displayName: 'קובי' },
-    'musicbyhayde@gmail.com': { role: 'admin', displayName: 'מנהל' },
-};
+// Kept in lib/allowedUsers.ts (no browser deps) so middleware can use it too.
+// Must match DASHBOARD_ALLOWED_EMAILS / DASHBOARD_ADMIN_EMAILS on the backend.
+const USER_MAP = ALLOWED_USERS;
 
 export function createSupabaseClient() {
     return createBrowserClient(
