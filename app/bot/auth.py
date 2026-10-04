@@ -104,13 +104,15 @@ def require_scopes(*scopes: str) -> Callable:
                            f"This key lacks the scope(s): {', '.join(missing)}.")
         return ctx
     dep.__name__ = "require_" + "_".join(s.replace(":", "_") for s in scopes)
+    dep.required_scopes = tuple(scopes)  # read by the guide / OpenAPI generator
     return dep
 
 
-async def docs_access(request: Request) -> None:
-    """guide / openapi.json: open to key holders; public if BOT_DOCS_PUBLIC=true (no data in them)."""
+async def docs_access(request: Request) -> BotContext | None:
+    """guide / openapi.json: open to key holders; public if BOT_DOCS_PUBLIC=true (no data in them).
+    With BOT_DOCS_PUBLIC a key is still checked if one is sent (so the guide can show its scopes)."""
     ensure_enabled()
-    if get_settings().BOT_DOCS_PUBLIC:
+    if get_settings().BOT_DOCS_PUBLIC and not _extract_key(request):
         _anon_limit(request)
         return None
-    authenticate(request)
+    return authenticate(request)

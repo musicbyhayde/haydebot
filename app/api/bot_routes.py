@@ -13,9 +13,12 @@ from datetime import date, datetime
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Path, Query
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app.bot import data
-from app.bot.auth import BotContext, bot_context, require_scopes
+from app.bot import guide as guide_mod
+from app.bot.auth import BotContext, bot_context, docs_access, require_scopes
+from app.core.config import get_settings
 from app.bot.errors import BotError
 
 logger = logging.getLogger("haydebot.bot.api")
@@ -51,6 +54,25 @@ def _run(fn, *args, **kwargs):
 def whoami(ctx: BotContext = Depends(bot_context)):
     """Name and scopes of the calling key. Cheap way to test a key."""
     return {"data": {"bot": ctx.name, "scopes": sorted(ctx.scopes), "read_only": True}}
+
+
+@bot_router.get("/guide", tags=["meta"], operation_id="getGuide", responses=ERRORS,
+                summary="Read me first: domain knowledge, endpoints and usage tips for agents")
+def get_guide(format: Literal["json", "markdown"] = Query("json", description="markdown = paste into an LLM prompt"),
+              ctx: Optional[BotContext] = Depends(docs_access)):
+    """Natural-language + JSON description of the business domain (statuses, services, Hebrew terms),
+    every endpoint with its scopes, recommended usage and example questions. No business data."""
+    caller = {"bot": ctx.name, "scopes": sorted(ctx.scopes)} if ctx else None
+    g = guide_mod.build_guide(bot_router, BOT_API_PREFIX, get_settings().PUBLIC_BASE_URL, caller)
+    if format == "markdown":
+        return PlainTextResponse(guide_mod.guide_markdown(g), media_type="text/markdown; charset=utf-8")
+    return {"data": g}
+
+
+@bot_router.get("/openapi.json", tags=["meta"], operation_id="getOpenApi", include_in_schema=False)
+def get_openapi_spec(ctx: Optional[BotContext] = Depends(docs_access)):
+    """OpenAPI 3 document for the Bot API only (import as tools in Grok, ChatGPT Actions, Claude, n8n...)."""
+    return JSONResponse(guide_mod.build_openapi(bot_router, BOT_API_PREFIX, get_settings().PUBLIC_BASE_URL))
 
 
 # ─── leads ────────────────────────────────────────────────────────────────────────────
