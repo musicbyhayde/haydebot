@@ -10,12 +10,9 @@ export interface CalendarEventPayload {
 }
 
 const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-// Transition (fix #1): the dashboard now authenticates with the logged-in user's Supabase
-// session JWT. The legacy shared key is still sent until Vercel sets
-// NEXT_PUBLIC_SEND_LEGACY_API_KEY=false (after the backend log shows JWT auth working);
-// a later cleanup removes it from the bundle entirely.
-const SEND_LEGACY_KEY = process.env.NEXT_PUBLIC_SEND_LEGACY_API_KEY !== 'false';
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'hayde-security-key';
+// The dashboard authenticates with the logged-in user's Supabase session JWT only.
+// No shared API key is shipped to the browser (NEXT_PUBLIC_API_KEY /
+// NEXT_PUBLIC_SEND_LEGACY_API_KEY are no longer read; leftovers in Vercel are harmless).
 
 /** Error carrying the backend's human-readable `detail` (e.g. why WhatsApp rejected a send). */
 export class ApiError extends Error {
@@ -54,7 +51,6 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
         ...(options.headers as Record<string, string> | undefined),
     };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (SEND_LEGACY_KEY || !token) headers['x-api-key'] = API_KEY;
     return fetch(url, { ...options, headers });
 }
 

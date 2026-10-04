@@ -10,13 +10,8 @@ from app.core.scheduler import scheduler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    from app.core.auth import legacy_key_accepted
-    from app.core.config import LEGACY_DEFAULT_API_KEY
-    if legacy_key_accepted():
-        print("SECURITY WARNING: legacy default API key is still accepted "
-              "(set REQUIRE_USER_AUTH=true once the dashboard sends Supabase JWTs)")
-    if settings.API_KEY == LEGACY_DEFAULT_API_KEY:
-        print("SECURITY WARNING: API_KEY is set to the public legacy value; set a strong random key")
+    if settings.API_KEY and len(settings.API_KEY) < 32:
+        print("SECURITY WARNING: API_KEY is shorter than 32 characters; use a strong random key")
     scheduler.start()
     
     # Weekly Summary (Sunday 10:00 Asia/Jerusalem). It never actually ran before (async job on

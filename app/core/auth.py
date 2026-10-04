@@ -1,17 +1,11 @@
 """
-Authentication for the protected API (fix #1 — exposed shared API key).
+Authentication for the protected API.
 
 Accepted credentials, in order:
-  1. A Supabase user session JWT  (Authorization: Bearer <access_token>)
-     from an allow-listed dashboard user.  This is what the dashboard sends.
-  2. The server-to-server API_KEY (X-API-Key) — only if API_KEY is set in env.
-  3. The LEGACY hard-coded default key — only while LEGACY_DEFAULT_API_KEY_ENABLED
-     is true and REQUIRE_USER_AUTH is false (transition window; it is public
-     because it is shipped in the dashboard's JS bundle).
-
-Defaults reproduce today's behaviour exactly (legacy key accepted), so deploying
-this code changes nothing until the env flags are flipped. See
-/workspace/haydebot/deploy-plan.md for the rotation order.
+  1. A Supabase user session JWT (Authorization: Bearer <access_token>) of a dashboard
+     user. This is what the dashboard sends.
+  2. The server-to-server API_KEY (X-API-Key), only if API_KEY is set in env.
+Nothing else: the old hard-coded shared key is gone.
 """
 from __future__ import annotations
 
@@ -25,7 +19,7 @@ from typing import Optional
 import requests
 from fastapi import HTTPException, Request
 
-from app.core.config import get_settings, LEGACY_DEFAULT_API_KEY
+from app.core.config import get_settings
 
 logger = logging.getLogger("haydebot.auth")
 
@@ -33,7 +27,7 @@ _CACHE_TTL = 60.0          # seconds a verified token stays trusted without re-c
 _NEG_CACHE_TTL = 10.0      # seconds a rejected token is remembered
 _cache: dict[str, tuple[float, Optional[str]]] = {}
 _cache_lock = threading.Lock()
-_counts = {"jwt": 0, "api_key": 0, "legacy_key": 0}
+_counts = {"jwt": 0, "api_key": 0}
 _LOG_EVERY = 200
 
 
@@ -54,8 +48,7 @@ def admin_emails() -> set[str]:
 
 
 def is_admin_request(request: Request) -> bool:
-    """True for an admin dashboard user (JWT) or a server-to-server API_KEY caller.
-    False for the legacy shared key."""
+    """True for an admin dashboard user (JWT) or a server-to-server API_KEY caller."""
     method = getattr(request.state, "auth_method", None)
     if method == "api_key":
         return True
@@ -123,26 +116,6 @@ def _count(method: str) -> None:
         print(f"AUTH stats since boot: {dict(_counts)}")
 
 
-_last_legacy_log = {"t": 0.0}
-
-
-def _log_legacy_caller(request: Request, has_bearer: bool) -> None:
-    """At most once a minute: who still uses the legacy key (to find non-dashboard callers)."""
-    now = time.monotonic()
-    if now - _last_legacy_log["t"] < 60:
-        return
-    _last_legacy_log["t"] = now
-    ua = (request.headers.get("user-agent") or "-")[:120]
-    origin = request.headers.get("origin") or "-"
-    print(f"AUTH legacy-key caller: {request.method} {request.url.path} origin={origin} "
-          f"bearer={'yes' if has_bearer else 'no'} ua={ua}")
-
-
-def legacy_key_accepted() -> bool:
-    s = get_settings()
-    return bool(s.LEGACY_DEFAULT_API_KEY_ENABLED and not s.REQUIRE_USER_AUTH)
-
-
 async def require_auth(request: Request) -> str:
     """FastAPI dependency for every protected route. Returns the auth method used."""
     s = get_settings()
@@ -172,13 +145,6 @@ async def require_auth(request: Request) -> str:
         request.state.auth_method = "api_key"
         _count("api_key")
         return "api_key"
-
-    # 3) Legacy default key (transition window only)
-    if legacy_key_accepted() and _consteq(api_key, LEGACY_DEFAULT_API_KEY):
-        request.state.auth_method = "legacy_key"
-        _count("legacy_key")
-        _log_legacy_caller(request, has_bearer=auth_header.lower().startswith("bearer "))
-        return "legacy_key"
 
     if supabase_down:
         raise HTTPException(status_code=503, detail="Auth service unavailable, retry")

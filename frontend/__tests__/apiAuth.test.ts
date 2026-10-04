@@ -1,6 +1,5 @@
 /**
- * Fix #1: the API client sends the Supabase session JWT, and keeps the legacy key during
- * the transition window.
+ * The API client authenticates with the Supabase session JWT only; no shared key.
  */
 const getSession = jest.fn();
 jest.mock('@/lib/auth', () => ({
@@ -26,17 +25,7 @@ describe('fetchWithAuth', () => {
     });
     afterAll(() => { process.env = OLD_ENV; });
 
-    it('sends Bearer token and legacy key by default', async () => {
-        getSession.mockResolvedValue({ data: { session: { access_token: 'tok123' } } });
-        const { api } = await import('@/lib/api');
-        await api.getLeads();
-        const h = headersOfLastCall();
-        expect(h['Authorization']).toBe('Bearer tok123');
-        expect(h['x-api-key']).toBeDefined();
-    });
-
-    it('drops the legacy key when NEXT_PUBLIC_SEND_LEGACY_API_KEY=false', async () => {
-        process.env.NEXT_PUBLIC_SEND_LEGACY_API_KEY = 'false';
+    it('sends only the Bearer token (no shared key)', async () => {
         getSession.mockResolvedValue({ data: { session: { access_token: 'tok123' } } });
         const { api } = await import('@/lib/api');
         await api.getLeads();
@@ -45,13 +34,24 @@ describe('fetchWithAuth', () => {
         expect(h['x-api-key']).toBeUndefined();
     });
 
-    it('still works (legacy key) if there is no session or lookup throws', async () => {
+    it('ignores leftover NEXT_PUBLIC_API_KEY / NEXT_PUBLIC_SEND_LEGACY_API_KEY env', async () => {
+        process.env.NEXT_PUBLIC_API_KEY = 'leftover';
+        process.env.NEXT_PUBLIC_SEND_LEGACY_API_KEY = 'true';
+        getSession.mockResolvedValue({ data: { session: { access_token: 'tok123' } } });
+        const { api } = await import('@/lib/api');
+        await api.getLeads();
+        const h = headersOfLastCall();
+        expect(h['x-api-key']).toBeUndefined();
+        expect(h['Authorization']).toBe('Bearer tok123');
+    });
+
+    it('sends no auth header if there is no session or lookup throws', async () => {
         getSession.mockRejectedValue(new Error('boom'));
         const { api } = await import('@/lib/api');
         await api.getLeads();
         const h = headersOfLastCall();
         expect(h['Authorization']).toBeUndefined();
-        expect(h['x-api-key']).toBeDefined();
+        expect(h['x-api-key']).toBeUndefined();
     });
 
     it('keeps caller headers (Content-Type) intact', async () => {

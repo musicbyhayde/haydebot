@@ -293,6 +293,8 @@ def test_client(mock_service):
         with patch("app.core.scheduler.scheduler"):
             from app.main import app
             from app.core.config import get_settings
-            from app.core.config import LEGACY_DEFAULT_API_KEY
-            client = TestClient(app, headers={"X-API-Key": get_settings().API_KEY or LEGACY_DEFAULT_API_KEY})
+            settings = get_settings()
+            if not settings.API_KEY:  # route tests authenticate as a server-to-server caller
+                settings.API_KEY = "unit-test-server-key-" + "x" * 16
+            client = TestClient(app, headers={"X-API-Key": settings.API_KEY})
             yield client

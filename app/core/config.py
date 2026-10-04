@@ -2,21 +2,14 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Optional
 
-# Hard-coded key that production has used so far (API_KEY was never set in DigitalOcean)
-# and that is shipped in the dashboard JS bundle, i.e. public. Accepted only during the
-# transition window controlled by LEGACY_DEFAULT_API_KEY_ENABLED / REQUIRE_USER_AUTH.
-LEGACY_DEFAULT_API_KEY = "hayde-security-key"
-
-
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "HaydeBot"
-    # Server-to-server key. Unset by default -> only JWT / legacy key work. Set a strong
-    # random value in DigitalOcean for scripts/bots (never put it in the browser).
+    # Optional server-to-server key (X-API-Key). Unset -> only dashboard users (Supabase JWT).
+    # Set a strong random value in DigitalOcean for scripts/bots; never put it in the browser.
+    # Removed transition settings (REQUIRE_USER_AUTH, LEGACY_DEFAULT_API_KEY_ENABLED) are
+    # simply ignored if still present in the environment (extra="ignore").
     API_KEY: Optional[str] = None
-    # Transition flags for the key rotation (defaults = current behaviour).
-    LEGACY_DEFAULT_API_KEY_ENABLED: bool = True
-    REQUIRE_USER_AUTH: bool = False
     # Supabase JWT verification: if set (Supabase > Project Settings > JWT secret, legacy
     # HS256) tokens are verified locally; otherwise via Supabase Auth /auth/v1/user.
     SUPABASE_JWT_SECRET: Optional[str] = None
