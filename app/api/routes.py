@@ -1083,9 +1083,13 @@ async def send_daily_reminders(request: Request):
     Called daily (e.g. at 8:00 AM) by an external cron service (like cron-job.org).
     Sends a summary of follow-up reminders, new leads, and starred tasks to admins via WhatsApp.
     """
-    auth = request.headers.get("Authorization")
-    secret = os.getenv("CRON_SECRET", "haydebot_cron_secret")
-    if not auth or auth != f"Bearer {secret}":
+    import hmac as _hmac
+    auth = request.headers.get("Authorization") or ""
+    secret = os.getenv("CRON_SECRET")
+    if not secret:  # no hard-coded fallback: refuse instead of accepting a value from the repo
+        print("CRON: CRON_SECRET is not set - /cron/reminders disabled")
+        raise HTTPException(status_code=503, detail="Cron not configured")
+    if not _hmac.compare_digest(auth.encode(), f"Bearer {secret}".encode()):
         raise HTTPException(status_code=401, detail="Unauthorized")
     
     from app.services.supabase_service import supabase_service
@@ -1178,13 +1182,14 @@ async def send_daily_reminders(request: Request):
         sanitized_text = HaydeBotLogic._sanitize_template_param(final_text)
             
         res = whatsapp_service.send_template(phone, "admin_system_alert_v2", "he", ["תזכורת יומית 🔔", sanitized_text])
-        send_results.append({"phone": phone, "user": user_name, "result": res})
+        from app.services.whatsapp import send_failed
+        send_results.append({"phone": f"***{str(phone)[-4:]}", "user": user_name,
+                             "ok": not send_failed(res)})
             
     return {
         "status": "Reminders processing complete", 
         "whatsapp_results": send_results,
-        "followup_notes_count": len(followup_notes),
-        "raw_numbers_env": settings.NOTIFICATION_NUMBERS
+        "followup_notes_count": len(followup_notes)
     }
 
 
