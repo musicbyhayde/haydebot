@@ -1,4 +1,4 @@
-from supabase import create_client, Client
+from supabase import create_client, Client, ClientOptions
 from app.core.config import get_settings
 from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate, VideoCreate, VideoUpdate, BusinessContactCreate, BusinessContactUpdate
 from typing import List, Optional
@@ -10,7 +10,14 @@ settings = get_settings()
 class SupabaseService:
     def __init__(self):
         if settings.SUPABASE_URL and settings.SUPABASE_KEY:
-            self.client: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+            self.client: Client = create_client(
+                settings.SUPABASE_URL,
+                settings.SUPABASE_KEY,
+                options=ClientOptions(
+                    postgrest_client_timeout=settings.SUPABASE_TIMEOUT,
+                    storage_client_timeout=int(settings.SUPABASE_TIMEOUT),
+                ),
+            )
         else:
             print("Warning: Missing SUPABASE_URL or SUPABASE_KEY in environment variables.")
             self.client = None

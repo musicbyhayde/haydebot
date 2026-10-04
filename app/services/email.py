@@ -26,7 +26,7 @@ class EmailService:
             print(f"❌ Failed to send email notification: {e}")
 
     def _send_email_sync(self, msg: MIMEMultipart):
-        with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
+        with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT, timeout=settings.HTTP_READ_TIMEOUT) as server:
             server.starttls()
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)

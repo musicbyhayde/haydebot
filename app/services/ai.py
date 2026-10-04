@@ -70,7 +70,8 @@ class AIService:
             print(f"DEBUG: Calling Gemini API (legacy SDK) with model: {self.model_id}")
             response = self.client.generate_content(
                 f"{system_prompt}\n\nUser Message: {user_text}",
-                generation_config={"response_mime_type": "application/json"}
+                generation_config={"response_mime_type": "application/json"},
+                request_options={"timeout": settings.HTTP_READ_TIMEOUT},
             )
             raw_content = response.text
             print(f"DEBUG: Raw AI Response: {raw_content}")
@@ -97,6 +98,7 @@ class AIService:
             print(f"DEBUG: Calling Gemini API for summarization")
             response = self.client.generate_content(
                 f"{system_prompt}\n\nהערות:\n{notes_text}",
+                request_options={"timeout": settings.HTTP_READ_TIMEOUT},
             )
             return response.text.strip()
         except Exception as e:

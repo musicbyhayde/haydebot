@@ -1146,7 +1146,7 @@ async def get_full_database_backup():
     try:
         # 1. Fetch OpenAPI Schema
         schema_url = f"{settings.SUPABASE_URL}/rest/v1/?apikey={settings.SUPABASE_KEY}"
-        schema_resp = requests.get(schema_url)
+        schema_resp = requests.get(schema_url, timeout=(settings.HTTP_CONNECT_TIMEOUT, settings.SUPABASE_TIMEOUT))
         schema_resp.raise_for_status()
         schema_data = schema_resp.json()
         
@@ -1169,7 +1169,7 @@ async def get_full_database_backup():
                     "Range": f"{offset}-{offset + limit - 1}"
                 }
                 table_url = f"{settings.SUPABASE_URL}/rest/v1/{table}?select=*"
-                resp = requests.get(table_url, headers=headers)
+                resp = requests.get(table_url, headers=headers, timeout=(settings.HTTP_CONNECT_TIMEOUT, settings.SUPABASE_TIMEOUT))
                 
                 if resp.status_code != 200:
                     print(f"Failed to fetch {table}: {resp.text}")

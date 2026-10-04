@@ -13,6 +13,9 @@ class WhatsAppService:
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json"
         }
+        # (connect, read) timeouts so a hung Graph API connection can't freeze the app
+        self.timeout = (settings.HTTP_CONNECT_TIMEOUT, settings.HTTP_READ_TIMEOUT)
+        self.media_timeout = (settings.HTTP_CONNECT_TIMEOUT, settings.MEDIA_DOWNLOAD_TIMEOUT)
 
     def send_message(self, to_phone: str, text: str):
         """Send a standard text message."""
@@ -117,7 +120,7 @@ class WhatsAppService:
 
     def _send(self, payload: dict):
         try:
-            response = requests.post(self.api_url, headers=self.headers, json=payload)
+            response = requests.post(self.api_url, headers=self.headers, json=payload, timeout=self.timeout)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
@@ -132,7 +135,7 @@ class WhatsAppService:
         try:
             # Step 1: Query API for the media URL
             media_url_req = f"https://graph.facebook.com/v20.0/{media_id}"
-            res = requests.get(media_url_req, headers=self.headers)
+            res = requests.get(media_url_req, headers=self.headers, timeout=self.timeout)
             res.raise_for_status()
             media_info = res.json()
             
@@ -143,7 +146,7 @@ class WhatsAppService:
                 raise Exception("Could not get download URL from Meta")
 
             # Step 2: Download the actual binary using the same Bearer token
-            file_res = requests.get(download_url, headers=self.headers)
+            file_res = requests.get(download_url, headers=self.headers, timeout=self.media_timeout)
             file_res.raise_for_status()
             
             return file_res.content, mime_type

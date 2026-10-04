@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     NOTIFICATION_EMAIL: str = "musicbyhayde@gmail.com"
 
+    # Outbound network timeouts (seconds). Optional; safe defaults.
+    HTTP_CONNECT_TIMEOUT: float = 5.0
+    HTTP_READ_TIMEOUT: float = 20.0
+    MEDIA_DOWNLOAD_TIMEOUT: float = 60.0
+    SUPABASE_TIMEOUT: float = 30.0
+
     class Config:
         env_file = ".env"
         case_sensitive = True
