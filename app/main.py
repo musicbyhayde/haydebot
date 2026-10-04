@@ -60,6 +60,14 @@ app.add_middleware(
 app.include_router(public_router, prefix="/api/v1")
 app.include_router(protected_router, prefix="/api/v1")
 
+# Bot API (/api/bot/v1): read-only, per-bot keys, audited, off unless BOT_API_ENABLED=true.
+from app.api.bot_routes import bot_router
+from app.bot import errors as bot_errors
+from app.bot.middleware import BotAuditMiddleware
+app.include_router(bot_router)
+bot_errors.install(app)
+app.add_middleware(BotAuditMiddleware)
+
 @app.get("/")
 async def root():
     return {"message": "HaydeBot is running", "status": "ok"}

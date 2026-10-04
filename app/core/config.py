@@ -52,6 +52,15 @@ class Settings(BaseSettings):
     CALENDAR_WEBHOOK_ENFORCE: bool = False
     CALENDAR_SYNC_MIN_INTERVAL: float = 60.0
 
+    # Bot API (/api/bot/v1, read-only, per-bot keys in public.bot_api_keys). Off by default:
+    # BOT_API_ENABLED is the global kill switch for every bot request.
+    BOT_API_ENABLED: bool = False
+    BOT_RATE_LIMIT_PER_MINUTE: int = 60       # per key (bot_api_keys.rate_limit_per_min overrides)
+    BOT_ANON_RATE_LIMIT_PER_MINUTE: int = 20  # per IP, requests without a valid key
+    BOT_KEYS_CACHE_TTL: float = 60.0          # revoke / scope changes apply within this many seconds
+    BOT_DOCS_PUBLIC: bool = False             # true -> guide + openapi.json readable without a key
+    PUBLIC_BASE_URL: str = "https://orca-app-g9jyu.ondigitalocean.app"  # used in the bot OpenAPI "servers"
+
     # Scheduled jobs (opt-in; see app/core/scheduler.py)
     WEEKLY_SUMMARY_ENABLED: bool = False
 
