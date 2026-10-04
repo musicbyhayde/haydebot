@@ -48,6 +48,22 @@ class SupabaseService:
     def _to_airtable_list(self, records: list) -> List[dict]:
         return [self._to_airtable_format(r) for r in records]
 
+    def _select_all(self, build_query, page_size: Optional[int] = None) -> list:
+        """Run a select page by page (fix #12). PostgREST returns at most `max_rows` (1000 on
+        Supabase by default) per request, so un-paginated selects silently truncated.
+        `build_query` must return a FRESH, ordered query builder on every call."""
+        size = page_size or settings.SUPABASE_PAGE_SIZE
+        rows, start = [], 0
+        while True:
+            batch = build_query().range(start, start + size - 1).execute().data or []
+            rows.extend(batch)
+            if len(batch) < size:
+                return rows
+            start += size
+            if start >= 500_000:
+                print(f"WARNING: _select_all stopped at {start} rows")
+                return rows
+
     def _generate_id(self) -> str:
         return "rec" + uuid.uuid4().hex[:14]
 
@@ -123,21 +139,21 @@ class SupabaseService:
     def get_active_leads(self) -> List[dict]:
         """Fetch leads that are not Closed, Lost, or Completed."""
         if not self.client: return []
-        response = self.client.table("leads").select("*").neq("Status", "Closed").neq("Status", "Lost").neq("Status", "Completed").order("Last_Interaction", desc=True).execute()
-        return self._to_airtable_list(response.data)
+        rows = self._select_all(lambda: self.client.table("leads").select("*").neq("Status", "Closed").neq("Status", "Lost").neq("Status", "Completed").order("Last_Interaction", desc=True).order("id"))
+        return self._to_airtable_list(rows)
 
     def get_all_leads(self) -> List[dict]:
         """Fetch all leads, sorted by Last Interaction."""
         if not self.client: return []
-        response = self.client.table("leads").select("*").order("Last_Interaction", desc=True).execute()
-        return self._to_airtable_list(response.data)
+        rows = self._select_all(lambda: self.client.table("leads").select("*").order("Last_Interaction", desc=True).order("id"))
+        return self._to_airtable_list(rows)
 
     def get_messages_for_lead(self, lead_id: str) -> List[dict]:
         """Fetch all messages linked to a lead."""
         if not self.client: return []
         try:
-            response = self.client.table("messages").select("*").contains("Lead", [lead_id]).order("Timestamp", desc=False).execute()
-            return self._to_airtable_list(response.data)
+            rows = self._select_all(lambda: self.client.table("messages").select("*").contains("Lead", [lead_id]).order("Timestamp", desc=False).order("id"))
+            return self._to_airtable_list(rows)
         except Exception as e:
             print(f"Error fetching messages for lead {lead_id}: {e}")
             return []
@@ -147,14 +163,14 @@ class SupabaseService:
         if not self.client: return {}
         try:
             # Get all leads with their Last_Read_At
-            leads_resp = self.client.table("leads").select("id, Last_Read_At").neq("Status", "Closed").neq("Status", "Lost").neq("Status", "Completed").execute()
+            leads_rows = self._select_all(lambda: self.client.table("leads").select("id, Last_Read_At").neq("Status", "Closed").neq("Status", "Lost").neq("Status", "Completed").order("id"))
             
             # Use 30 days as a reasonable cutoff to not fetch the entire DB
             cutoff = (datetime.now() - timedelta(days=30)).isoformat()
-            messages_resp = self.client.table("messages").select("Lead, Timestamp, Content").eq("Direction", "Inbound").gte("Timestamp", cutoff).order("Timestamp", desc=True).execute()
+            messages_rows = self._select_all(lambda: self.client.table("messages").select("id, Lead, Timestamp, Content").eq("Direction", "Inbound").gte("Timestamp", cutoff).order("Timestamp", desc=True).order("id"))
 
             status = {}
-            for lead in leads_resp.data:
+            for lead in leads_rows:
                 lead_id = lead["id"]
                 last_read_str = lead.get("Last_Read_At")
                 
@@ -163,7 +179,7 @@ class SupabaseService:
                 count = 0
                 last_msg = None
                 
-                for msg in messages_resp.data:
+                for msg in messages_rows:
                     msg_leads = msg.get("Lead") or []
                     if lead_id in msg_leads:
                         msg_time = msg.get("Timestamp")
@@ -350,11 +366,13 @@ class SupabaseService:
     def get_finance_entries(self, owner: Optional[str] = None) -> List[dict]:
         """Fetch all finance entries, optionally filtered by owner."""
         if not self.client: return []
-        query = self.client.table("finance").select("*")
-        if owner:
-            query = query.eq("Owner", owner)
-        response = query.order("Date", desc=True).execute()
-        return self._to_airtable_list(response.data)
+        def build():  # fresh builder per page (postgrest builders are mutable)
+            query = self.client.table("finance").select("*")
+            if owner:
+                query = query.eq("Owner", owner)
+            return query.order("Date", desc=True).order("id")
+        rows = self._select_all(build)
+        return self._to_airtable_list(rows)
 
     def update_finance_entry(self, entry_id: str, data: FinanceEntryUpdate) -> dict:
         """Update a finance entry."""
@@ -371,9 +389,9 @@ class SupabaseService:
     def get_finance_summary(self) -> dict:
         """Get aggregated totals per partner."""
         if not self.client: return {}
-        entries = self.client.table("finance").select("*").execute()
+        entries = self._select_all(lambda: self.client.table("finance").select("*").order("id"))
         summary = {}
-        for entry in entries.data:
+        for entry in entries:
             owner = entry.get("Owner", "Unknown")
             if owner not in summary:
                 summary[owner] = {"income": 0, "expenses": 0, "balance": 0, "cash_balance": 0, "bank_balance": 0}
@@ -466,8 +484,7 @@ class SupabaseService:
 
         try:
             # Get all tasks that have a Lead_ID
-            tasks_resp = self.client.table("tasks").select("id, Lead_ID, Is_Completed").not_.is_("Lead_ID", "null").execute()
-            all_tasks = tasks_resp.data or []
+            all_tasks = self._select_all(lambda: self.client.table("tasks").select("id, Lead_ID, Is_Completed").not_.is_("Lead_ID", "null").order("id"))
 
             if not all_tasks:
                 return result
@@ -476,8 +493,9 @@ class SupabaseService:
             task_lead_ids = set(t["Lead_ID"] for t in all_tasks if t.get("Lead_ID"))
 
             # Fetch those leads to check their existence and status
-            leads_resp = self.client.table("leads").select("id, Status").execute()
-            leads_map = {l["id"]: l.get("Status", "") for l in (leads_resp.data or [])}
+            # must see EVERY lead: a truncated list made valid leads look deleted (-> tasks deleted)
+            leads_rows = self._select_all(lambda: self.client.table("leads").select("id, Status").order("id"))
+            leads_map = {l["id"]: l.get("Status", "") for l in leads_rows}
 
             # Categorize orphaned tasks
             tasks_to_delete = []  # linked to deleted leads

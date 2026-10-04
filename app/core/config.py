@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     HTTP_READ_TIMEOUT: float = 20.0
     MEDIA_DOWNLOAD_TIMEOUT: float = 60.0
     SUPABASE_TIMEOUT: float = 30.0
+    # Page size for paginated selects; must be <= Supabase API "Max rows" (default 1000).
+    SUPABASE_PAGE_SIZE: int = 1000
 
     class Config:
         env_file = ".env"
