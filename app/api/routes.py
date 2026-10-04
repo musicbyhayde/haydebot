@@ -130,6 +130,20 @@ async def get_quote_data(lead_id: str):
     }
 
 
+@protected_router.get("/me")
+async def get_me(request: Request):
+    """Who is calling: email, role and display name from public.dashboard_users.
+    The dashboard uses this instead of a hard-coded user map."""
+    if getattr(request.state, "auth_method", None) == "jwt":
+        return {
+            "email": request.state.auth_user,
+            "role": request.state.auth_role,
+            "display_name": request.state.auth_display_name,
+            "auth_method": "jwt",
+        }
+    return {"email": None, "role": "service", "display_name": None, "auth_method": "api_key"}
+
+
 @protected_router.get("/activities")
 async def get_activities():
     return airtable_service.get_activities()

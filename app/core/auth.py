@@ -2,8 +2,8 @@
 Authentication for the protected API.
 
 Accepted credentials, in order:
-  1. A Supabase user session JWT (Authorization: Bearer <access_token>) of a dashboard
-     user. This is what the dashboard sends.
+  1. A Supabase user session JWT (Authorization: Bearer <access_token>) of an active user in
+     public.dashboard_users (see app/core/dashboard_users.py). This is what the dashboard sends.
   2. The server-to-server API_KEY (X-API-Key), only if API_KEY is set in env.
 Nothing else: the old hard-coded shared key is gone.
 """
@@ -20,6 +20,7 @@ import requests
 from fastapi import HTTPException, Request
 
 from app.core.config import get_settings
+from app.core.dashboard_users import get_dashboard_user
 
 logger = logging.getLogger("haydebot.auth")
 
@@ -37,22 +38,12 @@ def _consteq(a: Optional[str], b: Optional[str]) -> bool:
     return hmac.compare_digest(a.encode(), b.encode())
 
 
-def allowed_emails() -> set[str]:
-    raw = get_settings().DASHBOARD_ALLOWED_EMAILS or ""
-    return {e.strip().lower() for e in raw.split(",") if e.strip()}
-
-
-def admin_emails() -> set[str]:
-    raw = get_settings().DASHBOARD_ADMIN_EMAILS or ""
-    return {e.strip().lower() for e in raw.split(",") if e.strip()}
-
-
 def is_admin_request(request: Request) -> bool:
     """True for an admin dashboard user (JWT) or a server-to-server API_KEY caller."""
     method = getattr(request.state, "auth_method", None)
     if method == "api_key":
         return True
-    return method == "jwt" and getattr(request.state, "auth_user", None) in admin_emails()
+    return method == "jwt" and getattr(request.state, "auth_role", None) == "admin"
 
 
 def _verify_jwt_local(token: str, secret: str) -> Optional[str]:
@@ -131,12 +122,15 @@ async def require_auth(request: Request) -> str:
         except requests.RequestException:
             email, supabase_down = None, True
         if email:
-            if email in allowed_emails():
-                request.state.auth_user = email
+            user = get_dashboard_user(email)
+            if user:
+                request.state.auth_user = user["email"]
+                request.state.auth_role = user["role"]
+                request.state.auth_display_name = user["display_name"]
                 request.state.auth_method = "jwt"
                 _count("jwt")
                 return "jwt"
-            logger.warning("AUTH: valid JWT but user not in DASHBOARD_ALLOWED_EMAILS")
+            logger.warning("AUTH: valid JWT but user is not an active dashboard user")
             if not api_key:
                 raise HTTPException(status_code=403, detail="User not allowed")
 

@@ -9,7 +9,7 @@ import requests
 from fastapi import FastAPI, Depends
 from fastapi.testclient import TestClient
 
-from app.core import auth
+from app.core import auth, dashboard_users
 from app.core.config import get_settings
 
 SECRET = "unit-test-jwt-secret-unit-test-jwt-secret"
@@ -21,10 +21,15 @@ def _reset(monkeypatch):
     s = get_settings()
     monkeypatch.setattr(s, "API_KEY", None)
     monkeypatch.setattr(s, "SUPABASE_JWT_SECRET", None)
-    monkeypatch.setattr(s, "DASHBOARD_ALLOWED_EMAILS", "ziv200@gmail.com,kobile@gmail.com")
+    monkeypatch.setattr(dashboard_users, "_fetch_rows", lambda: [
+        {"email": "ziv200@gmail.com", "role": "admin", "display_name": "אילן", "active": True},
+        {"email": "kobile@gmail.com", "role": "partner", "display_name": "קובי", "active": True},
+    ])
     auth._cache.clear()
+    dashboard_users.invalidate_cache()
     yield s
     auth._cache.clear()
+    dashboard_users.invalidate_cache()
 
 
 @pytest.fixture

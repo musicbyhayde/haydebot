@@ -13,9 +13,9 @@ class Settings(BaseSettings):
     # Supabase JWT verification: if set (Supabase > Project Settings > JWT secret, legacy
     # HS256) tokens are verified locally; otherwise via Supabase Auth /auth/v1/user.
     SUPABASE_JWT_SECRET: Optional[str] = None
-    DASHBOARD_ALLOWED_EMAILS: str = "ziv200@gmail.com,kobile@gmail.com,musicbyhayde@gmail.com"
-    # Same as role 'admin' in frontend/lib/auth.ts USER_MAP. Needed for /backup/full.
-    DASHBOARD_ADMIN_EMAILS: str = "ziv200@gmail.com,musicbyhayde@gmail.com"
+    # Dashboard users/roles live in the Supabase table public.dashboard_users
+    # (app/core/dashboard_users.py). Old DASHBOARD_ALLOWED_EMAILS / DASHBOARD_ADMIN_EMAILS
+    # env vars, if still set, are ignored.
     
     # OpenAI / Gemini
     OPENAI_API_KEY: Optional[str] = None
