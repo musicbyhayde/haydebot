@@ -363,13 +363,9 @@ class HaydeBotLogic:
                     # Bot is muted, just log the message and don't reply
                     print(f"Bot is muted for lead {lead_id}, ignoring automated response.")
                     
-                    # Notify Admin that the human-taken-over lead replied
-                    if settings.NOTIFICATION_NUMBERS:
-                        for idx, admin_phone in enumerate(settings.NOTIFICATION_NUMBERS.split(",")):
-                            if admin_phone.strip() and phone != admin_phone.strip():
-                                preview = f"[מדיה]" if media_url else f'"{text}"'
-                                alert_msg = f"🔔 הודעה חדשה מ-{name or phone} (בצאט ידני):\n\n{preview}\n\nהיכנס עכשיו לפנל הניהול כדי להשיב."
-                                whatsapp_service.send_message(admin_phone.strip(), alert_msg)
+                    # Notify Admin that the human-taken-over lead replied (approved template,
+                    # free text is rejected by Meta outside the admin's 24h window)
+                    self._alert_admins_muted_chat_message(phone, name, text, media_url, fields)
                     return
             except Exception as e:
                 print(f"Error parsing bot_mute_until: {e}")
@@ -1008,30 +1004,49 @@ class HaydeBotLogic:
         else:
             await self.send_state_question(phone, ConversationState(state))
 
-    def _alert_admins_customer_message(self, phone, name, text, media_url=None, fields: dict = None):
-        """A customer whose details were already collected wrote a greeting/menu word.
-        Sent with the approved admin_system_alert_v2 template (same path as the other admin
-        alerts, e.g. "לקוח חוזר"), because free text to admins fails outside Meta's 24h window."""
+    def _send_admin_alert(self, title: str, body: str, exclude_phone: str = None):
+        """Send an alert to every admin with the approved admin_system_alert_v2 template — the
+        same send_template path as the 'לקוח חוזר' / 'ליד חדש הגיע' alerts."""
         if not settings.NOTIFICATION_NUMBERS:
             return
+        sanitized_body = self._sanitize_template_param(body)
+        for admin_phone in settings.NOTIFICATION_NUMBERS.split(","):
+            admin_phone = admin_phone.strip()
+            if admin_phone and admin_phone != exclude_phone:
+                whatsapp_service.send_template(
+                    admin_phone, "admin_system_alert_v2", "he",
+                    parameters=[title, sanitized_body]
+                )
+
+    def _alert_admins_customer_message(self, phone, name, text, media_url=None, fields: dict = None):
+        """A customer whose details were already collected wrote a greeting/menu word (fix #6)."""
         fields = fields or {}
         lead_name = fields.get("Name") or name or "לא ידוע"
         status = fields.get("Status") or "לא ידוע"
         preview = "[מדיה]" if media_url else (text[:80] if text else "")
-        alert_body = (
+        self._send_admin_alert(
+            "לקוח פעיל כתב שוב",
             f"לקוח עם פרטים שכבר נאספו כתב שוב: {lead_name} / {phone}   "
             f"סטטוס: {status}   "
             f"הודעה: {preview}   "
-            f"הבוט לא איפס את השיחה, יש להשיב מהפנל"
+            f"הבוט לא איפס את השיחה, יש להשיב מהפנל",
+            exclude_phone=phone,
         )
-        sanitized_body = self._sanitize_template_param(alert_body)
-        for admin_phone in settings.NOTIFICATION_NUMBERS.split(","):
-            admin_phone = admin_phone.strip()
-            if admin_phone and admin_phone != phone:
-                whatsapp_service.send_template(
-                    admin_phone, "admin_system_alert_v2", "he",
-                    parameters=["לקוח פעיל כתב שוב", sanitized_body]
-                )
+
+    def _alert_admins_muted_chat_message(self, phone, name, text, media_url=None, fields: dict = None):
+        """A customer wrote while the bot is muted after a manual reply (human takeover)."""
+        fields = fields or {}
+        lead_name = fields.get("Name") or name or phone
+        status = fields.get("Status") or "לא ידוע"
+        preview = "[מדיה]" if media_url else (text[:300] if text else "")
+        self._send_admin_alert(
+            "הודעה חדשה בצאט ידני",
+            f"הודעה חדשה מ-{lead_name} / {phone} (בצאט ידני)   "
+            f"סטטוס: {status}   "
+            f"הודעה: {preview}   "
+            f"היכנס עכשיו לפנל הניהול כדי להשיב",
+            exclude_phone=phone,
+        )
 
     async def handle_reset_command(self, phone: str, lead_id: str):
         """Reset lead state and show menu."""
