@@ -175,6 +175,13 @@ def test_unknown_bot_path_uses_bot_error_format(bot_env, client):
     assert r.status_code == 404 and err(r) == "not_found"
 
 
+def test_unknown_path_scan_audit_is_capped(bot_env, client, monkeypatch):
+    monkeypatch.setattr(bot_env.settings, "BOT_ANON_RATE_LIMIT_PER_MINUTE", 3)
+    for i in range(8):
+        assert client.get(f"/api/bot/v1/scan-{i}").status_code == 404
+    assert len(bot_env.audited()) == 3
+
+
 def test_non_bot_paths_keep_default_errors(client):
     r = client.get("/api/v1/does-not-exist")
     assert r.status_code == 404 and "detail" in r.json()
