@@ -1,3 +1,4 @@
+import { createSupabaseClient } from '@/lib/auth';
 import { Lead, Message, Note, FinanceEntry, Task, Activity, Musician, Video, MusicianStats, Analytics, FinanceSummaryItem, BusinessContact } from '@/types';
 
 export interface CalendarEventPayload {
@@ -9,13 +10,30 @@ export interface CalendarEventPayload {
 }
 
 const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+// Transition (fix #1): the dashboard now authenticates with the logged-in user's Supabase
+// session JWT. The legacy shared key is still sent until Vercel sets
+// NEXT_PUBLIC_SEND_LEGACY_API_KEY=false (after the backend log shows JWT auth working);
+// a later cleanup removes it from the bundle entirely.
+const SEND_LEGACY_KEY = process.env.NEXT_PUBLIC_SEND_LEGACY_API_KEY !== 'false';
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'hayde-security-key';
 
+async function getAccessToken(): Promise<string | null> {
+    try {
+        if (typeof window === 'undefined' || !process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
+        const { data } = await createSupabaseClient().auth.getSession();
+        return data.session?.access_token ?? null;
+    } catch {
+        return null; // never block a request because the session lookup failed
+    }
+}
+
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
-    const headers = {
-        ...options.headers,
-        'x-api-key': API_KEY,
+    const token = await getAccessToken();
+    const headers: Record<string, string> = {
+        ...(options.headers as Record<string, string> | undefined),
     };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (SEND_LEGACY_KEY || !token) headers['x-api-key'] = API_KEY;
     return fetch(url, { ...options, headers });
 }
 

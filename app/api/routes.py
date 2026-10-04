@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException, Query, UploadFile, Depends, Security, File as FastAPIFile
-from fastapi.security.api_key import APIKeyHeader
 from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, VideoCreate, VideoUpdate, CalendarEventCreate, CalendarEventUpdate
 from app.core.config import get_settings
 from app.services.logic import bot_logic
@@ -11,15 +10,10 @@ import os
 
 settings = get_settings()
 
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-
-async def verify_api_key(api_key: str = Security(api_key_header)):
-    if api_key != settings.API_KEY:
-        raise HTTPException(status_code=403, detail="Invalid API Key")
-    return api_key
+from app.core.auth import require_auth
 
 public_router = APIRouter()
-protected_router = APIRouter(dependencies=[Depends(verify_api_key)])
+protected_router = APIRouter(dependencies=[Depends(require_auth)])
 
 # ─── WhatsApp Webhook ────────────────────────────────
 
@@ -1138,8 +1132,13 @@ import json
 from fastapi.responses import JSONResponse
 
 @protected_router.get("/backup/full")
-async def get_full_database_backup():
-    """Admin endpoint to backup Supabase schema and all data."""
+async def get_full_database_backup(request: Request):
+    """Admin endpoint to backup Supabase schema and all data.
+    Full dump of every table -> not available with the (public) legacy key: requires an
+    admin dashboard session (Supabase JWT) or the server-to-server API_KEY."""
+    from app.core.auth import is_admin_request
+    if not is_admin_request(request):
+        raise HTTPException(status_code=403, detail="גיבוי מלא זמין רק למנהל מחובר. התחברו מחדש ונסו שוב.")
     if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
         raise HTTPException(status_code=500, detail="Supabase credentials missing")
         

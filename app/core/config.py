@@ -2,10 +2,27 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Optional
 
+# Hard-coded key that production has used so far (API_KEY was never set in DigitalOcean)
+# and that is shipped in the dashboard JS bundle, i.e. public. Accepted only during the
+# transition window controlled by LEGACY_DEFAULT_API_KEY_ENABLED / REQUIRE_USER_AUTH.
+LEGACY_DEFAULT_API_KEY = "hayde-security-key"
+
+
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "HaydeBot"
-    API_KEY: str = "hayde-security-key"
+    # Server-to-server key. Unset by default -> only JWT / legacy key work. Set a strong
+    # random value in DigitalOcean for scripts/bots (never put it in the browser).
+    API_KEY: Optional[str] = None
+    # Transition flags for the key rotation (defaults = current behaviour).
+    LEGACY_DEFAULT_API_KEY_ENABLED: bool = True
+    REQUIRE_USER_AUTH: bool = False
+    # Supabase JWT verification: if set (Supabase > Project Settings > JWT secret, legacy
+    # HS256) tokens are verified locally; otherwise via Supabase Auth /auth/v1/user.
+    SUPABASE_JWT_SECRET: Optional[str] = None
+    DASHBOARD_ALLOWED_EMAILS: str = "ziv200@gmail.com,kobile@gmail.com,musicbyhayde@gmail.com"
+    # Same as role 'admin' in frontend/lib/auth.ts USER_MAP. Needed for /backup/full.
+    DASHBOARD_ADMIN_EMAILS: str = "ziv200@gmail.com,musicbyhayde@gmail.com"
     
     # OpenAI / Gemini
     OPENAI_API_KEY: Optional[str] = None
