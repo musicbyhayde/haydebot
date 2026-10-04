@@ -1,17 +1,22 @@
-fastapi
-uvicorn
-python-dotenv
-openai
-pyairtable
-apscheduler
-requests
-pydantic
-pydantic-settings
-supabase
-google-generativeai
-python-multipart
-sqlalchemy
-google-api-python-client
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
+# Pinned 2026-10-04 (fix/critical-hardening).
+# Versions = what pip would have resolved for the last production build (2026-09-22) on
+# Python 3.11 / linux. TODO(Ilan): confirm against the "Successfully installed ..." line of the
+# last DigitalOcean App Platform build log and adjust if any version differs.
+# Full transitive resolution for reference: requirements.lock.txt
+fastapi==0.141.1
+uvicorn==0.53.0
+python-dotenv==1.2.3
+openai==3.17.0
+pyairtable==3.4.2
+apscheduler==3.11.3
+requests==2.34.2
+pydantic==2.13.5
+pydantic-settings==2.15.0
+supabase==2.31.0
+google-generativeai==0.8.6
+python-multipart==0.0.32
+sqlalchemy==2.0.54
+google-api-python-client==2.200.0
+google-auth==2.58.0
+google-auth-oauthlib==1.4.1
+google-auth-httplib2==0.4.2
