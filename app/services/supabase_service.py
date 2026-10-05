@@ -561,6 +561,35 @@ class SupabaseService:
             results.append(item)
         return results
 
+    def has_recent_activity(self, lead_id: str, action_type: str, since: datetime) -> bool:
+        """True if the lead has an activity row of this type created at/after `since` (aware UTC).
+        Used to throttle escalation alerts; on any error returns False (better one extra alert
+        than a missed one)."""
+        if not self.client or not lead_id:
+            return False
+        try:
+            res = (self.client.table("activities").select("id")
+                   .eq("lead_id", lead_id).eq("action_type", action_type)
+                   .gte("created_at", since.isoformat()).limit(1).execute())
+            return bool(res.data)
+        except Exception as e:
+            print(f"has_recent_activity({lead_id}, {action_type}) failed: {e}")
+            return False
+
+    def has_recent_outbound(self, lead_id: str, content: str, since: datetime) -> bool:
+        """True if exactly this outbound text was stored for the lead at/after `since` (aware UTC).
+        Used so an automatic acknowledgement is not repeated. On error returns True (stay silent)."""
+        if not self.client or not lead_id:
+            return True
+        try:
+            res = (self.client.table("messages").select("id")
+                   .contains("Lead", [lead_id]).eq("Direction", "Outbound").eq("Content", content)
+                   .gte("Timestamp", since.isoformat()).limit(1).execute())
+            return bool(res.data)
+        except Exception as e:
+            print(f"has_recent_outbound({lead_id}) failed: {e}")
+            return True
+
     def create_activity(self, activity: ActivityCreate, record_id: Optional[str] = None) -> dict:
         """Create a new activity log. record_id: fixed uuid (Bot API idempotency)."""
         if not self.client: return {}

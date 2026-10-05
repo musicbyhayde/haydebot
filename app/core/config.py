@@ -69,6 +69,17 @@ class Settings(BaseSettings):
     # Scheduled jobs (opt-in; see app/core/scheduler.py)
     WEEKLY_SUMMARY_ENABLED: bool = False
 
+    # Human escalation (improvement #5, app/services/logic.py). Off = the old bot behaviour.
+    # On: a customer who writes after the intake is finished gets no automatic "פרטי האירוע נשמרו!"
+    # reply; the partners get an admin_system_alert_v2 alert instead (at most one per lead per
+    # cooldown), "talk to someone" gets its own human-request alert, and a finished intake / talk
+    # request leaves the lead in New (waiting for a partner) instead of Processing / Manual.
+    ESCALATION_ENABLED: bool = False
+    ESCALATION_ALERT_COOLDOWN_MINUTES: int = 60   # per lead and alert kind
+    # Optional one-line acknowledgement to the customer when a message is escalated (text in
+    # logic.ESCALATION_ACK_TEXT), at most once per lead per 12h. Needs ESCALATION_ENABLED.
+    ESCALATION_CUSTOMER_ACK: bool = False
+
     # Outbound network timeouts (seconds). Optional; safe defaults.
     HTTP_CONNECT_TIMEOUT: float = 5.0
     HTTP_READ_TIMEOUT: float = 20.0

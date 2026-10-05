@@ -3,7 +3,7 @@ import json
 import os
 import re
 from collections import OrderedDict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 from app.services.supabase_service import airtable_service
@@ -63,8 +63,9 @@ def normalize_date_value(raw_value: str) -> str:
 
 # fix #6 — greeting / menu words vs. an ongoing deal.
 # "Bot still collecting the initial details" (intake) = the conversation state is one of the
-# intake questions AND the lead is still New (status is set to Processing / Manual only when the
-# intake finishes: handle_guests_input / SVC_TALK). Anything else = details already collected.
+# intake questions AND the lead is still New (when the intake finishes the state becomes COMPLETED:
+# handle_guests_input / SVC_TALK; the status Processing / Manual, or New with ESCALATION_ENABLED).
+# Anything else = details already collected.
 INTAKE_STATES = {
     ConversationState.START.value, ConversationState.AWAITING_SERVICE.value,
     ConversationState.AWAITING_DATE.value, ConversationState.AWAITING_LOCATION.value,
@@ -73,6 +74,41 @@ INTAKE_STATES = {
 INTAKE_STATUSES = {LeadStatus.NEW.value}
 GREETING_WORDS = {"שלום", "היי"}
 MENU_WORDS = {"התחל מחדש", "תפריט", "menu", "restart"}
+
+# Improvement #5 — human escalation (active only with settings.ESCALATION_ENABLED).
+# Past the intake the bot stops answering on its own (no more repeated "פרטי האירוע נשמרו!");
+# the partners get an admin_system_alert_v2 alert instead, throttled per lead and kind through
+# an activity row (also visible on the History page).
+TALK_REPLY_TEXT = "אין בעיה! כבר מעביר את הפנייה שלך לאחד הנציגים שלנו שייצור איתך קשר בהקדם. 😊"
+COMPLETED_REPLY_TEXT = "פרטי האירוע נשמרו! אם תרצו לשנות משהו או להתחיל מחדש, רשמו לנו 'תפריט'. 🎸"
+# Proposed (new) customer wording, only with ESCALATION_CUSTOMER_ACK=true, max once per 12h.
+ESCALATION_ACK_TEXT = "תודה! ההודעה שלך הועברה לאחד הנציגים שלנו, שיחזור אליך בהקדם 🙏"
+ESCALATION_ACK_COOLDOWN = timedelta(hours=12)
+ACTIVITY_HUMAN_REQUEST = "בקשת נציג"
+ACTIVITY_WAITING_REPLY = "לקוח ממתין למענה"
+ALERT_TITLE_HUMAN_REQUEST = "🙋 לקוח מבקש נציג"
+ALERT_TITLE_WAITING_REPLY = "💬 לקוח ממתין למענה"
+# A message containing one of these (or "???") is treated as an explicit request for a human.
+HUMAN_REQUEST_WORDS = (
+    "נציג", "מחכה", "מחכים", "אף אחד", "דחוף", "לדבר עם מישהו", "לדבר עם בן אדם",
+    "לא חזר", "לא חוזר", "לא עונים", "לא עונה",
+    "urgent", "agent", "human", "representative", "someone",
+)
+_HUMAN_REQUEST_RE = re.compile(r"\?{3,}")
+MUSICIAN_BUTTON_PREFIXES = ("claim_", "unavailable_", "contacted_", "closed_", "lost_")
+
+def status_he(status: str) -> str:
+    """Hebrew dashboard label of a status (same table as the Bot API), raw value as fallback."""
+    try:
+        from app.bot.data import STATUS_HE
+        return STATUS_HE.get(status, status or "לא ידוע")
+    except Exception:
+        return status or "לא ידוע"
+
+
+def name_of(lead: dict, fallback: str = "") -> str:
+    return ((lead or {}).get("fields") or {}).get("Name") or fallback
+
 
 class PersistentDict(dict):
     """A dict that auto-saves to a JSON file on every mutation.
@@ -370,6 +406,15 @@ class HaydeBotLogic:
             except Exception as e:
                 print(f"Error parsing bot_mute_until: {e}")
 
+        # 3b. Improvement #5: once the intake is over (details collected, "talk to someone", or a
+        # partner moved the lead on) the bot no longer answers by itself. A partner is alerted
+        # instead. Mid-intake messages, greetings included, go on exactly as before.
+        if settings.ESCALATION_ENABLED and not self._is_in_intake(fields) \
+                and not (interactive_id and interactive_id.startswith(MUSICIAN_BUTTON_PREFIXES)):
+            await self._escalate_customer_message(phone, name, text, lead_id, fields,
+                                                  media_url=media_url, interactive_id=interactive_id)
+            return
+
         # 4. Detect Global Commands (e.g., Restart/Menu) — fix #6
         clean_text = text.lower().strip()
         greeting_during_intake = False
@@ -440,7 +485,8 @@ class HaydeBotLogic:
         elif state == ConversationState.AWAITING_GUESTS:
              await self.handle_guests_input(phone, lead_id, text)
         elif state == ConversationState.COMPLETED:
-             self._send_message(phone, "פרטי האירוע נשמרו! אם תרצו לשנות משהו או להתחיל מחדש, רשמו לנו 'תפריט'. 🎸", lead_id)
+             # only reached with ESCALATION_ENABLED=false (see 3b)
+             self._send_message(phone, COMPLETED_REPLY_TEXT, lead_id)
 
         # 6. Musician Protocol (Separated)
         if interactive_id and (
@@ -529,6 +575,30 @@ class HaydeBotLogic:
             await self.send_welcome_menu(phone)
             return
 
+        if selected_service == ServiceType.TALK:
+             # "לדבר עם מישהו" is a request for a human, not a service: Service is left empty
+             # (the dashboard shows the value "Talk" as "הרצאה", a real service).
+             if settings.ESCALATION_ENABLED:
+                 # nobody handles it yet -> New (waiting for a partner), plus a human-request alert
+                 airtable_service.update_lead(lead_id, LeadUpdate(
+                     conversation_state=ConversationState.COMPLETED,
+                     status=LeadStatus.NEW
+                 ))
+                 self._send_message(phone, TALK_REPLY_TEXT, lead_id)
+                 lead = airtable_service.leads_table.get(lead_id) or {}
+                 await self._escalate(phone, name_of(lead, phone), text, lead_id, lead.get("fields") or {},
+                                      kind="human", via_menu=True)
+                 return
+             airtable_service.update_lead(lead_id, LeadUpdate(
+                 conversation_state=ConversationState.COMPLETED,
+                 status=LeadStatus.MANUAL
+             ))
+             self._send_message(phone, TALK_REPLY_TEXT, lead_id)
+             # Notify admins immediately (generic new-lead template, as before)
+             lead = airtable_service.leads_table.get(lead_id)
+             await self.notify_admins({**lead["fields"], "Service": "לדבר עם נציג"})
+             return
+
         # Update Lead (Wrap in try because Airtable SingleSelect might block new values)
         try:
             airtable_service.update_lead(lead_id, LeadUpdate(
@@ -536,17 +606,6 @@ class HaydeBotLogic:
             ))
         except Exception as e:
             print(f"Error updating service in Airtable: {e}. Suggest changing field to Single Line Text.")
-
-        if selected_service == ServiceType.TALK:
-             airtable_service.update_lead(lead_id, LeadUpdate(
-                 conversation_state=ConversationState.COMPLETED,
-                 status=LeadStatus.MANUAL
-             ))
-             self._send_message(phone, "אין בעיה! כבר מעביר את הפנייה שלך לאחד הנציגים שלנו שייצור איתך קשר בהקדם. 😊", lead_id)
-             # Notify admins immediately
-             lead = airtable_service.leads_table.get(lead_id)
-             await self.notify_admins(lead["fields"])
-             return
 
         # Continue flow
         airtable_service.update_lead(lead_id, LeadUpdate(
@@ -625,11 +684,13 @@ class HaydeBotLogic:
                 return
             guests_val = res["extracted_value"]
 
-        # Finalize
+        # Finalize. With escalation on, a finished intake waits for a partner in New (top of the
+        # dashboard, first claim without a note, flips to Manual when a partner writes); before,
+        # it stayed in Processing ("בטיפול בוט") although the bot had nothing left to do.
         airtable_service.update_lead(lead_id, LeadUpdate(
             guests=guests_val,
             conversation_state=ConversationState.COMPLETED,
-            status=LeadStatus.PROCESSING
+            status=LeadStatus.NEW if settings.ESCALATION_ENABLED else LeadStatus.PROCESSING
         ))
 
         self._send_message(phone, "מגניב, רשמנו את כל הפרטים, בודקים זמינות וחוזרים אלייך תיק תק! 🎸", lead_id)
@@ -1003,6 +1064,88 @@ class HaydeBotLogic:
             await self.handle_start_state(phone, lead_id, None, "")
         else:
             await self.send_state_question(phone, ConversationState(state))
+
+    # ─── improvement #5: human escalation ───────────────────────────────────────────────
+    @staticmethod
+    def _wants_human(text: str, interactive_id: str = None) -> bool:
+        """True for an explicit request for a human: the "talk to someone" menu item, "???",
+        or one of HUMAN_REQUEST_WORDS."""
+        if interactive_id == "SVC_TALK":
+            return True
+        t = (text or "").lower()
+        return bool(_HUMAN_REQUEST_RE.search(t)) or any(w in t for w in HUMAN_REQUEST_WORDS)
+
+    async def _escalate_customer_message(self, phone: str, name: str, text: str, lead_id: str,
+                                         fields: dict, media_url: str = None, interactive_id: str = None):
+        """A customer wrote after the intake (ESCALATION_ENABLED): no automatic bot reply.
+        Last_Interaction is updated, a lead still stuck in Processing moves to New, the partners
+        get one alert per lead and kind per cooldown, and optionally the customer gets one
+        acknowledgement per 12h."""
+        update = {"last_interaction": datetime.now()}
+        if fields.get("Status") == LeadStatus.PROCESSING.value:
+            update["status"] = LeadStatus.NEW
+        try:
+            airtable_service.update_lead(lead_id, LeadUpdate(**update))
+        except Exception as e:
+            print(f"ESCALATION: lead update failed for {lead_id}: {e}")
+        kind = "human" if self._wants_human(text, interactive_id) else "waiting"
+        await self._escalate(phone, name, text, lead_id, fields, media_url=media_url, kind=kind)
+        if settings.ESCALATION_CUSTOMER_ACK:
+            since = datetime.now(timezone.utc) - ESCALATION_ACK_COOLDOWN
+            if not airtable_service.has_recent_outbound(lead_id, ESCALATION_ACK_TEXT, since):
+                self._send_message(phone, ESCALATION_ACK_TEXT, lead_id)
+
+    async def _escalate(self, phone: str, name: str, text: str, lead_id: str, fields: dict,
+                        media_url: str = None, *, kind: str, via_menu: bool = False) -> bool:
+        """Alert the partners (approved admin_system_alert_v2 template; human requests also by
+        email) and record an activity row. kind: "human" (asked for a person) or "waiting"
+        (wrote after the intake). Returns False when throttled (same kind already alerted for
+        this lead within ESCALATION_ALERT_COOLDOWN_MINUTES)."""
+        action = ACTIVITY_HUMAN_REQUEST if kind == "human" else ACTIVITY_WAITING_REPLY
+        cooldown = max(0, int(settings.ESCALATION_ALERT_COOLDOWN_MINUTES or 0))
+        if cooldown:
+            since = datetime.now(timezone.utc) - timedelta(minutes=cooldown)
+            if airtable_service.has_recent_activity(lead_id, action, since):
+                print(f"ESCALATION: {kind} alert for lead {lead_id} throttled ({cooldown} min)")
+                return False
+        fields = fields or {}
+        lead_name = fields.get("Name") or name or phone
+        status = fields.get("Status") or ""
+        owner = fields.get("Owner") or "ללא מוביל"
+        preview = "[מדיה]" if media_url else (text or "")[:200]
+        info = f"סטטוס: {status_he(status)}   מוביל: {owner}"
+        if kind == "human":
+            what = "בחר/ה 'לדבר עם מישהו' בתפריט" if via_menu else "ביקש/ה לדבר עם נציג"
+            title = ALERT_TITLE_HUMAN_REQUEST
+            body = (f"{lead_name} / {phone} {what}   {info}   "
+                    + ("" if via_menu else f"הודעה: {preview}   ")
+                    + "יש לחזור ללקוח בהקדם")
+        else:
+            what = "כתב/ה אחרי סיום איסוף הפרטים"
+            title = ALERT_TITLE_WAITING_REPLY
+            body = (f"{lead_name} / {phone} {what}   {info}   הודעה: {preview}   "
+                    "הבוט לא ענה, יש להשיב מהפנל")
+        try:
+            self._send_admin_alert(title, body, exclude_phone=phone)
+        except Exception as e:
+            print(f"ESCALATION: WhatsApp alert failed for lead {lead_id}: {e}")
+        if kind == "human":
+            try:
+                import html as _html
+                await email_service.send_notification(
+                    f"🙋 לקוח מבקש נציג: {lead_name} ({phone})",
+                    f"<div dir='rtl'>{_html.escape(body)}</div>")
+            except Exception as e:
+                print(f"ESCALATION: email alert failed for lead {lead_id}: {e}")
+        try:
+            from app.models.schemas import ActivityCreate
+            airtable_service.create_activity(ActivityCreate(
+                actor="מערכת", action_type=action, lead_id=lead_id,
+                description=f"הלקוח {what}; נשלחה התראה לשותפים"
+                            + ("" if via_menu else f". הודעה: {preview[:80]}")))
+        except Exception as e:
+            print(f"ESCALATION: activity row failed for lead {lead_id}: {e}")
+        return True
 
     def _send_admin_alert(self, title: str, body: str, exclude_phone: str = None):
         """Send an alert to every admin with the approved admin_system_alert_v2 template — the
