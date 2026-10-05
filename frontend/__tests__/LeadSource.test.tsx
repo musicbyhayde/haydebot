@@ -58,14 +58,28 @@ describe('LeadSourceBadge', () => {
     });
 });
 
-describe('LeadsDashboard source column and filter', () => {
+describe('LeadsDashboard: no source column, filter kept in the filter panel', () => {
     const props = { leads, onSelectLead: jest.fn(), onMenuClick: jest.fn(), currentUser: user, onRefresh: jest.fn() };
 
-    it('shows a source column in the active leads table', () => {
+    it('has no source column in the active table or the archive tables (source lives in the lead panel)', () => {
         render(<LeadsDashboard {...props} />);
-        expect(screen.getAllByText('מקור').length).toBeGreaterThan(0);
-        expect(screen.getByText('טופס מטא')).toBeInTheDocument();
-        expect(screen.getByText('אתר')).toBeInTheDocument();
+        expect(screen.getByText('Meta Lead')).toBeInTheDocument();
+        // open every archive table (closed / lost / completed) that has rows
+        ['לידים אבודים', 'לידים סגורים', 'הושלמו (ארכיון)'].forEach((t) => {
+            const btn = screen.queryByText(t, { exact: false });
+            if (btn) fireEvent.click(btn);
+        });
+        expect(screen.getByText('Lost Ad')).toBeInTheDocument();
+        expect(screen.queryByText('מקור')).not.toBeInTheDocument();
+        ['טופס מטא', 'אתר', 'מודעת וואטסאפ'].forEach((label) => {
+            expect(screen.queryByText(label)).not.toBeInTheDocument();
+        });
+    });
+
+    it('the source filter is not shown until the filter panel is opened, and no chip by default', () => {
+        render(<LeadsDashboard {...props} />);
+        expect(screen.queryByLabelText('סינון לפי מקור')).not.toBeInTheDocument();
+        expect(screen.queryByText(/מקור:/)).not.toBeInTheDocument();
     });
 
     it('filters by source, including "unknown", and shows a removable chip', () => {

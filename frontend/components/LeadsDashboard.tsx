@@ -14,7 +14,6 @@ import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
 import { Note } from '@/types';
 import PendingFollowUpsModal from './PendingFollowUpsModal';
-import LeadSourceBadge from './LeadSourceBadge';
 import { LEAD_SOURCE_OPTIONS, LEAD_SOURCE_NONE, leadSourceLabel } from '@/lib/constants';
 
 interface LeadsDashboardProps {
@@ -465,7 +464,6 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         מיקום {localSorts[tableKey]?.column === 'location' ? (localSorts[tableKey]?.order === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ChevronsUpDown size={12} className="text-slate-300"/>}
                                     </button>
                                 </div>
-                                <div className="w-24 hidden lg:flex items-center">מקור</div>
                                 <div className="w-32 hidden md:flex items-center">
                                     <button onClick={() => toggleLocalSort(tableKey, 'budget')} className="flex items-center gap-1 hover:text-blue-600 transition-colors">
                                         תקציב / סיבה {localSorts[tableKey]?.column === 'budget' ? (localSorts[tableKey]?.order === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ChevronsUpDown size={12} className="text-slate-300"/>}
@@ -514,9 +512,6 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         {lead.fields.Location ? (
                                             <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
                                         ) : <span className="text-slate-300">—</span>}
-                                    </div>
-                                    <div className="w-24 hidden lg:flex items-center overflow-hidden pl-1">
-                                        <LeadSourceBadge fields={lead.fields} />
                                     </div>
                                     <div className="w-32 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Closing_Amount ? `₪${lead.fields.Closing_Amount.toLocaleString()}` : (lead.fields.Lost_Reason || '—')}
@@ -1103,7 +1098,6 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 </button>
                             </div>
                             <div className="w-24 shrink-0 hidden lg:block">מיקום</div>
-                            <div className="w-24 shrink-0 hidden lg:block">מקור</div>
                             <div className="w-24 md:w-28 shrink-0 flex justify-end">פעולות</div>
                         </div>
                         {/* Rows */}
@@ -1219,9 +1213,6 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         {lead.fields.Location ? (
                                             <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
                                         ) : <span className="text-slate-300">—</span>}
-                                    </div>
-                                    <div className="w-24 shrink-0 hidden lg:flex items-center overflow-hidden pr-1">
-                                        <LeadSourceBadge fields={lead.fields} />
                                     </div>
                                     <div className="w-32 shrink-0 flex items-center justify-end gap-1 md:gap-1.5">
                                         <button onClick={() => window.open(`https://wa.me/${toDbPhone(lead.fields.Phone)}`)} className="text-green-500 hover:text-green-600 transition-colors p-1" title="שלח ווטסאפ">
