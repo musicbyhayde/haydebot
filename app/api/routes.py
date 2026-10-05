@@ -4,6 +4,7 @@ from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, NoteCreate, N
 from app.core.config import get_settings
 from app.services.logic import bot_logic
 from app.services import activity_text
+from app.services.lead_source import LEAD_SOURCES, MANUAL_DETAIL, MANUAL_CREATE_DETAIL
 from typing import List, Optional
 from pydantic import BaseModel
 import uuid
@@ -160,6 +161,17 @@ async def create_activity_log(request: Request):
     )
     return airtable_service.create_activity(activity)
 
+def _manual_source_update(body: dict, detail: str) -> Optional[dict]:
+    """Lead_Source chosen by a person (dashboard). Unknown values are ignored."""
+    src = (body or {}).get("Lead_Source")
+    if src not in LEAD_SOURCES:
+        return None
+    return {
+        "Lead_Source": src,
+        "Source_Detail": ((body.get("Source_Detail") or "").strip()[:200] or detail),
+        "Source_Detected_At": datetime.now().astimezone().isoformat(),
+    }
+
 @protected_router.get("/leads")
 async def get_leads():
     return airtable_service.get_all_leads()
@@ -179,6 +191,14 @@ async def create_lead_manual(request: Request):
         owner=body.get("Owner"),
     )
     result = airtable_service.create_lead(lead)
+
+    # Source chosen in the manual-lead form (improvement #2). Separate tolerant update so the
+    # lead is created even if the source columns do not exist yet.
+    source_update = _manual_source_update(body, MANUAL_CREATE_DETAIL)
+    if source_update and result and result.get("id"):
+        updated = airtable_service.update_lead(result["id"], LeadUpdate(**source_update))
+        if updated:
+            result = updated
     
     airtable_service.create_activity(ActivityCreate(
         actor=lead.owner or "מערכת",
@@ -193,6 +213,10 @@ async def create_lead_manual(request: Request):
 async def update_lead(lead_id: str, request: Request):
     """Update a lead's fields (status, owner, etc.)."""
     body = await request.json()
+    if body.get("Lead_Source") is not None and body.get("Lead_Source") not in LEAD_SOURCES:
+        raise HTTPException(status_code=400, detail="Invalid Lead_Source")
+    if body.get("Lead_Source") and not body.get("Source_Detail"):
+        body = {**body, **(_manual_source_update(body, MANUAL_DETAIL) or {})}
     data = LeadUpdate(**{k: v for k, v in body.items() if v is not None})
     result = airtable_service.update_lead(lead_id, data)
 

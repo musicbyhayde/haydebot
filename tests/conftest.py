@@ -55,7 +55,8 @@ class MockSupabaseService:
         return self._to_airtable_format(data)
 
     def update_lead(self, record_id, data):
-        update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        # like SupabaseService.update_lead: LeadUpdate or a raw dict of DB columns
+        update_data = dict(data) if isinstance(data, dict) else data.model_dump(exclude_none=True, by_alias=True, mode='json')
         for rec in self._stores["leads"]:
             if rec["id"] == record_id:
                 rec.update(update_data)

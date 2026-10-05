@@ -42,6 +42,17 @@ class ServiceType(str, Enum):
     TALK = "Talk"
     OTHER = "Other"
 
+class LeadSource(str, Enum):
+    """Lead attribution (improvement #2). Values and detection: app/services/lead_source.py."""
+    META_FORM = "meta_form"
+    CTWA = "ctwa"
+    WHATSAPP_DIRECT = "whatsapp_direct"
+    WEBSITE = "website"
+    REFERRAL = "referral"
+    REPEAT = "repeat"
+    PHONE = "phone"
+    OTHER = "other"
+
 class LeadBase(BaseSchema):
     phone: str = Field(..., alias="Phone")
     name: Optional[str] = Field(None, alias="Name")
@@ -97,6 +108,26 @@ class LeadUpdate(BaseSchema):
     commission_amount: Optional[float] = Field(None, alias="Commission_Amount")
     commission_status: Optional[str] = Field(None, alias="Commission_Status")
     commission_includes_vat: Optional[bool] = Field(None, alias="Commission_Includes_VAT")
+    # Source / attribution (migrations/add_lead_source_columns.sql)
+    lead_source: Optional[LeadSource] = Field(None, alias="Lead_Source")
+    source_detail: Optional[str] = Field(None, alias="Source_Detail")
+    campaign_id: Optional[str] = Field(None, alias="Campaign_ID")
+    campaign_name: Optional[str] = Field(None, alias="Campaign_Name")
+    adset_id: Optional[str] = Field(None, alias="Adset_ID")
+    adset_name: Optional[str] = Field(None, alias="Adset_Name")
+    ad_id: Optional[str] = Field(None, alias="Ad_ID")
+    ad_name: Optional[str] = Field(None, alias="Ad_Name")
+    form_id: Optional[str] = Field(None, alias="Form_ID")
+    form_name: Optional[str] = Field(None, alias="Form_Name")
+    utm_source: Optional[str] = Field(None, alias="UTM_Source")
+    utm_medium: Optional[str] = Field(None, alias="UTM_Medium")
+    utm_campaign: Optional[str] = Field(None, alias="UTM_Campaign")
+    utm_content: Optional[str] = Field(None, alias="UTM_Content")
+    ctwa_clid: Optional[str] = Field(None, alias="CTWA_CLID")
+    meta_lead_id: Optional[str] = Field(None, alias="Meta_Lead_ID")
+    source_referral: Optional[dict] = Field(None, alias="Source_Referral")
+    form_answers: Optional[dict] = Field(None, alias="Form_Answers")
+    source_detected_at: Optional[datetime] = Field(None, alias="Source_Detected_At")
 
 class LeadResponse(LeadBase):
     id: str # Airtable Record ID

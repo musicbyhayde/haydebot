@@ -27,7 +27,51 @@ export interface Lead {
         Commission_Amount?: number;
         Commission_Status?: 'ממתין לאישור' | 'ממתין לגבייה' | 'נגבה' | 'בוטל';
         Commission_Includes_VAT?: boolean;
+        // Source / attribution (improvement #2)
+        Lead_Source?: LeadSource | null;
+        Source_Detail?: string | null;
+        Campaign_ID?: string | null;
+        Campaign_Name?: string | null;
+        Adset_ID?: string | null;
+        Adset_Name?: string | null;
+        Ad_ID?: string | null;
+        Ad_Name?: string | null;
+        Form_ID?: string | null;
+        Form_Name?: string | null;
+        UTM_Source?: string | null;
+        UTM_Medium?: string | null;
+        UTM_Campaign?: string | null;
+        UTM_Content?: string | null;
+        CTWA_CLID?: string | null;
+        Meta_Lead_ID?: string | null;
+        Source_Referral?: LeadSourceReferral | null;
+        Form_Answers?: LeadFormAnswers | null;
+        Source_Detected_At?: string | null;
     };
+}
+
+export type LeadSource =
+    | 'meta_form' | 'ctwa' | 'whatsapp_direct' | 'website'
+    | 'referral' | 'repeat' | 'phone' | 'other';
+
+export interface LeadSourceReferral {
+    source_type?: string;
+    source_id?: string;
+    source_url?: string;
+    headline?: string;
+    body?: string;
+    ctwa_clid?: string;
+    [key: string]: unknown;
+}
+
+export interface LeadFormAnswers {
+    language?: string | null;
+    full_name?: string;
+    phone?: string;
+    event_type?: string;
+    note?: string;
+    answers?: Record<string, string>;
+    phone_matches_whatsapp?: boolean;
 }
 
 export interface Message {

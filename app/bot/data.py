@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 
 from app.bot.auth import BotContext
 from app.bot.errors import BotError
+from app.services.lead_source import LEAD_SOURCE_HE, LEAD_SOURCES
 from app.services.supabase_service import supabase_service as db
 
 TZ = ZoneInfo("Asia/Jerusalem")
@@ -137,6 +138,8 @@ def lead_out(rec: dict, ctx: BotContext, detail: bool = False,
         "created_at": rec.get("createdTime") or f.get("Created_At"),
         "last_interaction": f.get("Last_Interaction"),
         "summary": f.get("Last_Summary"),
+        "lead_source": f.get("Lead_Source"),
+        "lead_source_he": LEAD_SOURCE_HE.get(f.get("Lead_Source")),
     }
     if ctx.has("pii:read"):
         out["phone"] = f.get("Phone")
@@ -150,6 +153,7 @@ def lead_out(rec: dict, ctx: BotContext, detail: bool = False,
             "lost_reason": f.get("Lost_Reason"),
             "referred_to": f.get("Referred_To"),
             "bot_muted_until": f.get("Bot_Mute_Until"),
+            "source": source_out(f, ctx),
         })
         team_ids = list(dict.fromkeys((f.get("Musician_Assigned") or []) + (f.get("Musician_Team") or [])))
         names = musician_names or {}
@@ -163,6 +167,39 @@ def lead_out(rec: dict, ctx: BotContext, detail: bool = False,
                 "commission_includes_vat": f.get("Commission_Includes_VAT"),
                 "quote": f.get("Quote_Data"),
             })
+    return out
+
+
+_SOURCE_FIELDS = {
+    "detail": "Source_Detail", "campaign_id": "Campaign_ID", "campaign_name": "Campaign_Name",
+    "adset_id": "Adset_ID", "adset_name": "Adset_Name", "ad_id": "Ad_ID", "ad_name": "Ad_Name",
+    "form_id": "Form_ID", "form_name": "Form_Name", "utm_source": "UTM_Source",
+    "utm_medium": "UTM_Medium", "utm_campaign": "UTM_Campaign", "utm_content": "UTM_Content",
+    "detected_at": "Source_Detected_At",
+}
+_REFERRAL_KEYS = ("source_type", "source_id", "source_url", "headline", "body", "media_type")
+
+
+def source_out(f: dict, ctx: BotContext) -> dict:
+    """Attribution block of the lead detail. The form's name/phone and the Meta click/lead ids
+    (they identify the person on Meta) only with pii:read."""
+    out: dict = {"value": f.get("Lead_Source"), "value_he": LEAD_SOURCE_HE.get(f.get("Lead_Source"))}
+    out.update({k: f.get(col) for k, col in _SOURCE_FIELDS.items()})
+    ref = f.get("Source_Referral")
+    out["referral"] = {k: ref.get(k) for k in _REFERRAL_KEYS if ref.get(k) is not None} if isinstance(ref, dict) and ref else None
+    form = f.get("Form_Answers")
+    if isinstance(form, dict) and form:
+        fo = {k: form.get(k) for k in ("language", "event_type", "answers", "phone_matches_whatsapp") if form.get(k) is not None}
+        if ctx.has("pii:read"):
+            fo.update({k: form.get(k) for k in ("full_name", "phone", "email", "note") if form.get(k)})
+        elif form.get("phone"):
+            fo["phone_masked"] = mask_phone(form.get("phone"))
+        out["form"] = fo
+    else:
+        out["form"] = None
+    if ctx.has("pii:read"):
+        out["ctwa_clid"] = f.get("CTWA_CLID")
+        out["meta_lead_id"] = f.get("Meta_Lead_ID")
     return out
 
 
@@ -213,9 +250,14 @@ def list_leads(ctx: BotContext, *, status: Optional[str] = None, service: Option
                event_from: Optional[date] = None, event_to: Optional[date] = None,
                created_from: Optional[date] = None, created_to: Optional[date] = None,
                updated_since: Optional[datetime] = None, sort: str = "last_interaction",
-               limit: int = 50, offset: int = 0) -> dict:
+               limit: int = 50, offset: int = 0, source: Optional[str] = None) -> dict:
     statuses = split_csv(status)
     _validate_statuses(statuses)
+    sources = set(split_csv(source))
+    bad_src = [s for s in sources if s not in LEAD_SOURCES and s != "none"]
+    if bad_src:
+        raise BotError(422, "invalid_request",
+                       f"Unknown source {', '.join(bad_src)}. Valid: {', '.join(LEAD_SOURCES)}, none.")
     services = {s.lower() for s in split_csv(service)}
     needle = (q or "").strip().lower()
     needle_digits = re.sub(r"\D", "", needle)
@@ -232,6 +274,8 @@ def list_leads(ctx: BotContext, *, status: Optional[str] = None, service: Option
         if services and str(f.get("Service") or "").lower() not in services:
             continue
         if owner and (f.get("Owner") or "") != owner:
+            continue
+        if sources and (f.get("Lead_Source") or "none") not in sources:
             continue
         if needle:
             hay = " ".join(str(f.get(k) or "") for k in ("Name", "Location", "Last_Summary", "Event_Date")).lower()
@@ -358,6 +402,7 @@ def stats(ctx: BotContext) -> dict:
     t0 = today()
     by_status: dict = {}
     by_service: dict = {}
+    by_source: dict = {}
     by_owner: dict = {}
     new7 = new30 = open_count = events30 = 0
     revenue_by_month: dict = {}
@@ -367,6 +412,8 @@ def stats(ctx: BotContext) -> dict:
         by_status[st] = by_status.get(st, 0) + 1
         svc = f.get("Service") or "none"
         by_service[svc] = by_service.get(svc, 0) + 1
+        src = f.get("Lead_Source") or "none"
+        by_source[src] = by_source.get(src, 0) + 1
         if st not in NOT_OPEN:
             open_count += 1
             ow = f.get("Owner") or "none"
@@ -391,6 +438,8 @@ def stats(ctx: BotContext) -> dict:
         "by_status": [{"status": s, "status_he": STATUS_HE.get(s), "count": c}
                       for s, c in sorted(by_status.items(), key=lambda x: -x[1])],
         "by_service": dict(sorted(by_service.items(), key=lambda x: -x[1])),
+        "by_source": [{"source": s, "source_he": LEAD_SOURCE_HE.get(s), "count": c}
+                      for s, c in sorted(by_source.items(), key=lambda x: -x[1])],
         "open_by_owner": by_owner,
     }
     if ctx.has("finance:summary"):

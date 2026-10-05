@@ -5,6 +5,8 @@ import { X } from 'lucide-react';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
 import { toDisplayPhone, toDbPhone, formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
+import { MANUAL_LEAD_SOURCE_OPTIONS } from '@/lib/constants';
+import { LeadSource } from '@/types';
 
 interface AddLeadModalProps {
     isOpen: boolean;
@@ -41,6 +43,7 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
         Guests: '',
         Owner: currentUserName || 'אילן',
         Status: 'New',
+        Lead_Source: '',
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -53,13 +56,17 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
             setError('חובה להזין מספר טלפון');
             return;
         }
+        if (!form.Lead_Source) {
+            setError('חובה לבחור מקור ליד');
+            return;
+        }
         setSubmitting(true);
         setError('');
         try {
-            await api.createLead(form);
+            await api.createLead({ ...form, Lead_Source: form.Lead_Source as LeadSource });
             onCreated();
             onClose();
-            setForm({ Name: '', Phone: '', Service: '', Event_Date: '', Location: '', Guests: '', Owner: currentUserName || 'אילן', Status: 'New' });
+            setForm({ Name: '', Phone: '', Service: '', Event_Date: '', Location: '', Guests: '', Owner: currentUserName || 'אילן', Status: 'New', Lead_Source: '' });
         } catch (err: unknown) {
             const error = err as Error;
             setError(error.message || 'שגיאה ביצירת ליד');
@@ -96,6 +103,20 @@ export default function AddLeadModal({ isOpen, onClose, onCreated, currentUserNa
                             <label className="block text-xs font-semibold text-slate-500 mb-1">טלפון *</label>
                             <input type="tel" className={inputClass} value={toDisplayPhone(form.Phone)} onChange={(e) => setForm({ ...form, Phone: toDbPhone(e.target.value) })} placeholder="05X-XXXXXXX" dir="ltr" required />
                         </div>
+                    </div>
+
+                    <div>
+                        <label htmlFor="add-lead-source" className="block text-xs font-semibold text-slate-500 mb-1">מקור הליד *</label>
+                        <select
+                            id="add-lead-source"
+                            className={inputClass}
+                            value={form.Lead_Source}
+                            onChange={(e) => setForm({ ...form, Lead_Source: e.target.value })}
+                            required
+                        >
+                            <option value="">מאיפה הגיע הליד?</option>
+                            {MANUAL_LEAD_SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

@@ -13,6 +13,8 @@ import { OWNERS, OWNER_COLORS } from '@/lib/constants';
 import { toDisplayPhone, toDbPhone, formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
 import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
+import LeadSourceBadge from './LeadSourceBadge';
+import LeadSourceSection from './LeadSourceSection';
 
 interface LeadDetailPanelProps {
     lead: Lead;
@@ -959,6 +961,12 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             )}
                             <span>·</span>
                             <span>{lead.fields.Service || '—'}</span>
+                            {lead.fields.Lead_Source && (
+                                <>
+                                    <span>·</span>
+                                    <LeadSourceBadge fields={lead.fields} showDetail />
+                                </>
+                            )}
                         </div>
 
                         {/* Owner Badge & Quick Transfer */}
@@ -1832,6 +1840,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
                     {tab === 'info' && (
                         <div className="p-5 space-y-4">
+                            <LeadSourceSection key={`${lead.id}-${lead.fields.Lead_Source || ''}`} lead={lead} />
                             <div className="space-y-3">
                                 <div className="flex flex-col gap-1">
                                     <label className="text-[10px] font-bold text-slate-500 mr-1">שם הלקוח</label>

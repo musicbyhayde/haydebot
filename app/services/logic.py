@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.services.ai import ai_service
 from app.services.email import email_service
 from app.core.utils import calculate_commission
+from app.services import lead_source
 
 settings = get_settings()
 
@@ -261,10 +262,19 @@ class HaydeBotLogic:
         else:
             text_content = f"[{msg_type.upper()} RECEIVED]"
 
-        # Process
-        await self.handle_incoming_message(sender_phone, sender_name, text_content, interactive_id, message.get("id"), media_url, media_type)
+        # Click-to-WhatsApp ads/posts attach a `referral` object (improvement #2): keep it raw.
+        referral = message.get("referral") if isinstance(message.get("referral"), dict) else None
+        if referral:
+            try:
+                print(f"REFERRAL_RECEIVED message={message.get('id')} referral={json.dumps(referral, ensure_ascii=False)[:2000]}")
+            except Exception:
+                pass
 
-    async def handle_incoming_message(self, phone: str, name: str, text: str, interactive_id: str, whatsapp_id: str = None, media_url: str = None, media_type: str = None):
+        # Process
+        await self.handle_incoming_message(sender_phone, sender_name, text_content, interactive_id, message.get("id"), media_url, media_type,
+                                           **({"referral": referral} if referral else {}))
+
+    async def handle_incoming_message(self, phone: str, name: str, text: str, interactive_id: str, whatsapp_id: str = None, media_url: str = None, media_type: str = None, referral: dict = None):
         if whatsapp_id:
             if whatsapp_id in self.processed_messages:
                 print(f"DEBUG: Skipping already processed message (local cache): {whatsapp_id}")
@@ -355,6 +365,8 @@ class HaydeBotLogic:
              # Check if this phone belongs to a Closed/Completed lead before creating a duplicate
              closed_lead = self._find_closed_lead_by_phone(phone)
              if closed_lead:
+                 # Returning customer keeps the original source; only a raw referral is stored.
+                 self._refine_lead_source(closed_lead, phone, text, referral)
                  await self._handle_returning_closed_customer(
                      phone, name, text, whatsapp_id, media_url, media_type, closed_lead
                  )
@@ -372,6 +384,7 @@ class HaydeBotLogic:
                 id=whatsapp_id,
                 status="Delivered"
              ))
+             self._apply_new_lead_source(lead_id, phone, name, text, referral)
              return 
 
         # 3. Log Message for Existing User
@@ -388,6 +401,7 @@ class HaydeBotLogic:
 
         # EXISTING ACTIVE LEAD
         fields = lead["fields"]
+        self._refine_lead_source(lead, phone, text, referral)
         state = fields.get("Conversation_State", ConversationState.START)
         
         # 3. Detect Bot Mute (Human Takeover)
@@ -1391,6 +1405,43 @@ class HaydeBotLogic:
         if not n1 or not n2: return False
         # Compare the last 9 digits (common for Israeli mobile)
         return n1[-9:] == n2[-9:]
+
+    # ─── improvement #2: lead source / attribution ─────────────────────────────────────
+    def _apply_new_lead_source(self, lead_id: str, phone: str, name: str, text: str, referral: dict = None):
+        """Detect and store the source of a lead created from this (first) inbound message.
+        Separate, tolerant update: a failure (e.g. the migration was not run) never blocks intake."""
+        if not lead_id:
+            return
+        try:
+            previous = [l for l in airtable_service.get_all_leads()
+                        if l.get("id") != lead_id and self._phones_match(l["fields"].get("Phone"), phone)]
+        except Exception as e:
+            print(f"LEAD_SOURCE: could not load previous leads: {e}")
+            previous = []
+        try:
+            update = lead_source.classify_new_lead(text, referral, whatsapp_phone=phone,
+                                                   previous_leads=previous, lead_id=lead_id)
+            form_name = lead_source.form_name_if_useful(name, update.get("Form_Answers"))
+            if form_name:
+                update["Name"] = form_name
+            airtable_service.update_lead(lead_id, update)
+            print(f"LEAD_SOURCE lead={lead_id} source={update.get('Lead_Source')}")
+        except Exception as e:
+            print(f"LEAD_SOURCE: detection failed for {lead_id}: {e}")
+
+    def _refine_lead_source(self, lead: dict, phone: str, text: str, referral: dict = None):
+        """Later message on an existing lead: keep a raw referral and upgrade an automatic
+        guess (whatsapp_direct / repeat) when an explicit signal arrives soon after creation."""
+        try:
+            fields = lead.get("fields") or {}
+            if not referral and not lead_source.is_weak_source(fields):
+                return
+            update = lead_source.refine_existing_lead(lead, text, referral, whatsapp_phone=phone)
+            if update:
+                airtable_service.update_lead(lead["id"], update)
+                print(f"LEAD_SOURCE refined lead={lead['id']} keys={sorted(update)}")
+        except Exception as e:
+            print(f"LEAD_SOURCE: refine failed for {lead.get('id')}: {e}")
 
     def _find_closed_lead_by_phone(self, phone: str) -> Optional[dict]:
         """Search all leads (including Closed/Completed) by phone using robust matching.

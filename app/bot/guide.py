@@ -12,6 +12,18 @@ from fastapi.openapi.utils import get_openapi
 
 from app.bot.data import NOT_OPEN, SERVICE_HE, STATUS_HE, EVENT_COVERED
 from app.bot.scopes import DEFAULT_SCOPES, READ_SCOPES, RESERVED_SCOPES, SCOPES, WRITE_SCOPES
+from app.services.lead_source import LEAD_SOURCE_HE, LEAD_SOURCES
+
+LEAD_SOURCE_MEANING = {
+    "meta_form": "filled a Meta (Facebook/Instagram) lead form and continued on WhatsApp",
+    "ctwa": "clicked a click-to-WhatsApp ad or post (WhatsApp referral)",
+    "whatsapp_direct": "wrote on WhatsApp with no detectable campaign",
+    "website": "came from the website WhatsApp button",
+    "referral": "recommended by someone (set by hand)",
+    "repeat": "returning customer whose original source is unknown",
+    "phone": "phoned in (set by hand)",
+    "other": "anything else (set by hand)",
+}
 
 API_VERSION = "1.1.0"
 
@@ -82,6 +94,8 @@ EXAMPLES = [
      "calls": ["GET /leads?q=משה לוי", "GET /leads/{id}", "GET /leads/{id}/messages?limit=20"]},
     {"ask": "כמה לידים חדשים היו החודש ומאיזה שירות?",
      "calls": ["GET /leads?created_from=<first day of month>&limit=200", "GET /stats"]},
+    {"ask": "כמה לידים הגיעו ממטא החודש?",
+     "calls": ["GET /leads?source=meta_form,ctwa&created_from=<first day of month>&limit=200", "GET /stats -> by_source"]},
     {"ask": "מה המאזן הכספי לפי שותף מתחילת השנה?",
      "calls": ["GET /finance/summary?date_from=<YYYY-01-01>"]},
     {"ask": "תוסיף עדכון לליד של דנה: דיברנו, היא מחכה להצעה. תזכיר לי ביום חמישי",
@@ -161,6 +175,8 @@ def build_guide(router, prefix: str, base_url: str, caller: Optional[dict] = Non
                           "open": c not in NOT_OPEN, "event_covered": c in EVENT_COVERED} for c in STATUS_HE],
             "open_means": "status not in " + ", ".join(sorted(NOT_OPEN)),
             "services": [{"code": c, "he": he} for c, he in SERVICE_HE.items()],
+            "lead_sources": [{"code": c, "he": LEAD_SOURCE_HE[c], "meaning": LEAD_SOURCE_MEANING.get(c, "")}
+                             for c in LEAD_SOURCES],
             "owners": "Owner / assignee values are the partners' Hebrew first names; "
                       "GET /stats -> open_by_owner lists the current ones.",
             "lead_fields": {
@@ -170,6 +186,8 @@ def build_guide(router, prefix: str, base_url: str, caller: Optional[dict] = Non
                 "closing_amount": "deal value in ILS (finance:summary)",
                 "conversation_state": "step of the automatic WhatsApp questionnaire",
                 "musicians / musician_rsvps": "musicians on the event and their calendar RSVP",
+                "lead_source": "where the lead came from (see lead_sources); null = not detected yet. "
+                               "Lead detail has source{detail, campaign/adset/ad/form, utm_*, referral, form}",
             },
             "message_fields": {"direction": "Inbound = from the customer, Outbound = from the business or its bot"},
             "glossary_he": GLOSSARY_HE,
@@ -199,6 +217,7 @@ def guide_markdown(g: dict) -> str:
              "## Lead statuses"]
     lines += [f"- {s['code']} ({s['he']}): {s['meaning']}" for s in g["domain"]["statuses"]]
     lines += ["", "Services: " + ", ".join(f"{s['code']} ({s['he']})" for s in g["domain"]["services"]),
+              "", "Lead sources: " + ", ".join(f"{s['code']} ({s['he']})" for s in g["domain"]["lead_sources"]),
               "", g["domain"]["owners"], "", "## Hebrew terms"]
     lines += [f"- {k}: {v}" for k, v in g["domain"]["glossary_he"].items()]
     lines += ["", "## Endpoints"]

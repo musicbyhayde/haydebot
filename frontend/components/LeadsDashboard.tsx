@@ -14,6 +14,8 @@ import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
 import { Note } from '@/types';
 import PendingFollowUpsModal from './PendingFollowUpsModal';
+import LeadSourceBadge from './LeadSourceBadge';
+import { LEAD_SOURCE_OPTIONS, LEAD_SOURCE_NONE, leadSourceLabel } from '@/lib/constants';
 
 interface LeadsDashboardProps {
     leads: Lead[];
@@ -142,6 +144,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [filterService, setFilterService] = useState<string>('');
     const [filterOwner, setFilterOwner] = useState<string>('');
     const [filterStatus, setFilterStatus] = useState<string>('');
+    const [filterSource, setFilterSource] = useState<string>('');
     
     // New Advanced Filters
     const [filterDateFrom, setFilterDateFrom] = useState<string>('');
@@ -332,6 +335,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             if (filterService && l.fields.Service !== filterService) return false;
             if (filterOwner && l.fields.Owner !== filterOwner) return false;
             if (filterStatus && l.fields.Status !== filterStatus) return false;
+            if (filterSource) {
+                const src = l.fields.Lead_Source || LEAD_SOURCE_NONE;
+                if (src !== filterSource) return false;
+            }
             
             // Advanced Filters
             if (filterLocation) {
@@ -357,7 +364,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             
             return true;
         });
-    }, [leads, searchQuery, filterService, filterOwner, filterStatus, filterLocation, filterDateFrom, filterDateTo, filterMinBudget, filterMaxBudget, filterOpenTasks, tasks, currentUser]);
+    }, [leads, searchQuery, filterService, filterOwner, filterStatus, filterSource, filterLocation, filterDateFrom, filterDateTo, filterMinBudget, filterMaxBudget, filterOpenTasks, tasks, currentUser]);
 
     const globallySortedLeads = useMemo(() => {
         return [...filteredLeads].sort((a, b) => {
@@ -389,13 +396,14 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
         });
     }, [filteredLeads, globalSort]);
 
-    const hasActiveFilters = searchQuery || filterService || filterOwner || filterStatus || filterLocation || filterDateFrom || filterDateTo || filterMinBudget || filterMaxBudget || filterOpenTasks;
+    const hasActiveFilters = searchQuery || filterService || filterOwner || filterStatus || filterSource || filterLocation || filterDateFrom || filterDateTo || filterMinBudget || filterMaxBudget || filterOpenTasks;
 
     const clearAllFilters = () => {
         setSearchQuery('');
         setFilterService('');
         setFilterOwner('');
         setFilterStatus('');
+        setFilterSource('');
         setFilterLocation('');
         setFilterDateFrom('');
         setFilterDateTo('');
@@ -457,6 +465,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         מיקום {localSorts[tableKey]?.column === 'location' ? (localSorts[tableKey]?.order === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ChevronsUpDown size={12} className="text-slate-300"/>}
                                     </button>
                                 </div>
+                                <div className="w-24 hidden lg:flex items-center">מקור</div>
                                 <div className="w-32 hidden md:flex items-center">
                                     <button onClick={() => toggleLocalSort(tableKey, 'budget')} className="flex items-center gap-1 hover:text-blue-600 transition-colors">
                                         תקציב / סיבה {localSorts[tableKey]?.column === 'budget' ? (localSorts[tableKey]?.order === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ChevronsUpDown size={12} className="text-slate-300"/>}
@@ -505,6 +514,9 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         {lead.fields.Location ? (
                                             <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
                                         ) : <span className="text-slate-300">—</span>}
+                                    </div>
+                                    <div className="w-24 hidden lg:flex items-center overflow-hidden pl-1">
+                                        <LeadSourceBadge fields={lead.fields} />
                                     </div>
                                     <div className="w-32 hidden md:flex items-center text-slate-500">
                                         {lead.fields.Closing_Amount ? `₪${lead.fields.Closing_Amount.toLocaleString()}` : (lead.fields.Lost_Reason || '—')}
@@ -917,6 +929,15 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     </select>
                                 </div>
 
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">מקור</label>
+                                    <select aria-label="סינון לפי מקור" value={filterSource} onChange={e => setFilterSource(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+                                        <option value="">כל המקורות</option>
+                                        {LEAD_SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                        <option value={LEAD_SOURCE_NONE}>לא ידוע</option>
+                                    </select>
+                                </div>
+
                                 {/* Advanced Filters */}
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase">טווח תאריכי אירוע</label>
@@ -968,6 +989,12 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 <span className="bg-slate-100 text-slate-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-slate-200 shadow-sm">
                                     סטטוס: {STATUS_MAP[filterStatus]?.label || filterStatus}
                                     <button onClick={() => setFilterStatus('')} className="p-0.5 hover:bg-slate-200 rounded-full transition-colors"><X size={10} /></button>
+                                </span>
+                            )}
+                            {filterSource && (
+                                <span className="bg-cyan-50 text-cyan-700 pl-1 pr-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-cyan-100 shadow-sm">
+                                    מקור: {filterSource === LEAD_SOURCE_NONE ? 'לא ידוע' : leadSourceLabel(filterSource)}
+                                    <button onClick={() => setFilterSource('')} className="p-0.5 hover:bg-cyan-200 rounded-full transition-colors"><X size={10} /></button>
                                 </span>
                             )}
                             {filterLocation && (
@@ -1076,6 +1103,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                 </button>
                             </div>
                             <div className="w-24 shrink-0 hidden lg:block">מיקום</div>
+                            <div className="w-24 shrink-0 hidden lg:block">מקור</div>
                             <div className="w-24 md:w-28 shrink-0 flex justify-end">פעולות</div>
                         </div>
                         {/* Rows */}
@@ -1191,6 +1219,9 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                         {lead.fields.Location ? (
                                             <span className="truncate" title={lead.fields.Location}>{lead.fields.Location}</span>
                                         ) : <span className="text-slate-300">—</span>}
+                                    </div>
+                                    <div className="w-24 shrink-0 hidden lg:flex items-center overflow-hidden pr-1">
+                                        <LeadSourceBadge fields={lead.fields} />
                                     </div>
                                     <div className="w-32 shrink-0 flex items-center justify-end gap-1 md:gap-1.5">
                                         <button onClick={() => window.open(`https://wa.me/${toDbPhone(lead.fields.Phone)}`)} className="text-green-500 hover:text-green-600 transition-colors p-1" title="שלח ווטסאפ">

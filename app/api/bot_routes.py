@@ -97,6 +97,7 @@ def list_leads(
     status: Optional[str] = Query(None, description="Comma list of status codes, e.g. 'New,Talking,Quote_Sent'"),
     service: Optional[str] = Query(None, description="Comma list: Bouzouki, Band, DJ, Reception, Talk, Other"),
     owner: Optional[str] = Query(None, max_length=50, description="Exact owner name (Hebrew first name of the partner)"),
+    source: Optional[str] = Query(None, max_length=200, description="Comma list of lead sources: meta_form, ctwa, whatsapp_direct, website, referral, repeat, phone, other; 'none' = not set"),
     q: Optional[str] = Query(None, max_length=100, description="Free text in name / location / summary, or 4+ phone digits"),
     open_only: bool = Query(False, description="Only leads still in the pipeline (not Closed/Lost/Completed/Referred/Cold)"),
     event_from: Optional[date] = Query(None, description="Event date >= (YYYY-MM-DD)"),
@@ -110,7 +111,7 @@ def list_leads(
 ):
     """Leads newest-activity first. Phone numbers are masked unless the key has pii:read;
     closing_amount only with finance:summary."""
-    return _run(data.list_leads, ctx, status=status, service=service, owner=owner, q=q,
+    return _run(data.list_leads, ctx, status=status, service=service, owner=owner, q=q, source=source,
                 open_only=open_only, event_from=event_from, event_to=event_to,
                 created_from=created_from, created_to=created_to, updated_since=updated_since,
                 sort=sort, limit=limit, offset=offset)

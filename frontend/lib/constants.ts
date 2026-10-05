@@ -138,6 +138,37 @@ export const SERVICE_OPTIONS = [
   { value: 'Other', label: 'אחר' },
 ];
 
+// ── Lead Source (improvement #2) ────────────────────────────────────
+// Values match app/services/lead_source.py and the CHECK in add_lead_source_columns.sql.
+
+export const LEAD_SOURCE_MAP: Record<string, { label: string; icon: string; class: string }> = {
+  meta_form: { label: 'טופס מטא', icon: '📋', class: 'bg-blue-50 text-blue-700 border-blue-200' },
+  ctwa: { label: 'מודעת וואטסאפ', icon: '📣', class: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  whatsapp_direct: { label: 'וואטסאפ ישיר', icon: '💬', class: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  website: { label: 'אתר', icon: '🌐', class: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  referral: { label: 'המלצה', icon: '🤝', class: 'bg-amber-50 text-amber-700 border-amber-200' },
+  repeat: { label: 'לקוח חוזר', icon: '🔁', class: 'bg-purple-50 text-purple-700 border-purple-200' },
+  phone: { label: 'טלפון', icon: '📞', class: 'bg-slate-50 text-slate-700 border-slate-200' },
+  other: { label: 'אחר', icon: '✨', class: 'bg-gray-50 text-gray-700 border-gray-200' },
+};
+
+export const LEAD_SOURCE_OPTIONS = Object.entries(LEAD_SOURCE_MAP).map(([value, v]) => ({
+  value,
+  label: `${v.icon} ${v.label}`,
+}));
+
+/** Order offered when a lead is added by hand (AddLeadModal). */
+export const MANUAL_LEAD_SOURCE_OPTIONS = ['phone', 'meta_form', 'whatsapp_direct', 'website', 'referral', 'repeat', 'ctwa', 'other']
+  .map((value) => ({ value, label: `${LEAD_SOURCE_MAP[value].icon} ${LEAD_SOURCE_MAP[value].label}` }));
+
+/** Filter value for leads whose source is not known (not detected / not backfilled). */
+export const LEAD_SOURCE_NONE = '__none__';
+
+export function leadSourceLabel(value?: string | null): string {
+  if (!value) return 'לא ידוע';
+  return LEAD_SOURCE_MAP[value]?.label || value;
+}
+
 // ── Lead Status Options (for AddLeadModal) ──────────────────────────
 
 export const ADD_LEAD_STATUS_OPTIONS = [
