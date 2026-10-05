@@ -9,6 +9,18 @@ from typing import Optional
 PARTNERS: tuple[str, ...] = ("אילן", "קובי")  # = frontend/lib/constants.ts OWNERS
 
 
+def owner_change_needs_note(previous_owner: Optional[str], new_owner: Optional[str]) -> bool:
+    """Owner rules (improvement #4, Ilan 2026-10-05): the first assignment of a lead without an
+    owner needs no note, in any status; a hand-over to another partner or removing the owner
+    needs a hand-over note. (The Bot API is stricter: it always requires a note.)"""
+    prev = (previous_owner or "").strip()
+    return bool(prev) and prev != (new_owner or "").strip()
+
+
+OWNER_VIA_NOTE_PROMPT = "note_prompt"   # "you added a note, make you the owner?" in the dashboard
+OWNER_VIA_SUFFIX = {OWNER_VIA_NOTE_PROMPT: " · אחרי הוספת הערה ראשונה"}
+
+
 def note_added(content: Optional[str]) -> tuple[str, str]:
     return "הוספת עדכון", f"הוסיף/ה עדכון: {(content or '')[:30]}..."
 

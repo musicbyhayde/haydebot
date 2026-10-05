@@ -172,6 +172,25 @@ def _manual_source_update(body: dict, detail: str) -> Optional[dict]:
         "Source_Detected_At": datetime.now().astimezone().isoformat(),
     }
 
+def _check_owner_patch(lead_id: str, body: dict) -> tuple[dict, Optional[str]]:
+    """Owner in a generic PATCH: unchanged -> ignored (no History noise); first assignment of a
+    lead without an owner -> allowed; anything else (transfer / removal) must go through
+    POST /leads/{id}/transfer with a hand-over note. -> (body without a no-op Owner, assigned owner)."""
+    new_owner = (body.get("Owner") or "").strip()
+    try:
+        current = ((airtable_service.leads_table.get(lead_id) or {}).get("fields") or {}).get("Owner") or ""
+    except Exception as e:
+        print(f"patch owner: could not read lead {lead_id}: {e}")
+        raise HTTPException(status_code=503, detail="לא ניתן לבדוק את המוביל הנוכחי, נסו שוב")
+    current = current.strip()
+    if new_owner == current:
+        return {k: v for k, v in body.items() if k != "Owner"}, None
+    if activity_text.owner_change_needs_note(current, new_owner):
+        raise HTTPException(status_code=400, detail="העברת מוביל מחייבת הערת העברה (העברת מוביל)")
+    if new_owner not in activity_text.PARTNERS:
+        raise HTTPException(status_code=400, detail=f"מוביל לא מוכר: {new_owner}")
+    return {**body, "Owner": new_owner}, new_owner
+
 @protected_router.get("/leads")
 async def get_leads():
     return airtable_service.get_all_leads()
@@ -217,6 +236,9 @@ async def update_lead(lead_id: str, request: Request):
         raise HTTPException(status_code=400, detail="Invalid Lead_Source")
     if body.get("Lead_Source") and not body.get("Source_Detail"):
         body = {**body, **(_manual_source_update(body, MANUAL_DETAIL) or {})}
+    owner_assigned = None
+    if "Owner" in body:
+        body, owner_assigned = _check_owner_patch(lead_id, body)
     data = LeadUpdate(**{k: v for k, v in body.items() if v is not None})
     result = airtable_service.update_lead(lead_id, data)
 
@@ -229,8 +251,8 @@ async def update_lead(lead_id: str, request: Request):
             lead_id=lead_id
         ))
 
-    if "Owner" in body and not body.get("Status"):
-        action_type, description = activity_text.owner_updated(body.get("Owner"))
+    if owner_assigned and not body.get("Status"):
+        action_type, description = activity_text.owner_updated(owner_assigned)
         airtable_service.create_activity(ActivityCreate(
             actor="מערכת",
             action_type=action_type,
@@ -258,36 +280,43 @@ async def update_lead(lead_id: str, request: Request):
 
 @protected_router.post("/leads/{lead_id}/transfer")
 async def transfer_lead_owner(lead_id: str, request: Request):
-    """Transfer or assign lead ownership with audit note and activity logging."""
+    """Assign or transfer lead ownership, with a note and an activity row (History).
+    Rules (activity_text.owner_change_needs_note): the first assignment of a lead without an owner
+    needs no note, in any status; a transfer between partners or removing the owner needs a
+    hand-over note. The current owner is read from the database, not trusted from the client."""
     body = await request.json()
     new_owner = (body.get("new_owner") or "").strip()
-    previous_owner = (body.get("previous_owner") or "").strip()
+    client_previous = (body.get("previous_owner") or "").strip()
     handover_note = (body.get("handover_note") or "").strip()
+    via = (body.get("via") or "").strip()
+
+    try:
+        current_lead = airtable_service.leads_table.get(lead_id)
+    except Exception as e:
+        print(f"transfer: could not read lead {lead_id}: {e}")
+        current_lead = None
+    if current_lead is None:
+        raise HTTPException(status_code=404, detail="הליד לא נמצא")
+    previous_owner = ((current_lead.get("fields") or {}).get("Owner") or "").strip()
     actor = (body.get("actor") or "").strip() or previous_owner or new_owner or "מערכת"
 
-    # Determine if this is a first-time claim on a new orphan lead (no previous owner)
-    is_first_claim_new = not previous_owner
-    if is_first_claim_new:
-        # Verify the lead is actually status "New"
-        try:
-            current_lead = airtable_service.leads_table.get(lead_id)
-            lead_status = current_lead.get("fields", {}).get("Status", "")
-            is_first_claim_new = lead_status == "New"
-        except Exception:
-            is_first_claim_new = False
-
-    if not handover_note and not is_first_claim_new:
-        raise HTTPException(status_code=400, detail="חובה להזין הערת העברה או תיעוד")
-
+    if new_owner and new_owner not in activity_text.PARTNERS:
+        raise HTTPException(status_code=400, detail=f"מוביל לא מוכר: {new_owner}")
     if new_owner == previous_owner:
         raise HTTPException(status_code=400, detail="לא ניתן להעביר מוביל לאותו מוביל")
+    if "previous_owner" in body and client_previous != previous_owner:
+        # the owner changed since the dashboard loaded the lead: never act on a stale view
+        raise HTTPException(status_code=409, detail=f"המוביל השתנה בינתיים: {previous_owner or 'ללא מוביל'}")
+    if activity_text.owner_change_needs_note(previous_owner, new_owner) and not handover_note:
+        raise HTTPException(status_code=400, detail="חובה להזין הערת העברה או תיעוד")
 
     # Update lead Owner in database
-    data = LeadUpdate(owner=new_owner if new_owner else None)
-    result = airtable_service.update_lead(lead_id, data)
+    # raw dict so that removing the owner really writes NULL (LeadUpdate drops None values)
+    result = airtable_service.update_lead(lead_id, {"Owner": new_owner or None})
 
     # Format the note text (shared with the Bot API: app/services/activity_text.py)
     action_type, activity_desc, note_content = activity_text.owner_transfer(previous_owner, new_owner, handover_note)
+    activity_desc += activity_text.OWNER_VIA_SUFFIX.get(via, "")
 
     created_note = None
     try:

@@ -6,6 +6,7 @@ import { Lead, Note } from '@/types';
 import { OWNERS, OWNER_COLORS } from '@/lib/constants';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui';
+import { isOwnerName, ownerChangeNeedsNote } from '@/lib/ownership';
 
 interface TransferLeadModalProps {
     isOpen: boolean;
@@ -28,9 +29,9 @@ export default function TransferLeadModal({
     const [handoverNote, setHandoverNote] = useState<string>('');
     const [submitting, setSubmitting] = useState<boolean>(false);
 
-    // Note is optional only for first-time claim on a new orphan lead
-    const isFirstClaimNew = !currentOwner && lead.fields.Status === 'New';
-    const noteRequired = !isFirstClaimNew;
+    // First assignment (no owner yet, any status): note optional. Transfer / removal: required.
+    const isFirstAssignment = !currentOwner;
+    const noteRequired = ownerChangeNeedsNote(currentOwner, selectedOwner);
 
     // Default selection: the other owner if assigned, or current logged-in user if unassigned
     useEffect(() => {
@@ -40,7 +41,8 @@ export default function TransferLeadModal({
             } else if (currentOwner === 'קובי') {
                 setSelectedOwner('אילן');
             } else {
-                setSelectedOwner(currentUserName || 'אילן');
+                // only partners are owner values; others (e.g. the admin "מנהל") pick explicitly
+                setSelectedOwner(isOwnerName(currentUserName) ? currentUserName : '');
             }
             setHandoverNote('');
         }
@@ -64,7 +66,7 @@ export default function TransferLeadModal({
             const result = await api.transferLead(lead.id, {
                 new_owner: selectedOwner,
                 previous_owner: currentOwner,
-                handover_note: handoverNote.trim() || (isFirstClaimNew ? `שיוך ראשוני של ליד חדש ל-${selectedOwner}` : ''),
+                handover_note: handoverNote.trim(),
                 actor: currentUserName || 'מערכת',
             });
 
@@ -74,7 +76,8 @@ export default function TransferLeadModal({
             onClose();
         } catch (e) {
             console.error('Failed to transfer lead:', e);
-            error('שגיאה בהעברת הליד');
+            const detail = (e as { detail?: string })?.detail;
+            error(detail ? `שגיאה בהעברת הליד: ${detail}` : 'שגיאה בהעברת הליד');
         } finally {
             setSubmitting(false);
         }
@@ -97,7 +100,7 @@ export default function TransferLeadModal({
                             <ArrowLeftRight size={18} />
                         </div>
                         <div>
-                            <h3 className="text-base font-bold text-slate-800">העברת מוביל ליד</h3>
+                            <h3 className="text-base font-bold text-slate-800">{isFirstAssignment ? 'שיוך מוביל לליד' : 'העברת מוביל ליד'}</h3>
                             <p className="text-xs text-slate-500">{lead.fields.Name || lead.fields.Phone}</p>
                         </div>
                     </div>

@@ -102,13 +102,21 @@ export const api = {
         return res.json();
     },
 
-    async transferLead(leadId: string, data: { new_owner: string; previous_owner?: string; handover_note?: string; actor: string }): Promise<{ status: string; lead: Lead; note?: Note }> {
+    async transferLead(leadId: string, data: { new_owner: string; previous_owner?: string; handover_note?: string; actor: string; via?: string }): Promise<{ status: string; lead: Lead; note?: Note }> {
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/transfer`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error('Failed to transfer lead');
+        if (!res.ok) {
+            // keep the server's Hebrew reason (e.g. 409 "המוביל השתנה בינתיים") for the toast
+            let detail = '';
+            try { detail = (await res.json())?.detail || ''; } catch { /* not json */ }
+            const err = new Error('Failed to transfer lead') as Error & { status?: number; detail?: string };
+            err.status = res.status;
+            err.detail = detail;
+            throw err;
+        }
         return res.json();
     },
 

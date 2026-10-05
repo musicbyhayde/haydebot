@@ -15,6 +15,7 @@ import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
 import LeadSourceBadge from './LeadSourceBadge';
 import LeadSourceSection from './LeadSourceSection';
+import { isOwnerName, shouldOfferOwnership, OWNER_NOTE_PROMPT, OWNER_VIA_NOTE_PROMPT } from '@/lib/ownership';
 
 interface LeadDetailPanelProps {
     lead: Lead;
@@ -52,6 +53,7 @@ const MANUAL_STATUSES = [
 export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false, onClose, onStatusChange }: LeadDetailPanelProps) {
     const { error, success, confirm: confirmToast } = useToast();
     const [tab, setTab] = useState<'updates' | 'tasks' | 'team' | 'info' | 'finance'>('updates');
+    const [notesLoaded, setNotesLoaded] = useState(false);
     const [notes, setNotes] = useState<Note[]>([]);
     const [noteText, setNoteText] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -143,9 +145,57 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         onStatusChange(lead.id, lead.fields.Status);
     };
 
-    const handleClaimOwnership = () => {
-        setIsTransferModalOpen(true);
+    // First assignment needs no note (improvement #4): a partner can take an unowned lead directly.
+    const assignToMe = async (via?: string): Promise<boolean> => {
+        if (!isOwnerName(currentUserName) || lead.fields.Owner) return false;
+        setClaimingOwnership(true);
+        try {
+            const result = await api.transferLead(lead.id, {
+                new_owner: currentUserName,
+                previous_owner: '',
+                handover_note: '',
+                actor: currentUserName,
+                ...(via ? { via } : {}),
+            });
+            handleTransferred(result.lead, result.note);
+            success(`הוגדרת כמוביל/ת הליד (${currentUserName})`);
+            return true;
+        } catch (e) {
+            console.error('Failed to assign owner:', e);
+            const detail = (e as { detail?: string })?.detail;
+            error(detail ? `השיוך נכשל: ${detail}` : 'השיוך נכשל');
+            return false;
+        } finally {
+            setClaimingOwnership(false);
+        }
     };
+
+    const handleClaimOwnership = () => {
+        if (isOwnerName(currentUserName)) {
+            assignToMe();
+        } else {
+            setIsTransferModalOpen(true);
+        }
+    };
+
+    /** After a partner's first note on an unowned lead: ask whether to become its owner. */
+    const maybeOfferOwnership = async (offer: boolean) => {
+        if (!offer) return;
+        const yes = await confirmToast({
+            title: 'שיוך מוביל',
+            message: OWNER_NOTE_PROMPT,
+            confirmLabel: 'כן',
+            cancelLabel: 'לא',
+        });
+        if (yes) await assignToMe(OWNER_VIA_NOTE_PROMPT);
+    };
+
+    const ownershipOfferNow = () => shouldOfferOwnership({
+        owner: lead.fields.Owner,
+        notesBefore: notes.length,
+        notesLoaded,
+        userName: currentUserName,
+    });
 
     const parseTransferNote = (content: string, author: string, noteId: string, createdAt: string) => {
         if (!content) return null;
@@ -281,6 +331,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     }, [editData, lead.fields.Google_Event_ID, lead.fields.Name, lead.fields.Location, lead.fields.Event_Date]);
 
     useEffect(() => {
+        setNotesLoaded(false);
         fetchNotes();
         fetchFinances();
         fetchTasks();
@@ -292,6 +343,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         try {
             const data = await api.getNotes(lead.id);
             setNotes(data);
+            setNotesLoaded(true);
         } catch (e) {
             console.error(e);
         }
@@ -375,6 +427,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
     const submitNote = async (fuDate?: string) => {
         setSubmitting(true);
+        const offerOwnership = ownershipOfferNow();
+        let created = false;
         try {
             let file_url: string | undefined;
             let file_name: string | undefined;
@@ -403,6 +457,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 follow_up_date,
                 follow_up_completed: follow_up_date ? false : undefined,
             });
+            created = true;
             setNoteText('');
             setFollowUpDate('');
             removeFile();
@@ -412,6 +467,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         } finally {
             setSubmitting(false);
         }
+        if (created) await maybeOfferOwnership(offerOwnership);
     };
 
     const handleAddNote = async () => {
@@ -466,6 +522,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
             return;
         }
         setActionSubmitting(noteId);
+        const offerOwnership = ownershipOfferNow();  // normally false: the follow-up note exists
         try {
             await api.updateNote(noteId, { follow_up_completed: true });
             await api.createNote(lead.id, {
@@ -473,6 +530,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 author: currentUserName || 'מערכת (פולו-אפ)',
             });
             success('הפולו-אפ טופל בהצלחה');
+            maybeOfferOwnership(offerOwnership);
             setActionNote(null);
             setNewSummary('');
             fetchNotes();
@@ -787,10 +845,13 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
     const handleUpdateInfo = async () => {
         setSavingInfo(true);
         try {
-            await api.updateLead(lead.id, editData);
+            // Owner is changed only through the transfer flow (note rules), never by this save.
+            const { Owner: _owner, ...infoData } = editData;
+            void _owner;
+            await api.updateLead(lead.id, infoData);
+            Object.assign(lead.fields, infoData);
             // We don't have a direct onUpdate callback here, but the realtime subscription 
             // in the parent will catch it. However, to be immediate:
-            Object.assign(lead.fields, editData);
             success('הפרטים עודכנו בהצלחה');
         } catch (e) {
             console.error(e);
@@ -998,14 +1059,16 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 </button>
                             ) : (
                                 <div className="flex items-center gap-1.5">
+                                    {isOwnerName(currentUserName) && (
                                     <button
                                         onClick={handleClaimOwnership}
                                         disabled={claimingOwnership}
                                         className="p-1 px-2.5 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
                                         title="קח בעלות על הליד"
                                     >
-                                        <UserCheck size={12} /> {claimingOwnership ? 'משייך...' : `שייך אליי (${currentUserName || 'אילן'})`}
+                                        <UserCheck size={12} /> {claimingOwnership ? 'משייך...' : `שייך אליי (${currentUserName})`}
                                     </button>
+                                    )}
                                     <button
                                         onClick={() => setIsTransferModalOpen(true)}
                                         className="p-1 px-2 text-[10px] font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all cursor-pointer"
