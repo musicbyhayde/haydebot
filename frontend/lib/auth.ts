@@ -3,7 +3,7 @@ import { api, ApiError } from '@/lib/api';
 
 export { createSupabaseClient };
 
-export type UserRole = 'partner' | 'admin';
+export type UserRole = 'partner' | 'admin' | 'viewer';
 
 export interface AppUser {
     id: string;
@@ -37,7 +37,7 @@ export async function getCurrentUser(
 
     try {
         const me = await api.getMe();
-        if (me.role !== 'admin' && me.role !== 'partner') return null;
+        if (me.role !== 'admin' && me.role !== 'partner' && me.role !== 'viewer') return null;
         return {
             id: user.id,
             email: me.email ?? user.email,

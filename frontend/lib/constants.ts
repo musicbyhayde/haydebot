@@ -195,7 +195,7 @@ export const PAYMENT_STATUSES = ['שולם', 'לא שולם', 'חלקי'];
 
 // ── View Types ──────────────────────────────────────────────────────
 
-export type ViewType = 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos' | 'business-contacts';
+export type ViewType = 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos' | 'business-contacts' | 'users';
 
 // ── Navigation Items ────────────────────────────────────────────────
 

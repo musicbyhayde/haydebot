@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Send, Link, Plus, Trash2, CheckCircle2, Edit, Copy, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useReadOnly } from '@/lib/readOnly';
 import { useToast } from '@/components/ui';
 import QuotePreview from '@/components/QuotePreview';
 
@@ -45,6 +46,7 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export default function ProposalModal({ isOpen, onClose, leadId, initialData, onSave }: ProposalModalProps) {
     const { error, success, confirm, info } = useToast();
+    const readOnly = useReadOnly();  // viewer: list + links only
     const [quotes, setQuotes] = useState<QuoteItem[]>([]);
     const [view, setView] = useState<'list' | 'edit'>('list');
     const [editingQuote, setEditingQuote] = useState<QuoteItem | null>(null);
@@ -195,12 +197,14 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                                 <div className="text-4xl mb-3 opacity-50">📄</div>
                                 <h4 className="text-slate-600 font-bold mb-1">אין הצעות מחיר</h4>
                                 <p className="text-xs text-slate-400 mb-6">עדיין לא נוצרו הצעות מחיר לליד זה.</p>
+                                {!readOnly && (
                                 <button 
                                     onClick={() => handleCreateNew('empty')}
                                     className="px-6 py-2 bg-indigo-600 text-white font-bold text-xs rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center gap-2"
                                 >
                                     <Plus size={14}/> צור הצעה חדשה
                                 </button>
+                                )}
                             </div>
                         ) : (
                             <>
@@ -248,6 +252,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                                                             >
                                                                 <Link size={16}/>
                                                             </button>
+                                                            {!readOnly && (
                                                             <button 
                                                                 onClick={() => { setEditingQuote(q); setView('edit'); }}
                                                                 className="text-slate-400 hover:text-indigo-600 transition-colors"
@@ -255,6 +260,8 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                                                             >
                                                                 <Edit size={16}/>
                                                             </button>
+                                                            )}
+                                                            {!readOnly && (
                                                             <button 
                                                                 onClick={() => handleDelete(q.id)}
                                                                 className="text-slate-400 hover:text-red-500 transition-colors"
@@ -262,6 +269,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                                                             >
                                                                 <Trash2 size={16}/>
                                                             </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -271,6 +279,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                                 </div>
                             </div>
                             
+                            {!readOnly && (
                             <div className="mt-4 flex flex-col gap-2">
                                 <button 
                                     onClick={() => handleCreateNew('copy_last')}
@@ -285,6 +294,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                                     <Plus size={14}/> צור הצעה חדשה ריקה
                                 </button>
                             </div>
+                            )}
                         </>
                         )}
                     </div>

@@ -80,6 +80,14 @@ describe('getCurrentUser via /api/v1/me', () => {
         const { getCurrentUser } = await import('@/lib/auth');
         await expect(getCurrentUser(jest.fn())).resolves.toBeNull();
     });
+
+    it('accepts a read-only viewer from the backend', async () => {
+        respond(200, { email: 'someone@example.com', role: 'viewer', display_name: 'צופה', auth_method: 'jwt' });
+        const { getCurrentUser } = await import('@/lib/auth');
+        await expect(getCurrentUser(jest.fn())).resolves.toEqual({
+            id: 'u1', email: 'someone@example.com', role: 'viewer', displayName: 'צופה',
+        });
+    });
 });
 
 export {}; // module scope for tsc

@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { format, isToday, isYesterday } from 'date-fns';
 import SendMaterialsModal from './SendMaterialsModal';
 import { useToast } from '@/components/ui';
+import { useReadOnly, READ_ONLY_MESSAGE } from '@/lib/readOnly';
 
 interface ChatWindowProps {
     item: Lead | Musician | null;
@@ -16,6 +17,7 @@ interface ChatWindowProps {
 
 export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBack }: ChatWindowProps) {
     const { error, info } = useToast();
+    const readOnly = useReadOnly();  // viewer: no composer, no send-materials
     const [inputText, setInputText] = useState("");
     const [sending, setSending] = useState(false);
     const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBa
     }, [messages]);
 
     const handleSendInteraction = async () => {
-        if (!item || !inputText.trim()) return;
+        if (readOnly || !item || !inputText.trim()) return;
         setSending(true);
         try {
             await onSend(inputText);
@@ -155,7 +157,7 @@ export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBa
                     </div>
                 </div>
                 <div className="flex gap-3 text-slate-400">
-                    {!isMusician && (
+                    {!isMusician && !readOnly && (
                         <button 
                             onClick={() => setIsMaterialsModalOpen(true)}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl transition-all border border-green-100 shadow-sm"
@@ -214,6 +216,11 @@ export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBa
             </div>
 
             {/* Input Area */}
+            {readOnly ? (
+                <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 text-center text-xs font-bold text-slate-500" data-testid="chat-read-only">
+                    👁️ {READ_ONLY_MESSAGE}
+                </div>
+            ) : (
             <div className="bg-white px-6 py-4 border-t border-slate-200">
                 <div className="bg-slate-50 border border-slate-200 rounded-3xl p-2 flex gap-3 items-end focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all shadow-inner">
                     <button 
@@ -247,6 +254,7 @@ export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBa
                     </button>
                 </div>
             </div>
+            )}
 
             {/* Fullscreen Image Overlay */}
             {fullscreenImage && (
@@ -270,7 +278,7 @@ export default function ChatWindow({ item, messages, onSend, onOpenDetails, onBa
             )}
 
             {/* Materials Modal (Only for Leads) */}
-            {!isMusician && item && (
+            {!isMusician && !readOnly && item && (
                 <SendMaterialsModal 
                     isOpen={isMaterialsModalOpen}
                     onClose={() => setIsMaterialsModalOpen(false)}

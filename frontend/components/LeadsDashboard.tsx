@@ -8,6 +8,7 @@ import AddLeadModal from './AddLeadModal';
 import TransferLeadModal from './TransferLeadModal';
 import LeadDetailPanel from './LeadDetailPanel';
 import { api } from '@/lib/api';
+import { useReadOnly } from '@/lib/readOnly';
 import clsx from 'clsx';
 import { toDisplayPhone, normalizeEventDate, parseDateToSortable, toDbPhone } from '@/lib/formatters';
 import TaskActionModal from './TaskActionModal';
@@ -110,6 +111,7 @@ const MANUAL_STATUS_LIST = ['New', 'Manual', 'Talking', 'Quote_Sent', 'Waiting_P
 
 export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, currentUser, onRefresh, onNavigateToTasks, unreadStatus = {}, onOpenDetails }: LeadsDashboardProps) {
     const { error, success, confirm } = useToast();
+    const readOnly = useReadOnly();  // viewer: hide/disable every write control
     const [showAddModal, setShowAddModal] = useState(false);
     const [showClosed, setShowClosed] = useState(false);
     const [showLost, setShowLost] = useState(false);
@@ -212,6 +214,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     }, [taskPrompt, commissionModalOpen]);
 
     const handleStatusUpdate = async (leadId: string, newStatus: string) => {
+        if (readOnly) return;
         try {
             // When setting to Lost, check for linked incomplete tasks and prompt user
             if (newStatus === 'Lost') {
@@ -685,7 +688,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                 <MessageCircle size={14} />
                                             </button>
                                             {/* ממתין לאישור: show "confirm closed" + "cancel" */}
-                                            {effectiveStatus === 'ממתין לאישור' && (
+                                            {!readOnly && effectiveStatus === 'ממתין לאישור' && (
                                                 <>
                                                     <button 
                                                         onClick={async () => {
@@ -718,7 +721,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                 </>
                                             )}
                                             {/* ממתין לגבייה: show "collect" + "cancel" */}
-                                            {effectiveStatus === 'ממתין לגבייה' && (
+                                            {!readOnly && effectiveStatus === 'ממתין לגבייה' && (
                                                 <>
                                                     <button 
                                                         onClick={() => {
@@ -790,12 +793,14 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             <p className="text-xs md:text-sm text-slate-500">ניהול לידים ומעקב אירועים בזמן אמת</p>
                         </div>
                     </div>
+                    {!readOnly && (
                     <button
                         onClick={() => setShowAddModal(true)}
                         className="flex items-center gap-1.5 px-3 md:px-5 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
                     >
                         <Plus size={16} /> <span className="hidden md:inline">ליד חדש</span>
                     </button>
+                    )}
                 </header>
 
                 {/* Stats Grid */}
@@ -1157,6 +1162,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                             value={lead.fields.Status}
                                             onChange={(e) => handleStatusUpdate(lead.id, e.target.value)}
                                             onClick={(e) => e.stopPropagation()}
+                                            disabled={readOnly}
                                             className={clsx(
                                                 "appearance-none inline-flex items-center px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold border cursor-pointer hover:shadow-sm transition-all focus:outline-none focus:ring-1 focus:ring-blue-400",
                                                 statusInfo.class
@@ -1177,6 +1183,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                     e.stopPropagation();
                                                     setTransferModalLead(lead);
                                                 }}
+                                                disabled={readOnly}
                                                 className={clsx(
                                                     "text-[10px] px-1.5 py-0.5 rounded-md font-bold transition-all hover:ring-2 hover:ring-offset-1 hover:ring-slate-300 cursor-pointer text-right",
                                                     ownerColor
@@ -1191,6 +1198,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                                     e.stopPropagation();
                                                     setTransferModalLead(lead);
                                                 }}
+                                                disabled={readOnly}
                                                 className="text-[10px] text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-slate-300 px-1.5 py-0.5 rounded-md transition-all cursor-pointer"
                                                 title="שייך מוביל לליד"
                                             >
@@ -1280,14 +1288,14 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
             {/* Modals */}
             <AddLeadModal
-                isOpen={showAddModal}
+                isOpen={showAddModal && !readOnly}
                 onClose={() => setShowAddModal(false)}
                 onCreated={() => onRefresh?.()}
                 currentUserName={currentUser?.displayName}
             />
 
             {/* Commission Modal */}
-            {commissionModalOpen && collectLead && (
+            {!readOnly && commissionModalOpen && collectLead && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" dir="rtl">
                     <div className="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm">
                         <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -1353,7 +1361,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                     onOpenDetails={onOpenDetails}
                 />
             )}
-            {transferModalLead && (
+            {!readOnly && transferModalLead && (
                 <TransferLeadModal
                     isOpen={true}
                     lead={transferModalLead}

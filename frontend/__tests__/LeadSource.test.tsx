@@ -18,6 +18,7 @@ jest.mock('@/lib/api', () => ({
         getMessages: jest.fn().mockResolvedValue([]),
         getTasks: jest.fn().mockResolvedValue([]),
         getFinanceEntries: jest.fn().mockResolvedValue([]),
+        getLeadFinance: jest.fn().mockResolvedValue([]),
         createLead: jest.fn().mockResolvedValue({ id: 'new', fields: {} }),
         updateLead: jest.fn().mockResolvedValue({ id: 'l1', fields: {} }),
     },

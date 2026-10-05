@@ -14,10 +14,13 @@ import BusinessContactsPage from "@/components/BusinessContactsPage";
 import AdminDashboard from "@/components/AdminDashboard";
 import LeadDetailPanel from "@/components/LeadDetailPanel";
 import BottomNav from "@/components/BottomNav";
+import UsersPage from "@/components/UsersPage";
 import { LoadingScreen } from "@/components/ui";
 import { api } from "@/lib/api";
 import { Lead, Message, Musician } from "@/types";
 import { getCurrentUser, signOut, AppUser, createSupabaseClient } from "@/lib/auth";
+import { ReadOnlyContext, READ_ONLY_BANNER, setReadOnlyMode, isViewHiddenForViewer } from "@/lib/readOnly";
+import type { ViewType } from "@/lib/constants";
 import clsx from "clsx";
 
 export default function Home() {
@@ -26,9 +29,12 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos' | 'business-contacts'>('home');
+  const [view, setView] = useState<ViewType>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [userLoaded, setUserLoaded] = useState(false);
+  // Read-only unless the backend confirmed an admin/partner (fail closed; the backend enforces anyway).
+  const readOnly = userLoaded && (!currentUser || currentUser.role === 'viewer');
   const [unreadStatus, setUnreadStatus] = useState<Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
@@ -55,8 +61,18 @@ export default function Home() {
 
   // Load current user
   useEffect(() => {
-    getCurrentUser().then(setCurrentUser);
+    getCurrentUser()
+      .then((u) => {
+        setReadOnlyMode(!u || u.role === 'viewer');
+        setCurrentUser(u);
+      })
+      .finally(() => setUserLoaded(true));
   }, []);
+
+  // Viewer: never land on a screen it may not see (finance, musicians, videos, contacts, users...)
+  useEffect(() => {
+    if (readOnly && isViewHiddenForViewer(view)) setView('dashboard');
+  }, [readOnly, view]);
 
   // Auto-close menu when changing view
   useEffect(() => {
@@ -177,8 +193,8 @@ export default function Home() {
     setActiveId(id);
     if (view === 'dashboard') setView('inbox');
 
-    // Mark as read if it has unread messages
-    if (unreadStatus[id]?.count > 0) {
+    // Mark as read if it has unread messages (viewer: no-op, leaves the counter for the team)
+    if (!readOnly && unreadStatus[id]?.count > 0) {
       setUnreadStatus(prev => ({ ...prev, [id]: { ...prev[id], count: 0 } }));
       try {
         await api.markLeadAsRead(id);
@@ -213,7 +229,7 @@ export default function Home() {
     return Object.values(unreadStatus).reduce((sum, s) => sum + (s.count || 0), 0);
   }, [unreadStatus]);
 
-  if (loading) {
+  if (loading || !userLoaded) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-slate-50" dir="rtl">
         <LoadingScreen message="Hayde מתחמם... 🎸" />
@@ -221,10 +237,20 @@ export default function Home() {
     );
   }
 
-  const showSidebar = mobileMenuOpen || (view !== 'home' && view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && view !== 'history' && view !== 'business-contacts' && activeId === null);
+  const showSidebar = mobileMenuOpen || (view !== 'home' && view !== 'dashboard' && view !== 'finance' && view !== 'tasks' && view !== 'musicians' && view !== 'analytics' && view !== 'history' && view !== 'business-contacts' && view !== 'users' && activeId === null);
 
   return (
+    <ReadOnlyContext.Provider value={readOnly}>
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 text-slate-900" dir="rtl">
+      {readOnly && (
+        <div
+          role="status"
+          data-testid="read-only-banner"
+          className="fixed top-2 left-2 z-[60] pointer-events-none px-3 py-1 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold shadow-sm"
+        >
+          {READ_ONLY_BANNER}
+        </div>
+      )}
       {/* Mobile Bottom Nav */}
       <BottomNav
         currentView={view}
@@ -322,6 +348,8 @@ export default function Home() {
           <VideosPage
             onMenuClick={() => setMobileMenuOpen(true)}
           />
+        ) : view === 'users' && currentUser?.role === 'admin' ? (
+          <UsersPage onMenuClick={() => setMobileMenuOpen(true)} />
         ) : view === 'business-contacts' ? (
           <BusinessContactsPage
             onMenuClick={() => setMobileMenuOpen(true)}
@@ -350,5 +378,6 @@ export default function Home() {
         />
       )}
     </div>
+    </ReadOnlyContext.Provider>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lead, Note } from '@/types';
 import { api } from '@/lib/api';
+import { useReadOnly } from '@/lib/readOnly';
 import { X, Calendar, CheckCircle, ExternalLink, Phone } from 'lucide-react';
 import { useToast } from '@/components/ui';
 import { toDisplayPhone } from '@/lib/formatters';
@@ -15,6 +16,7 @@ interface PendingFollowUpsModalProps {
 
 export default function PendingFollowUpsModal({ pendingNotes, leads, onClose, onRefresh, onOpenDetails }: PendingFollowUpsModalProps) {
     const { success, error } = useToast();
+    const readOnly = useReadOnly();
     const [submitting, setSubmitting] = useState<string | null>(null);
     const [actionNote, setActionNote] = useState<{ noteId: string, leadId: string, action: 'done' | 'postpone' } | null>(null);
     const [newSummary, setNewSummary] = useState('');
@@ -147,7 +149,7 @@ export default function PendingFollowUpsModal({ pendingNotes, leads, onClose, on
                                         </p>
                                     </div>
                                     
-                                    {!isActionDone && !isActionPostpone && (
+                                    {!readOnly && !isActionDone && !isActionPostpone && (
                                         <div className="flex gap-2">
                                             <button 
                                                 onClick={() => setActionNote({ noteId: note.id, leadId: lead.id, action: 'done' })}

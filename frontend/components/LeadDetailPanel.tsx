@@ -16,6 +16,7 @@ import { useToast } from '@/components/ui';
 import LeadSourceBadge from './LeadSourceBadge';
 import LeadSourceSection from './LeadSourceSection';
 import { isOwnerName, shouldOfferOwnership, OWNER_NOTE_PROMPT, OWNER_VIA_NOTE_PROMPT } from '@/lib/ownership';
+import { useReadOnly } from '@/lib/readOnly';
 
 interface LeadDetailPanelProps {
     lead: Lead;
@@ -52,6 +53,7 @@ const MANUAL_STATUSES = [
 
 export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false, onClose, onStatusChange }: LeadDetailPanelProps) {
     const { error, success, confirm: confirmToast } = useToast();
+    const readOnly = useReadOnly();  // viewer: everything visible, nothing writable
     const [tab, setTab] = useState<'updates' | 'tasks' | 'team' | 'info' | 'finance'>('updates');
     const [notesLoaded, setNotesLoaded] = useState(false);
     const [notes, setNotes] = useState<Note[]>([]);
@@ -351,8 +353,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
 
     const fetchFinances = async () => {
         try {
-            const allFinances = await api.getFinanceEntries();
-            const leadFinances = allFinances.filter(f => f.fields.Lead_ID === lead.id);
+            const leadFinances = await api.getLeadFinance(lead.id);
             // Sort by Date descending
             leadFinances.sort((a, b) => new Date(b.fields.Date || 0).getTime() - new Date(a.fields.Date || 0).getTime());
             setFinances(leadFinances);
@@ -965,6 +966,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                         <div className="flex items-center gap-2.5 flex-wrap">
                             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                 {lead.fields.Name || lead.fields.Phone}
+                                {!readOnly && (
                                 <button 
                                     onClick={() => window.open(`https://wa.me/${toDbPhone(lead.fields.Phone)}`)}
                                     className="p-1 px-2 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center gap-1.5"
@@ -973,6 +975,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <MessageCircle size={12} />
                                     ווטסאפ - פרטי
                                 </button>
+                                )}
+                                {!readOnly && (
                                 <button 
                                     onClick={() => setIsIntroModalOpen(true)}
                                     className="p-1 px-2 bg-green-50 text-green-700 text-[10px] font-bold rounded-lg border border-green-100 hover:bg-green-100 transition-all flex items-center gap-1.5"
@@ -981,6 +985,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <Send size={12} />
                                     שלח חומרים
                                 </button>
+                                )}
                                 <button 
                                     onClick={() => setIsProposalModalOpen(true)}
                                     className="p-1 px-2 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center gap-1.5"
@@ -989,6 +994,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <FileText size={12} />
                                     הצעת מחיר
                                 </button>
+                                {!readOnly && (
                                 <button 
                                     onClick={handleCreateBusinessContact}
                                     disabled={creatingBusinessContact}
@@ -998,6 +1004,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <Briefcase size={12} />
                                     {creatingBusinessContact ? 'מייצר...' : 'שמור איש קשר'}
                                 </button>
+                                )}
                             </h2>
                             {lead.fields.Event_Date && (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-700 text-sm font-bold rounded-lg">
@@ -1049,7 +1056,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 )}
                             </div>
 
-                            {lead.fields.Owner ? (
+                            {!readOnly && (lead.fields.Owner ? (
                                 <button
                                     onClick={() => setIsTransferModalOpen(true)}
                                     className="p-1 px-2 text-[10px] font-bold text-slate-600 hover:text-blue-700 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-lg transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
@@ -1076,7 +1083,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         בחר מוביל...
                                     </button>
                                 </div>
-                            )}
+                            ))}
                         </div>
                     </div>
                     <div className="flex items-center gap-2 relative">
@@ -1097,6 +1104,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             <div key={s.value} className="flex items-center">
                                 <button
                                     onClick={() => handleStatusChange(s.value)}
+                                    disabled={readOnly}
                                     className={clsx(
                                         "text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all border shadow-sm",
                                         lead.fields.Status === s.value
@@ -1115,7 +1123,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 </div>
 
                 {/* Admin Flow Control */}
-                {isAdmin && (
+                {isAdmin && !readOnly && (
                     <div className="px-5 py-2.5 border-b border-slate-100 bg-slate-50">
                         <div className="flex items-center gap-1.5 mb-2">
                             <Wrench size={12} className="text-slate-500" />
@@ -1234,6 +1242,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 type="number"
                                 value={closingAmount}
                                 onChange={(e) => setClosingAmount(e.target.value)}
+                                disabled={readOnly}
                                 className="pl-6 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="0"
                                 dir="ltr"
@@ -1273,6 +1282,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     type="text"
                                     value={referredTo}
                                     onChange={(e) => setReferredTo(e.target.value)}
+                                    disabled={readOnly}
                                     className="px-2 py-1.5 border border-teal-200 rounded-lg text-sm w-40 focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                                     placeholder="שם חברה/להקה..."
                                 />
@@ -1284,6 +1294,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         type="number"
                                         value={commissionAmount}
                                         onChange={(e) => setCommissionAmount(e.target.value)}
+                                        disabled={readOnly}
                                         className="pl-6 pr-2 py-1.5 border border-teal-200 rounded-lg text-sm w-24 focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                                         placeholder="0"
                                         dir="ltr"
@@ -1295,6 +1306,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         type="checkbox"
                                         checked={commissionIncludesVat}
                                         onChange={(e) => setCommissionIncludesVat(e.target.checked)}
+                                        disabled={readOnly}
                                         className="w-3.5 h-3.5 rounded border-teal-300 text-teal-600 focus:ring-teal-500"
                                     />
                                     <span className="text-xs text-teal-700">כולל מע"מ</span>
@@ -1354,6 +1366,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     {tab === 'updates' && (
                         <div className="p-4 space-y-4">
                             {/* Note Input */}
+                            {!readOnly && (
                             <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
                                 <textarea
                                     value={noteText}
@@ -1481,6 +1494,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     </button>
                                 </div>
                             </div>
+                            )}
 
                             {/* Owner Tenure Filter Bar */}
                             {allLeadTenureOwners.length > 1 && (
@@ -1556,6 +1570,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     </div>
 
                                                     {/* Delete button on hover */}
+                                                    {!readOnly && (
                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button 
                                                             onClick={() => handleDeleteNote(note.id)}
@@ -1565,6 +1580,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                             <Trash2 size={12} />
                                                         </button>
                                                     </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Visual Transfer Bar */}
@@ -1661,6 +1677,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                             </div>
                                             
                                             {/* Action Buttons (Visible on hover) */}
+                                            {!readOnly && (
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button 
                                                     onClick={() => {
@@ -1680,6 +1697,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     <Trash2 size={12} />
                                                 </button>
                                             </div>
+                                            )}
                                         </div>
 
                                         {editingNoteId === note.id ? (
@@ -1746,7 +1764,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         )}
 
                                         {/* Pending Follow Up Actions */}
-                                        {note.fields.Follow_Up_Date && !note.fields.Follow_Up_Completed && (
+                                        {!readOnly && note.fields.Follow_Up_Date && !note.fields.Follow_Up_Completed && (
                                             <div className="mt-4 pt-3 border-t border-slate-100">
                                                 {actionNote?.noteId !== note.id && (
                                                     <div className="flex gap-2">
@@ -1832,6 +1850,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     {tab === 'finance' && (
                         <div className="flex flex-col bg-slate-50">
                             {/* Actions */}
+                            {!readOnly && (
                             <div className="p-3 bg-white border-b border-slate-200 flex gap-2">
                                 <button
                                     onClick={() => openFinanceModal('income')}
@@ -1846,6 +1865,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     - הוסף הוצאה
                                 </button>
                             </div>
+                            )}
 
                             {/* List */}
                             <div>
@@ -1878,10 +1898,12 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                 )} dir="ltr">
                                                     {entry.fields.Type === 'income' ? '+' : '-'}{entry.fields.Amount.toLocaleString()} ₪
                                                 </div>
+                                                {!readOnly && (
                                                 <div className="w-12 flex items-center justify-end gap-2 text-slate-400">
                                                     <button onClick={() => handleEditFinance(entry)} className="hover:text-blue-500"><Pencil size={12} /></button>
                                                     <button onClick={() => handleDeleteFinance(entry.id)} className="hover:text-red-500"><Trash2 size={12} /></button>
                                                 </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -1911,6 +1933,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         type="text"
                                         value={editData.Name || ''}
                                         onChange={(e) => setEditData({ ...editData, Name: e.target.value })}
+                                        disabled={readOnly}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                     />
                                 </div>
@@ -1932,6 +1955,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         type="tel"
                                         value={toDisplayPhone(editData.Phone)}
                                         onChange={(e) => setEditData({ ...editData, Phone: toDbPhone(e.target.value) })}
+                                        disabled={readOnly}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                         dir="ltr"
                                     />
@@ -1941,6 +1965,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <select
                                         value={editData.Service || ''}
                                         onChange={(e) => setEditData({ ...editData, Service: e.target.value })}
+                                        disabled={readOnly}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
                                     >
                                         <option value="">בחר שירות...</option>
@@ -1958,6 +1983,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         type="date"
                                         value={formatDateForInput(editData.Event_Date)}
                                         onChange={(e) => setEditData({ ...editData, Event_Date: formatInputDateToDisplay(e.target.value) })}
+                                        disabled={readOnly}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                         dir="ltr"
                                     />
@@ -1968,6 +1994,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         type="text"
                                         value={editData.Location || ''}
                                         onChange={(e) => setEditData({ ...editData, Location: e.target.value })}
+                                        disabled={readOnly}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                         placeholder="עיר או אולם"
                                     />
@@ -1978,6 +2005,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                         type="text"
                                         value={editData.Guests || ''}
                                         onChange={(e) => setEditData({ ...editData, Guests: e.target.value })}
+                                        disabled={readOnly}
                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                     />
                                 </div>
@@ -2002,6 +2030,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                             : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                                     )}
                                                     title={isCurrent ? 'מוביל נוכחי' : `לחץ להעברה ל-${o} עם תיעוד`}
+                                                    disabled={readOnly}
                                                 >
                                                     <span className="w-1.5 h-1.5 rounded-full bg-current" />
                                                     {o}
@@ -2019,11 +2048,13 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                     : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
                                             )}
                                             title={!lead.fields.Owner ? 'ללא מוביל נוכחי' : 'לחץ להסרת מוביל עם תיעוד'}
+                                            disabled={readOnly}
                                         >
                                             ללא מוביל
                                             {!lead.fields.Owner && <span className="text-[9px] opacity-75">(נוכחי)</span>}
                                         </button>
                                     </div>
+                                    {!readOnly && (
                                     <button
                                         type="button"
                                         onClick={() => setIsTransferModalOpen(true)}
@@ -2031,9 +2062,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     >
                                         <ArrowLeftRight size={12} /> העברת בעלות או שיוך עם הערת תיעוד
                                     </button>
+                                    )}
                                 </div>
                             </div>
 
+                            {!readOnly && (
                             <button
                                 onClick={handleUpdateInfo}
                                 disabled={savingInfo}
@@ -2041,12 +2074,14 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             >
                                 {savingInfo ? 'שומר...' : 'שמור שינויים'}
                             </button>
+                            )}
                         </div>
                     )}
 
                     {tab === 'team' && (
                         <div className="flex flex-col bg-slate-50">
                             {/* Selector Header */}
+                            {!readOnly && (
                             <div className="p-4 bg-white border-b border-slate-200">
                                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">הוסף נגן לצוות (ממאגר הנגנים וההפניות)</label>
                                 <div className="flex gap-2">
@@ -2097,6 +2132,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     </div>
                                 </div>
                             </div>
+                            )}
 
                             {/* Assigned Team List */}
                             <div className="p-4">
@@ -2154,6 +2190,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                         {!status && lead.fields.Google_Event_ID && (
                                                             <span className="text-slate-200"><Clock size={13}/></span>
                                                         )}
+                                                        {!readOnly && (
                                                         <button
                                                             onClick={async () => {
                                                                 const isConfirmed = await confirmToast({
@@ -2181,6 +2218,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                         >
                                                             <Trash2 size={13} />
                                                         </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -2190,7 +2228,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                             </div>
                             
                             {/* Calendar Sync Action */}
-                            {lead.fields.Google_Event_ID && (
+                            {!readOnly && lead.fields.Google_Event_ID && (
                                 <div className="p-4 mt-auto border-t border-slate-200 bg-white space-y-2">
                                     <div className="flex gap-2">
                                         <button
@@ -2234,6 +2272,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                     {tab === 'tasks' && (
                         <div className="flex flex-col bg-slate-50">
                             {/* Actions / Form */}
+                            {!readOnly && (
                             <div className="p-4 bg-white border-b border-slate-200">
                                 <form onSubmit={(e) => { e.preventDefault(); handleAddTask(); }} className="flex flex-col gap-2">
                                     <div className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-lg flex items-center px-3 py-2 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all">
@@ -2277,6 +2316,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     </button>
                                 </form>
                             </div>
+                            )}
 
                             {/* List */}
                             <div className="p-4">
@@ -2286,7 +2326,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                     <div className="flex flex-col space-y-2">
                                         {tasks.filter(t => !t.fields.Is_Completed).map((task) => (
                                             <div key={task.id} className="group bg-white border border-slate-200 rounded-lg p-3 flex items-start gap-3 shadow-sm hover:border-blue-200 transition-all">
-                                                <button onClick={() => handleToggleTask(task)} className="mt-0.5 shrink-0 text-slate-300 hover:text-blue-500 transition-colors">
+                                                <button disabled={readOnly} onClick={() => handleToggleTask(task)} className="mt-0.5 shrink-0 text-slate-300 hover:text-blue-500 transition-colors">
                                                     <div className="w-5 h-5 rounded-full border-2 border-currentColor"></div>
                                                 </button>
                                                 <div className="flex-1 min-w-0">
@@ -2296,9 +2336,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                         {task.fields.Due_Date && <span>📅 {task.fields.Due_Date}</span>}
                                                     </div>
                                                 </div>
+                                                {!readOnly && (
                                                 <button onClick={() => handleDeleteTask(task.id)} className="text-slate-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-all">
                                                     <Trash2 size={14} />
                                                 </button>
+                                                )}
                                             </div>
                                         ))}
 
@@ -2307,7 +2349,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                 <p className="text-[10px] font-bold text-slate-400 mb-3">משימות שהושלמו</p>
                                                 {tasks.filter(t => t.fields.Is_Completed).map((task) => (
                                                     <div key={task.id} className="group bg-slate-50 border border-slate-100 rounded-lg p-3 flex items-start gap-3 mb-2">
-                                                        <button onClick={() => handleToggleTask(task)} className="mt-0.5 shrink-0 text-green-500 hover:text-slate-400 transition-colors">
+                                                        <button disabled={readOnly} onClick={() => handleToggleTask(task)} className="mt-0.5 shrink-0 text-green-500 hover:text-slate-400 transition-colors">
                                                             <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
                                                                 <svg className="w-3 h-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                                                             </div>
@@ -2315,9 +2357,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm font-medium text-slate-400 line-through">{task.fields.Title}</p>
                                                         </div>
+                                                        {!readOnly && (
                                                         <button onClick={() => handleDeleteTask(task.id)} className="text-slate-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-all">
                                                             <Trash2 size={14} />
                                                         </button>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>

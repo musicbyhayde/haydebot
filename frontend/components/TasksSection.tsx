@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import { AppUser } from '@/lib/auth';
 import { formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
 import { useToast } from '@/components/ui';
+import { useReadOnly } from '@/lib/readOnly';
 
 interface TasksSectionProps {
     currentUser?: AppUser | null;
@@ -16,6 +17,7 @@ interface TasksSectionProps {
 
 export default function TasksSection({ currentUser, leads = [] }: TasksSectionProps) {
     const { error, success, confirm, info, warning } = useToast();
+    const readOnly = useReadOnly();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -147,6 +149,7 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                     <h2 className="font-bold text-base md:text-lg text-slate-800">משימות לביצוע</h2>
                 </div>
                 <div className="flex items-center gap-2">
+                    {!readOnly && (
                     <button
                         onClick={async () => {
                             const isConfirmed = await confirm({
@@ -172,12 +175,14 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                     >
                         <Sparkles size={12} /> ניקוי משימות
                     </button>
+                    )}
                     <div className="text-xs font-bold px-2.5 py-1 bg-slate-200 text-slate-600 rounded-full">
                         {activeTasks.length} פתוחות
                     </div>
                 </div>
             </div>
 
+            {!readOnly && (
             <div className="p-3 md:p-4 bg-slate-50 border-b border-slate-100">
                 <form onSubmit={handleAddTask} className="flex flex-col md:flex-row items-center gap-2">
                     <div className="flex-1 w-full bg-white border border-slate-200 rounded flex items-center px-3 py-1.5 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all">
@@ -236,6 +241,7 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
                     </button>
                 </form>
             </div>
+            )}
 
             <div className="divide-y divide-slate-100 p-2 md:p-4">
                 {loading ? (
@@ -312,6 +318,7 @@ export default function TasksSection({ currentUser, leads = [] }: TasksSectionPr
 }
 
 function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar, isPinned, onTogglePin }: { task: Task; leads?: Lead[]; currentUserName?: string; onToggle: () => void; onDelete: () => void; onStar: (stars: string[]) => void; isPinned?: boolean; onTogglePin?: () => void }) {
+    const readOnly = useReadOnly();
     const isCompleted = task.fields.Is_Completed;
     const linkedLead = task.fields.Lead_ID && leads ? leads.find(l => l.id === task.fields.Lead_ID) : null;
     const [isStarMenuOpen, setIsStarMenuOpen] = useState(false);
@@ -322,7 +329,7 @@ function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar, isP
             isCompleted && "bg-slate-50"
         )}>
             <div className="w-8 shrink-0 flex justify-center">
-                <button onClick={onToggle} className={clsx("flex-shrink-0 transition-colors", isCompleted ? "text-green-500 hover:text-green-600" : "text-slate-300 hover:text-blue-500")}>
+                <button disabled={readOnly} onClick={onToggle} className={clsx("flex-shrink-0 transition-colors", isCompleted ? "text-green-500 hover:text-green-600" : "text-slate-300 hover:text-blue-500")}>
                     {isCompleted ? <CheckCircle2 size={16} className="fill-green-100" /> : <Circle size={16} />}
                 </button>
             </div>
@@ -362,6 +369,7 @@ function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar, isP
                 ) : <span className="text-slate-300">—</span>}
             </div>
             
+            {!readOnly && (
             <div className="w-20 shrink-0 flex items-center justify-end gap-0.5 relative">
                 {onTogglePin && !task.fields.Is_Completed && (
                     <button
@@ -425,6 +433,7 @@ function TaskRow({ task, leads, currentUserName, onToggle, onDelete, onStar, isP
                     <Trash2 size={14} />
                 </button>
             </div>
+            )}
         </div>
     );
 }

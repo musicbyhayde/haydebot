@@ -1,6 +1,8 @@
 import { Lead, Musician } from '@/types';
-import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo, BarChart3, Film, LayoutDashboard, Database, Briefcase } from 'lucide-react';
+import { Phone, Music, MapPin, Calendar, Clock, Users, Star, DollarSign, LogOut, ListTodo, BarChart3, Film, LayoutDashboard, Database, Briefcase, UserCog } from 'lucide-react';
 import { AppUser } from '@/lib/auth';
+import type { ViewType } from '@/lib/constants';
+import { useReadOnly } from '@/lib/readOnly';
 import clsx from 'clsx';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -11,8 +13,8 @@ interface SidebarProps {
     musicians: Musician[];
     activeId: string | null;
     onSelect: (id: string) => void;
-    currentView: 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos' | 'business-contacts';
-    onViewChange: (view: 'home' | 'inbox' | 'dashboard' | 'musicians' | 'finance' | 'tasks' | 'history' | 'analytics' | 'videos' | 'business-contacts') => void;
+    currentView: ViewType;
+    onViewChange: (view: ViewType) => void;
     currentUser?: AppUser | null;
     onSignOut?: () => void;
     unreadStatus?: Record<string, { count: number; lastMessage: string | null; lastTime: string | null }>;
@@ -36,6 +38,7 @@ const STATUS_MAP: Record<string, { label: string; class: string }> = {
 
 export default function Sidebar({ leads, musicians, activeId, onSelect, currentView, onViewChange, currentUser, onSignOut, unreadStatus = {}, isCollapsed = false, onToggleCollapse }: SidebarProps) {
     const [isBackingUp, setIsBackingUp] = useState(false);
+    const readOnly = useReadOnly();  // viewer: no musicians / videos / contacts / finance screens
 
     const handleBackup = async () => {
         if (!confirm('האם אתה בטוח שברצונך להוריד גיבוי מלא של מסד הנתונים? פעולה זו עשויה לקחת מספר שניות.')) return;
@@ -70,7 +73,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                             <>
                                 <span className="text-sm font-bold text-slate-700 truncate">{currentUser.displayName}</span>
                                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium shrink-0">
-                                    {currentUser.role === 'admin' ? 'מנהל' : 'שותף'}
+                                    {currentUser.role === 'admin' ? 'מנהל' : currentUser.role === 'viewer' ? 'צפייה' : 'שותף'}
                                 </span>
                             </>
                         )}
@@ -108,6 +111,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                     <Users size={18} /> {!isCollapsed && "📋 לידים"}
                 </button>
 
+                {!readOnly && (
                 <button
                     onClick={() => onViewChange('musicians')}
                     className={clsx(
@@ -119,6 +123,8 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <Music size={18} className="rotate-12" /> {!isCollapsed && "נגנים"}
                 </button>
+                )}
+                {!readOnly && (
                 <button
                     onClick={() => onViewChange('videos')}
                     className={clsx(
@@ -130,6 +136,8 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <Film size={18} /> {!isCollapsed && "בנק סרטונים"}
                 </button>
+                )}
+                {!readOnly && (
                 <button
                     onClick={() => onViewChange('business-contacts')}
                     className={clsx(
@@ -141,6 +149,8 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <Briefcase size={18} /> {!isCollapsed && "💼 אנשי קשר עסקיים"}
                 </button>
+                )}
+                {!readOnly && (
                 <button
                     onClick={() => onViewChange('finance')}
                     className={clsx(
@@ -152,6 +162,7 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <DollarSign size={18} /> {!isCollapsed && "💰 כספים"}
                 </button>
+                )}
                 <button
                     onClick={() => onViewChange('tasks')}
                     className={clsx(
@@ -174,6 +185,19 @@ export default function Sidebar({ leads, musicians, activeId, onSelect, currentV
                 >
                     <Star size={18} /> {!isCollapsed && "⏱️ היסטוריה"}
                 </button>
+                {currentUser?.role === 'admin' && (
+                    <button
+                        onClick={() => onViewChange('users')}
+                        className={clsx(
+                            "flex items-center rounded-xl text-sm font-bold transition-all",
+                            isCollapsed ? "justify-center p-3" : "w-full gap-3 px-4 py-3",
+                            currentView === 'users' ? "bg-slate-700 text-white shadow-lg shadow-slate-200" : "text-slate-600 hover:bg-slate-50"
+                        )}
+                        title={isCollapsed ? "משתמשים" : undefined}
+                    >
+                        <UserCog size={18} /> {!isCollapsed && "👥 משתמשים"}
+                    </button>
+                )}
                 {currentUser?.role === 'admin' && (
                     <button
                         onClick={handleBackup}

@@ -1,4 +1,5 @@
 import { createSupabaseClient } from '@/lib/supabaseClient';
+import { isReadOnlyMode, READ_ONLY_MESSAGE } from '@/lib/readOnly';
 import { Lead, Message, Note, FinanceEntry, Task, Activity, Musician, Video, MusicianStats, Analytics, FinanceSummaryItem, BusinessContact } from '@/types';
 
 export interface CalendarEventPayload {
@@ -46,6 +47,11 @@ async function getAccessToken(): Promise<string | null> {
 }
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    if (isReadOnlyMode() && method !== 'GET' && method !== 'HEAD') {
+        // Viewer: never send a write. The backend refuses it anyway (403); this keeps the UI honest.
+        throw new ApiError(READ_ONLY_MESSAGE, READ_ONLY_MESSAGE, 403);
+    }
     const token = await getAccessToken();
     const headers: Record<string, string> = {
         ...(options.headers as Record<string, string> | undefined),
@@ -56,7 +62,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
 export interface MeResponse {
     email: string | null;
-    role: 'admin' | 'partner' | 'service';
+    role: 'admin' | 'partner' | 'viewer' | 'service';
     display_name: string | null;
     auth_method: 'jwt' | 'api_key';
 }
@@ -121,6 +127,7 @@ export const api = {
     },
 
     async markLeadAsRead(leadId: string): Promise<{ status: string }> {
+        if (isReadOnlyMode()) return { status: 'skipped' };  // viewer: a no-op (backend agrees)
         const res = await fetchWithAuth(`${API_Base}/leads/${leadId}/read`, {
             method: 'POST',
         });
@@ -259,6 +266,13 @@ export const api = {
         const url = owner ? `${API_Base}/finance?owner=${owner}` : `${API_Base}/finance`;
         const res = await fetchWithAuth(url);
         if (!res.ok) throw new Error('Failed to fetch finance entries');
+        return res.json();
+    },
+
+    /** Finance entries of one lead (allowed for viewers; the full /finance list is not). */
+    async getLeadFinance(leadId: string): Promise<FinanceEntry[]> {
+        const res = await fetchWithAuth(`${API_Base}/leads/${encodeURIComponent(leadId)}/finance`);
+        if (!res.ok) throw new Error('Failed to fetch lead finance entries');
         return res.json();
     },
 
@@ -526,5 +540,69 @@ export const api = {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-    }
+    },
+
+    // --- Admin: users screen (viewer accounts; backend requires an admin) ---
+    async listUsers(): Promise<DashboardUserRow[]> {
+        const res = await fetchWithAuth(`${API_Base}/admin/users`);
+        if (!res.ok) await throwWithDetail(res, 'Failed to load users');
+        return res.json();
+    },
+
+    async createUser(data: { email: string; password: string; display_name: string }): Promise<DashboardUserRow> {
+        const res = await fetchWithAuth(`${API_Base}/admin/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...data, role: 'viewer' }),
+        });
+        if (!res.ok) await throwWithDetail(res, 'Failed to create user');
+        return res.json();
+    },
+
+    async disableUser(email: string): Promise<UserActiveResult> {
+        return userAction(email, 'disable');
+    },
+
+    async enableUser(email: string): Promise<UserActiveResult> {
+        return userAction(email, 'enable');
+    },
+
+    async resetUserPassword(email: string, password: string): Promise<{ email: string; status: string }> {
+        const res = await fetchWithAuth(`${API_Base}/admin/users/${encodeURIComponent(email)}/password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
+        });
+        if (!res.ok) await throwWithDetail(res, 'Failed to reset password');
+        return res.json();
+    },
+
+    async deleteUser(email: string): Promise<{ email: string; status: string }> {
+        const res = await fetchWithAuth(`${API_Base}/admin/users/${encodeURIComponent(email)}`, { method: 'DELETE' });
+        if (!res.ok) await throwWithDetail(res, 'Failed to delete user');
+        return res.json();
+    },
 };
+
+export interface DashboardUserRow {
+    email: string;
+    role: 'admin' | 'partner' | 'viewer' | string;
+    display_name: string | null;
+    active: boolean;
+    created_at?: string | null;
+    last_sign_in_at?: string | null;
+    manageable?: boolean;
+}
+
+export interface UserActiveResult {
+    email: string;
+    active: boolean;
+    /** e.g. disabled in the dashboard but the Supabase ban failed */
+    warning?: string;
+}
+
+async function userAction(email: string, action: 'disable' | 'enable'): Promise<UserActiveResult> {
+    const res = await fetchWithAuth(`${API_Base}/admin/users/${encodeURIComponent(email)}/${action}`, { method: 'POST' });
+    if (!res.ok) await throwWithDetail(res, `Failed to ${action} user`);
+    return res.json();
+}

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Lead, Task, Activity } from '@/types';
 import { AppUser } from '@/lib/auth';
 import { api } from '@/lib/api';
+import { useReadOnly } from '@/lib/readOnly';
 import { normalizeEventDate, parseDateToSortable } from '@/lib/formatters';
 import {
     LayoutDashboard, Users, CalendarDays, ListTodo, AlertCircle,
@@ -37,18 +38,19 @@ export default function AdminDashboard({
     const [activities, setActivities] = useState<Activity[]>([]);
     const [financeSummary, setFinanceSummary] = useState<Record<string, { income: number; expenses: number; balance: number }> | null>(null);
     const [loading, setLoading] = useState(true);
+    const readOnly = useReadOnly();  // viewer: no finance summary, no task completion
 
     useEffect(() => {
         Promise.all([
             api.getTasks().catch(() => []),
             api.getActivities().catch(() => []),
-            api.getFinanceSummary().catch(() => null),
+            readOnly ? Promise.resolve(null) : api.getFinanceSummary().catch(() => null),
         ]).then(([t, a, f]) => {
             setTasks(t);
             setActivities(a);
             setFinanceSummary(f);
         }).finally(() => setLoading(false));
-    }, []);
+    }, [readOnly]);
 
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -326,6 +328,7 @@ export default function AdminDashboard({
                                     const linkedLead = task.fields.Lead_ID ? leads.find(l => l.id === task.fields.Lead_ID) : null;
                                     return (
                                         <div key={task.id} className="flex items-center gap-3 px-5 py-3 group">
+                                            {!readOnly && (
                                             <button
                                                 onClick={() => handleCompleteTask(task.id)}
                                                 className="w-5 h-5 rounded-md border-2 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 transition-all shrink-0 flex items-center justify-center"
@@ -333,6 +336,7 @@ export default function AdminDashboard({
                                             >
                                                 <CheckCircle2 size={12} className="text-transparent group-hover:text-emerald-500 transition-colors" />
                                             </button>
+                                            )}
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-bold text-slate-700 truncate">{task.fields.Title}</p>
                                                 <div className="flex items-center gap-1.5 mt-0.5">
@@ -410,6 +414,7 @@ export default function AdminDashboard({
                     </div>
 
                     {/* ─── Financial Summary ──────────────── */}
+                    {!readOnly && (
                     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
                             <DollarSign size={16} className="text-amber-500" />
@@ -449,6 +454,7 @@ export default function AdminDashboard({
                             )}
                         </div>
                     </div>
+                    )}
                 </div>
             </div>
         </div>

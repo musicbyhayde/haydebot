@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui';
 import { LEAD_SOURCE_OPTIONS } from '@/lib/constants';
 import { toDisplayPhone } from '@/lib/formatters';
 import LeadSourceBadge from './LeadSourceBadge';
+import { useReadOnly } from '@/lib/readOnly';
 
 interface LeadSourceSectionProps {
     lead: Lead;
@@ -17,6 +18,7 @@ const AUTO_DETAILS = ['זוהה אוטומטית'];
 /** "Where did this lead come from" block of the lead card (improvement #2). */
 export default function LeadSourceSection({ lead }: LeadSourceSectionProps) {
     const { success, error } = useToast();
+    const readOnly = useReadOnly();
     const [saving, setSaving] = useState(false);
     const [value, setValue] = useState<string>(lead.fields.Lead_Source || '');
     const f = lead.fields;
@@ -67,6 +69,7 @@ export default function LeadSourceSection({ lead }: LeadSourceSectionProps) {
                     <span className="text-[10px] font-bold text-slate-500">מקור הליד</span>
                     <LeadSourceBadge fields={f} size="sm" />
                 </div>
+                {!readOnly && (
                 <select
                     aria-label="שינוי מקור הליד"
                     value={value}
@@ -77,6 +80,7 @@ export default function LeadSourceSection({ lead }: LeadSourceSectionProps) {
                     <option value="">{f.Lead_Source ? 'בחר מקור...' : 'לא ידוע - בחר מקור...'}</option>
                     {LEAD_SOURCE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
+                )}
             </div>
             {rows.length > 0 && (
                 <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-[11px]">

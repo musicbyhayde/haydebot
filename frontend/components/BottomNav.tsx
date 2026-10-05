@@ -3,6 +3,7 @@
 import { LayoutDashboard, Users, DollarSign, ListTodo, MessageCircle } from 'lucide-react';
 import clsx from 'clsx';
 import type { ViewType } from '@/lib/constants';
+import { useReadOnly, isViewHiddenForViewer } from '@/lib/readOnly';
 
 interface BottomNavProps {
   currentView: ViewType;
@@ -31,6 +32,8 @@ const BOTTOM_NAV_ITEMS: BottomNavItem[] = [
  * Only visible on screens smaller than md breakpoint.
  */
 export default function BottomNav({ currentView, onViewChange, unreadCount = 0 }: BottomNavProps) {
+  const readOnly = useReadOnly();
+  const items = readOnly ? BOTTOM_NAV_ITEMS.filter((i) => !isViewHiddenForViewer(i.key)) : BOTTOM_NAV_ITEMS;
   return (
     <nav
       className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 safe-area-bottom"
@@ -38,7 +41,7 @@ export default function BottomNav({ currentView, onViewChange, unreadCount = 0 }
       aria-label="ניווט ראשי"
     >
       <div className="flex items-center justify-around h-16 px-2">
-        {BOTTOM_NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const isActive = currentView === item.key;
           const Icon = item.icon;
           const showBadge = item.key === 'inbox' && unreadCount > 0;
