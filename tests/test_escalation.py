@@ -475,3 +475,78 @@ def test_has_recent_outbound_query_and_results():
     client, _ = _chain(exc=RuntimeError("boom"))
     assert _service(client).has_recent_outbound("rec1", "x", since) is True    # stay silent on error
     assert _service(None).has_recent_outbound("rec1", "x", since) is True
+
+
+# ── Ilan's rule: the end-of-intake confirmation goes out exactly once ────────────────
+END_OF_INTAKE_PREFIX = "מגניב, רשמנו את כל הפרטים"
+
+
+def _conversation(messages, *, enabled=True, start_state="AWAITING_GUESTS", service="Band"):
+    """Feed messages [(text, interactive_id)] through handle_incoming_message against a lead whose
+    fields really change with every update_lead (a small in-memory store). Returns (texts sent to
+    the customer, admin alert titles, final fields)."""
+    fields = {"Phone": PHONE, "Name": "דנה", "Status": "New", "Conversation_State": start_state,
+              "Service": service}
+    svc = _svc()
+
+    def apply(_lead_id, update):
+        fields.update(update.model_dump(by_alias=True, exclude_none=True, mode="json"))
+        return {"id": "rec1", "fields": dict(fields)}
+
+    svc.update_lead.side_effect = apply
+    svc.leads_table.get.side_effect = lambda _id: {"id": "rec1", "fields": dict(fields)}
+    bl = logic.bot_logic
+    with patch.object(logic, "airtable_service", svc), \
+         patch.object(logic.settings, "NOTIFICATION_NUMBERS", ADMINS), \
+         patch.object(logic.settings, "ESCALATION_ENABLED", enabled), \
+         patch.object(logic.settings, "ESCALATION_CUSTOMER_ACK", False), \
+         patch.object(bl, "get_active_lead_robust",
+                      side_effect=lambda _p: {"id": "rec1", "fields": dict(fields)}), \
+         patch.object(logic.ai_service, "analyze_input",
+                      return_value={"valid": True, "extracted_value": "200"}), \
+         patch.object(bl, "check_and_trigger_bouzouki_protocol", new=AsyncMock(return_value=False)), \
+         patch.object(bl, "notify_admins", new=AsyncMock()), \
+         patch.object(bl, "send_welcome_menu", new=AsyncMock()) as menu, \
+         patch.object(bl, "_send_message") as send, \
+         patch.object(bl, "_send_interactive") as interactive, \
+         patch.object(logic.whatsapp_service, "send_template") as tpl, \
+         patch.object(logic.whatsapp_service, "send_message") as free, \
+         patch.object(logic.whatsapp_service, "send_interactive_button") as button, \
+         patch.object(logic.email_service, "send_notification", new=AsyncMock()):
+        for text, iid in messages:
+            asyncio.run(bl.handle_incoming_message(PHONE, "Dana", text, iid))
+    sent = [c.args[1] for c in send.call_args_list]
+    other_customer_sends = (interactive.call_count + free.call_count + button.call_count
+                            + menu.await_count)
+    titles = [c.kwargs["parameters"][0] for c in tpl.call_args_list]
+    return sent, other_customer_sends, titles, fields
+
+
+LATER_MESSAGES = [("תודה!", None), ("היי", None), ("תפריט", None), ("restart", None),
+                  ("????", None), ("200", None), ("🔄 המשך מאיפה שעצרנו", "RESUME_YES"),
+                  ("🆕 התחל מהתחלה", "RESUME_NO"), ("להקה", "SVC_BAND"), ("[IMAGE RECEIVED]", None)]
+
+
+def test_on_end_of_intake_confirmation_sent_exactly_once_then_only_partner_alerts():
+    sent, other, titles, fields = _conversation([("200", None)] + LATER_MESSAGES)
+    assert len(sent) == 1 and sent[0].startswith(END_OF_INTAKE_PREFIX)
+    assert other == 0                                  # no menu, buttons or free text either
+    assert fields["Conversation_State"] == "COMPLETED" and fields["Status"] == "New"
+    # every later message became a partner alert (throttling is off in this store: no rows read)
+    assert len(titles) == 2 * len(LATER_MESSAGES)
+    assert set(titles) <= {logic.ALERT_TITLE_WAITING_REPLY, logic.ALERT_TITLE_HUMAN_REQUEST}
+
+
+def test_on_talk_reply_sent_exactly_once_then_only_partner_alerts():
+    sent, other, titles, fields = _conversation(
+        [("לדבר עם מישהו 📞", "SVC_TALK")] + LATER_MESSAGES, start_state="AWAITING_SERVICE", service=None)
+    assert sent == [logic.TALK_REPLY_TEXT]
+    assert other == 0
+    assert fields["Status"] == "New" and "Service" not in {k for k, v in fields.items() if v}
+    assert titles[:2] == [logic.ALERT_TITLE_HUMAN_REQUEST] * 2
+
+
+def test_off_shows_the_old_loop_for_comparison():
+    sent, *_ = _conversation([("200", None), ("תודה!", None), ("????", None)], enabled=False)
+    assert sent[0].startswith(END_OF_INTAKE_PREFIX)
+    assert sent[1:] == [logic.COMPLETED_REPLY_TEXT, logic.COMPLETED_REPLY_TEXT]
