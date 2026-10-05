@@ -161,6 +161,10 @@ class MockSupabaseService:
             entries = [e for e in entries if e.get("Owner") == owner]
         return self._to_airtable_list(entries)
 
+    def get_finance_entries_for_lead(self, lead_id):
+        rows = [e for e in self._stores["finance"] if e.get("Lead_ID") == lead_id]
+        return self._to_airtable_list(sorted(rows, key=lambda e: e.get("Date") or "", reverse=True))
+
     def update_finance_entry(self, entry_id, data):
         update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
         for rec in self._stores["finance"]:
@@ -312,3 +316,14 @@ def test_client(mock_service):
                 settings.API_KEY = "unit-test-server-key-" + "x" * 16
             client = TestClient(app, headers={"X-API-Key": settings.API_KEY})
             yield client
+
+
+@pytest.fixture(autouse=True)
+def audit_rows(monkeypatch):
+    """Never write the dashboard audit log to a real database in tests; collect rows instead."""
+    from app.core import audit_log
+    rows = []
+    monkeypatch.setattr(audit_log, "_insert", lambda row: rows.append(row))
+    audit_log.reset_for_tests()
+    yield rows
+    audit_log.reset_for_tests()

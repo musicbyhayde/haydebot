@@ -14,6 +14,7 @@ import json
 settings = get_settings()
 
 from app.core.auth import require_auth
+from app.core.permissions import is_viewer
 
 public_router = APIRouter()
 protected_router = APIRouter(dependencies=[Depends(require_auth)])
@@ -147,8 +148,11 @@ async def get_me(request: Request):
 
 
 @protected_router.get("/activities")
-async def get_activities():
-    return airtable_service.get_activities()
+async def get_activities(request: Request):
+    acts = airtable_service.get_activities()
+    if is_viewer(request):
+        acts = [a for a in acts if activity_text.visible_to_viewer(a)]
+    return acts
 
 @protected_router.post("/activities")
 async def create_activity_log(request: Request):
@@ -346,8 +350,11 @@ async def transfer_lead_owner(lead_id: str, request: Request):
     }
 
 @protected_router.post("/leads/{lead_id}/read")
-async def mark_lead_as_read(lead_id: str):
-    """Mark all messages in a lead as read by updating Last_Read_At."""
+async def mark_lead_as_read(lead_id: str, request: Request):
+    """Mark all messages in a lead as read by updating Last_Read_At.
+    Last_Read_At is shared by the whole team, so for a viewer this is a no-op."""
+    if is_viewer(request):
+        return {"status": "skipped", "reason": "viewer"}
     now = datetime.now()
     result = airtable_service.update_lead(lead_id, LeadUpdate(last_read_at=now))
     return {"status": "success", "last_read_at": now.isoformat()}
@@ -811,9 +818,17 @@ async def upload_file(file: UploadFile = FastAPIFile(...)):
 
 # ─── Musicians ────────────────────────────────────────
 
+# what a viewer gets from /musicians: crew names on a lead only (no phone, email, bank details)
+VIEWER_MUSICIAN_FIELDS = ("Name", "Type", "Is_Active")
+
 @protected_router.get("/musicians")
-async def get_musicians():
-    return airtable_service.get_all_musicians()
+async def get_musicians(request: Request):
+    musicians = airtable_service.get_all_musicians()
+    if is_viewer(request):
+        musicians = [{"id": m.get("id"),
+                      "fields": {k: (m.get("fields") or {}).get(k) for k in VIEWER_MUSICIAN_FIELDS}}
+                     for m in musicians]
+    return musicians
 
 @public_router.get("/videos/test")
 async def public_test_videos():
@@ -905,6 +920,12 @@ async def send_musician_manual_message(musician_id: str, payload: SendMessageReq
     return {"status": "sent"}
 
 # ─── Finance ─────────────────────────────────────────
+
+@protected_router.get("/leads/{lead_id}/finance")
+async def get_lead_finance(lead_id: str):
+    """Finance rows of one lead (deal income/expenses), newest first. The lead panel uses this
+    instead of downloading the whole finance table; viewers may read it, not /finance."""
+    return airtable_service.get_finance_entries_for_lead(lead_id)
 
 @protected_router.get("/finance/summary")
 async def get_finance_summary():

@@ -55,3 +55,13 @@ def owner_transfer(previous_owner: str, new_owner: str, handover_note: str = "")
         note += f"\n\n💬 הערת העברה: {handover_note}"
         desc += f" ({handover_note[:30]}...)" if len(handover_note) > 30 else f" ({handover_note})"
     return action, desc, note
+
+
+# Activity rows written for finance entries (POST /finance). A viewer sees them only when the
+# entry belongs to a lead (deal finance); general income/expenses stay hidden (viewer access).
+FINANCE_ACTION_TYPES = frozenset({"הכנסה/הוצאה", "הוצאה"})
+
+
+def visible_to_viewer(activity: dict) -> bool:
+    f = activity.get("fields") or {}
+    return not (f.get("action_type") in FINANCE_ACTION_TYPES and not f.get("lead_id"))

@@ -19,6 +19,7 @@ from typing import Optional
 import requests
 from fastapi import HTTPException, Request
 
+from app.core import audit_log, permissions
 from app.core.config import get_settings
 from app.core.dashboard_users import get_dashboard_user
 
@@ -107,6 +108,30 @@ def _count(method: str) -> None:
         print(f"AUTH stats since boot: {dict(_counts)}")
 
 
+def _enforce_role(request: Request, user: dict) -> None:
+    """Deny by default (app/core/permissions.py): admin/partner full access, viewer read-only
+    allowlist, unknown roles nothing."""
+    role = user["role"]
+    if role not in permissions.KNOWN_ROLES:
+        logger.warning("AUTH: dashboard user with unknown role %r rejected", role)
+        raise HTTPException(status_code=403, detail="User not allowed")
+    audit_log.note_session(user["email"], role, request)
+    if role == permissions.VIEWER_ROLE:
+        path = permissions.route_path(request)
+        if not permissions.viewer_may(request.method, path):
+            audit_log.record("blocked", email=user["email"], role=role,
+                             method=request.method, path=path or request.url.path)
+            raise HTTPException(status_code=403, detail=permissions.VIEWER_DENIED_DETAIL)
+
+
+def require_admin(request: Request) -> None:
+    """Dependency (after require_auth): only an admin dashboard user (JWT). The server-to-server
+    API_KEY is not enough here: user management needs a real person as the actor."""
+    if not (getattr(request.state, "auth_method", None) == "jwt"
+            and getattr(request.state, "auth_role", None) == "admin"):
+        raise HTTPException(status_code=403, detail="זמין רק למנהל מחובר")
+
+
 async def require_auth(request: Request) -> str:
     """FastAPI dependency for every protected route. Returns the auth method used."""
     s = get_settings()
@@ -128,6 +153,7 @@ async def require_auth(request: Request) -> str:
                 request.state.auth_role = user["role"]
                 request.state.auth_display_name = user["display_name"]
                 request.state.auth_method = "jwt"
+                _enforce_role(request, user)
                 _count("jwt")
                 return "jwt"
             logger.warning("AUTH: valid JWT but user is not an active dashboard user")

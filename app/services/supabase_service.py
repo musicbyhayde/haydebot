@@ -381,6 +381,14 @@ class SupabaseService:
         rows = self._select_all(build)
         return self._to_airtable_list(rows)
 
+    def get_finance_entries_for_lead(self, lead_id: str) -> List[dict]:
+        """Finance entries of one lead (column Lead_ID), newest first."""
+        if not self.client or not lead_id: return []
+        def build():
+            return (self.client.table("finance").select("*").eq("Lead_ID", lead_id)
+                    .order("Date", desc=True).order("id"))
+        return self._to_airtable_list(self._select_all(build))
+
     def update_finance_entry(self, entry_id: str, data: FinanceEntryUpdate) -> dict:
         """Update a finance entry."""
         if not self.client: return {}
