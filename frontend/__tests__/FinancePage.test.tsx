@@ -20,6 +20,7 @@ jest.mock('@/lib/api', () => ({
         createFinanceEntry: jest.fn().mockResolvedValue({ id: 'f1', fields: {} }),
         updateFinanceEntry: jest.fn().mockResolvedValue({}),
         deleteFinanceEntry: jest.fn().mockResolvedValue(undefined),
+        getFinanceTransfers: jest.fn().mockResolvedValue([]),
     },
 }));
 

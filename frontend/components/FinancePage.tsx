@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Edit, Check, X, TrendingUp, TrendingDown, Menu, AlertCircle, Link, Search, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, Edit, Check, X, TrendingUp, TrendingDown, Menu, AlertCircle, Link, Search, ArrowUp, ArrowDown, ArrowLeftRight, Archive, ArchiveRestore } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { api } from '@/lib/api';
-import { FinanceEntry, Lead, FinanceSummaryItem } from '@/types';
+import { FinanceEntry, Lead, FinanceSummaryItem, FinanceTransfer } from '@/types';
+import { transfersFor } from '@/lib/financeTransfers';
+import PartnerTransferModal from '@/components/PartnerTransferModal';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
 import { useToast } from '@/components/ui';
@@ -34,12 +36,26 @@ interface FinanceForm {
     Owner: string;
 }
 
+// Transfers load on their own: if the table/endpoint is unavailable the page still works.
+async function fetchTransfers(includeArchived: boolean): Promise<FinanceTransfer[]> {
+    try {
+        return await api.getFinanceTransfers(includeArchived);
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
+}
+
 export default function FinancePage({ currentUser, onMenuClick }: FinancePageProps) {
     const { error, confirm } = useToast();
     const [entries, setEntries] = useState<FinanceEntry[]>([]);
     const [leads, setLeads] = useState<Lead[]>([]);
     const [summary, setSummary] = useState<Record<string, FinanceSummaryItem>>({});
     const [loading, setLoading] = useState(true);
+    // Partner transfers (read: admin + partner; create/edit/archive: admin only)
+    const [transfers, setTransfers] = useState<FinanceTransfer[]>([]);
+    const [showArchived, setShowArchived] = useState(false);
+    const [transferModal, setTransferModal] = useState<{ editing: FinanceTransfer | null } | null>(null);
     // removed showAddForm
     const [activeTab, setActiveTab] = useState<'אילן' | 'קובי'>('אילן');
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -71,6 +87,15 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         fetchData();
     }, []);
 
+    const transfersToggled = useRef(false);
+    useEffect(() => {
+        // The initial load happens in fetchData; reload only when the archive toggle changes.
+        if (!transfersToggled.current) { transfersToggled.current = true; return; }
+        fetchTransfers(showArchived).then(setTransfers);
+    }, [showArchived]);
+    const showArchivedRef = useRef(showArchived);
+    showArchivedRef.current = showArchived;
+
     useEffect(() => {
         if (currentUser?.displayName === 'קובי') setActiveTab('קובי');
     }, [currentUser]);
@@ -85,6 +110,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
             setEntries(entriesData);
             setSummary(summaryData);
             setLeads(leadsData);
+            setTransfers(await fetchTransfers(showArchivedRef.current));
         } catch (e) {
             console.error(e);
         } finally {
@@ -226,6 +252,35 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         }
     };
 
+    const isAdmin = currentUser?.role === 'admin';
+
+    const handleArchiveTransfer = async (t: FinanceTransfer) => {
+        const ok = await confirm({
+            title: 'ארכוב העברה',
+            message: `לארכב את ההעברה של ${Number(t.amount).toLocaleString()} ₪? היא תפסיק להשפיע על היתרות (אפשר לשחזר).`,
+            variant: 'danger',
+            confirmLabel: 'ארכב',
+        });
+        if (!ok) return;
+        try {
+            await api.archiveFinanceTransfer(t.id);
+            fetchData();
+        } catch (e) {
+            console.error(e);
+            error('שגיאה בארכוב ההעברה');
+        }
+    };
+
+    const handleUnarchiveTransfer = async (t: FinanceTransfer) => {
+        try {
+            await api.unarchiveFinanceTransfer(t.id);
+            fetchData();
+        } catch (e) {
+            console.error(e);
+            error('שגיאה בשחזור ההעברה');
+        }
+    };
+
     const canEdit = (entry: FinanceEntry) => {
         if (!currentUser) return false;
         if (currentUser.role === 'admin') return true;
@@ -346,10 +401,65 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         );
     };
 
+    const renderTransferRow = (item: ReturnType<typeof transfersFor>[number]) => {
+        const t = item.transfer;
+        const archived = !!t.archived_at;
+        return (
+            <div key={`transfer-${t.id}`} data-testid="transfer-row" className={clsx(
+                "flex items-center px-4 py-2 text-xs border-b border-slate-100 bg-indigo-50/60 hover:bg-indigo-50 transition-colors",
+                archived && "opacity-50"
+            )}>
+                <div className="w-16 shrink-0 text-[10px] text-slate-500">{new Date(t.transfer_date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
+                <div className="flex-1 min-w-[120px] flex flex-col justify-center">
+                    <div className={clsx("font-bold text-indigo-800 flex items-center gap-1", archived && "line-through")}>
+                        <ArrowLeftRight size={11} className="shrink-0" />
+                        {item.outgoing ? `→ ל${item.counterparty} (${item.counterpartyPool})` : `← מ${item.counterparty} (${item.counterpartyPool})`}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                        העברה בין שותפים{t.note ? ` · ${t.note}` : ''}
+                        {archived && <span className="mr-1 px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-bold">מאורכבת</span>}
+                    </div>
+                </div>
+                <div className="w-20 shrink-0"></div>
+                <div className="w-24 shrink-0 flex flex-col items-end px-2">
+                    <span className="text-[9px] text-slate-400 text-center">{item.ownPool}</span>
+                </div>
+                <div className={clsx("w-24 shrink-0 text-left font-bold font-mono tracking-tighter text-indigo-700", archived && "line-through")} dir="ltr">
+                    {item.outgoing ? '-' : '+'}{Number(t.amount).toLocaleString()} ₪
+                </div>
+                <div className="w-12 shrink-0 flex items-center justify-end gap-2 text-slate-400 pl-2">
+                    {isAdmin && (archived ? (
+                        <button onClick={() => handleUnarchiveTransfer(t)} className="hover:text-indigo-600" title="שחזר העברה" aria-label="שחזר העברה"><ArchiveRestore size={12} /></button>
+                    ) : (
+                        <>
+                            <button onClick={() => setTransferModal({ editing: t })} className="hover:text-blue-500" title="ערוך העברה" aria-label="ערוך העברה"><Edit size={12} /></button>
+                            <button onClick={() => handleArchiveTransfer(t)} className="hover:text-red-500" title="ארכב העברה" aria-label="ארכב העברה"><Archive size={12} /></button>
+                        </>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     const renderTable = (owner: string) => {
         const ownerSummary = summary[owner] || { income: 0, expenses: 0, balance: 0, cash_balance: 0, bank_balance: 0 };
         const rawEntries = ownerEntries(owner);
         const sortedEntries = sortEntries(rawEntries);
+        const ownerTransfers = transfersFor(transfers, owner);
+        // Rows: finance entries + transfers. By date: merged chronologically; by type: transfers last.
+        type Row = { kind: 'entry'; entry: FinanceEntry } | { kind: 'transfer'; item: typeof ownerTransfers[number] };
+        const transferRows: Row[] = ownerTransfers.map(item => ({ kind: 'transfer', item }));
+        let rows: Row[] = sortedEntries.map(entry => ({ kind: 'entry' as const, entry }));
+        if (sortBy === 'date') {
+            const ms = (r: Row) => parseDateToMs(r.kind === 'entry' ? r.entry.fields.Date : r.item.transfer.transfer_date);
+            rows = [...rows, ...transferRows].map((r, i) => ({ r, i })).sort((a, b) => {
+                const d = sortOrder === 'desc' ? ms(b.r) - ms(a.r) : ms(a.r) - ms(b.r);
+                return d !== 0 ? d : a.i - b.i;
+            }).map(x => x.r);
+        } else {
+            rows = [...rows, ...transferRows];
+        }
+        const hasTransfers = !!(ownerSummary.transfers_in || ownerSummary.transfers_out);
 
         // Chart Data Preparation
         const chartData = [...sortedEntries].reverse().reduce((acc: any[], entry) => {
@@ -380,7 +490,8 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                         <div className="text-[10px] font-bold text-red-600 uppercase">הוצאות</div>
                         <div className="text-lg font-extrabold text-red-700">{formatCurrency(ownerSummary.expenses)}</div>
                     </div>
-                    <div className={clsx("border rounded-xl p-3 text-center shadow-sm", ownerSummary.balance >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200")}>
+                    <div className={clsx("border rounded-xl p-3 text-center shadow-sm", ownerSummary.balance >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200")}
+                        title={hasTransfers ? 'יתרה = הכנסות − הוצאות ± העברות בין שותפים' : undefined}>
                         <div className="text-[10px] font-bold text-slate-600 uppercase">יתרה</div>
                         <div className={clsx("text-lg font-extrabold", ownerSummary.balance >= 0 ? "text-blue-700" : "text-orange-700")}>{formatCurrency(ownerSummary.balance)}</div>
                         <div className="flex justify-center gap-2 mt-2">
@@ -431,6 +542,10 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                             )}
                         </div>
                     </div>
+                    <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 cursor-pointer select-none px-2">
+                        <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="accent-indigo-600" />
+                        הצג העברות מאורכבות
+                    </label>
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto mb-4 shadow-sm flex flex-col">
@@ -445,10 +560,10 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                             <div className="w-12 shrink-0"></div>
                         </div>
                         {/* Rows */}
-                        {sortedEntries.length === 0 ? (
+                        {rows.length === 0 ? (
                             <div className="text-center py-8 text-slate-400 text-sm">אין תנועות</div>
                         ) : (
-                            sortedEntries.map(e => renderRow(e))
+                            rows.map(r => r.kind === 'entry' ? renderRow(r.entry) : renderTransferRow(r.item))
                         )}
                     </div>
                 </div>
@@ -499,6 +614,14 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                 </div>
                 {(canAddForOwner('אילן') || canAddForOwner('קובי')) && (
                     <div className="flex items-center gap-2">
+                        {isAdmin && (
+                            <button
+                                onClick={() => setTransferModal({ editing: null })}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                            >
+                                <ArrowLeftRight size={13} /> העברה בין שותפים
+                            </button>
+                        )}
                         <button
                             onClick={() => openFinanceModal('income')}
                             className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors"
@@ -514,6 +637,16 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     </div>
                 )}
             </div>
+
+            {transferModal && (
+                <PartnerTransferModal
+                    summary={summary}
+                    editing={transferModal.editing}
+                    defaultFrom={activeTab}
+                    onClose={() => setTransferModal(null)}
+                    onSaved={() => { setTransferModal(null); fetchData(); }}
+                />
+            )}
 
             {/* Modal */}
             {financeModalOpen && (

@@ -1,6 +1,6 @@
 import { createSupabaseClient } from '@/lib/supabaseClient';
 import { isReadOnlyMode, READ_ONLY_MESSAGE } from '@/lib/readOnly';
-import { Lead, Message, Note, FinanceEntry, Task, Activity, Musician, Video, MusicianStats, Analytics, FinanceSummaryItem, BusinessContact } from '@/types';
+import { Lead, Message, Note, FinanceEntry, Task, Activity, Musician, Video, MusicianStats, Analytics, FinanceSummaryItem, BusinessContact, FinanceTransfer, FinanceTransferInput } from '@/types';
 
 export interface CalendarEventPayload {
     summary?: string;
@@ -304,6 +304,52 @@ export const api = {
     async getFinanceSummary(): Promise<Record<string, FinanceSummaryItem>> {
         const res = await fetchWithAuth(`${API_Base}/finance/summary`);
         if (!res.ok) throw new Error('Failed to fetch finance summary');
+        return res.json();
+    },
+
+    // --- Partner transfers (read: admin + partner; write: admin only) ---
+    async getFinanceTransfers(includeArchived = false): Promise<FinanceTransfer[]> {
+        const q = includeArchived ? '?include_archived=true' : '';
+        const res = await fetchWithAuth(`${API_Base}/finance/transfers${q}`);
+        if (!res.ok) await throwWithDetail(res, 'Failed to fetch partner transfers');
+        return res.json();
+    },
+
+    async createFinanceTransfer(data: FinanceTransferInput): Promise<FinanceTransfer> {
+        const res = await fetchWithAuth(`${API_Base}/finance/transfers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) await throwWithDetail(res, 'Failed to create partner transfer');
+        return res.json();
+    },
+
+    async updateFinanceTransfer(id: string, data: Partial<FinanceTransferInput>): Promise<FinanceTransfer> {
+        const res = await fetchWithAuth(`${API_Base}/finance/transfers/${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) await throwWithDetail(res, 'Failed to update partner transfer');
+        return res.json();
+    },
+
+    async archiveFinanceTransfer(id: string, reason?: string): Promise<FinanceTransfer> {
+        const res = await fetchWithAuth(`${API_Base}/finance/transfers/${encodeURIComponent(id)}/archive`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reason ? { reason } : {}),
+        });
+        if (!res.ok) await throwWithDetail(res, 'Failed to archive partner transfer');
+        return res.json();
+    },
+
+    async unarchiveFinanceTransfer(id: string): Promise<FinanceTransfer> {
+        const res = await fetchWithAuth(`${API_Base}/finance/transfers/${encodeURIComponent(id)}/unarchive`, {
+            method: 'POST',
+        });
+        if (!res.ok) await throwWithDetail(res, 'Failed to restore partner transfer');
         return res.json();
     },
 

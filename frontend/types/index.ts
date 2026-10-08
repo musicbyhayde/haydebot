@@ -197,6 +197,35 @@ export interface FinanceSummaryItem {
     balance: number;
     cash_balance: number;
     bank_balance: number;
+    /** Partner transfers in/out (already included in balance + the pools; never in income/expenses). */
+    transfers_in?: number;
+    transfers_out?: number;
+}
+
+/** A pool = partner x payment method: 'מזומן' (cash) or 'חשבון' (bank/credit/transfer/Bit). */
+export type FinancePool = 'מזומן' | 'חשבון';
+
+/** Editable fields of a partner transfer ("העברה בין שותפים"). */
+export interface FinanceTransferInput {
+    transfer_date: string;          // YYYY-MM-DD
+    amount: number;
+    from_partner: string;
+    from_pool: FinancePool;
+    to_partner: string;
+    to_pool: FinancePool;
+    note?: string | null;
+}
+
+/** Row of GET /finance/transfers (plain row, not Airtable-shaped). */
+export interface FinanceTransfer extends FinanceTransferInput {
+    id: string;
+    created_by: string;
+    created_at?: string;
+    updated_by?: string | null;
+    updated_at?: string | null;
+    archived_at?: string | null;
+    archived_by?: string | null;
+    archive_reason?: string | null;
 }
 
 export interface BusinessContact {
