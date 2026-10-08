@@ -2,6 +2,7 @@ from supabase import create_client, Client, ClientOptions
 from app.core.config import get_settings
 from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate, VideoCreate, VideoUpdate, BusinessContactCreate, BusinessContactUpdate
 from typing import List, Optional
+from app.services import finance_transfers
 import uuid
 from datetime import datetime, timedelta
 
@@ -428,8 +429,44 @@ class SupabaseService:
                 summary[owner]["cash_balance"] += method_amount
             else:
                 summary[owner]["bank_balance"] += method_amount
-                
-        return summary
+
+        # Partner transfers (public.finance_transfers): move balance + pools, never income/expenses.
+        # Missing table (deploy order) or any read error -> summary without transfers.
+        try:
+            transfers = self.get_finance_transfers()
+        except Exception as e:
+            finance_transfers.warn_unavailable(e)
+            transfers = []
+        return finance_transfers.apply_to_summary(summary, transfers)
+
+    # ─── Partner transfers (app/services/finance_transfers.py) ─────────
+
+    def get_finance_transfers(self, include_archived: bool = False) -> List[dict]:
+        """Partner transfers, newest first. Raises if the table is missing (callers decide)."""
+        if not self.client: return []
+        def build():
+            q = self.client.table(finance_transfers.TABLE).select("*")
+            if not include_archived:
+                q = q.is_("archived_at", "null")
+            return q.order("transfer_date", desc=True).order("created_at", desc=True).order("id")
+        return self._select_all(build)
+
+    def get_finance_transfer(self, transfer_id: str) -> Optional[dict]:
+        if not self.client: return None
+        res = self.client.table(finance_transfers.TABLE).select("*").eq("id", transfer_id).limit(1).execute()
+        return (res.data or [None])[0]
+
+    def create_finance_transfer(self, row: dict) -> dict:
+        if not self.client: return {}
+        data = dict(row)
+        data["id"] = self._generate_id()
+        res = self.client.table(finance_transfers.TABLE).insert(data).execute()
+        return (res.data or [{}])[0]
+
+    def update_finance_transfer(self, transfer_id: str, changes: dict) -> dict:
+        if not self.client: return {}
+        res = self.client.table(finance_transfers.TABLE).update(changes).eq("id", transfer_id).execute()
+        return (res.data or [{}])[0]
 
     # ─── Tasks CRUD ─────────────────────────────────────
 

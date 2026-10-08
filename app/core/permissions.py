@@ -45,6 +45,7 @@ VIEWER_GET_ALLOWED = frozenset((
 VIEWER_GET_DENIED = frozenset((
     "/finance",
     "/finance/summary",
+    "/finance/transfers",
     "/backup/full",
     "/analytics",
     "/musicians/{musician_id}/stats",

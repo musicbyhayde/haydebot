@@ -59,7 +59,8 @@ def owner_transfer(previous_owner: str, new_owner: str, handover_note: str = "")
 
 # Activity rows written for finance entries (POST /finance). A viewer sees them only when the
 # entry belongs to a lead (deal finance); general income/expenses stay hidden (viewer access).
-FINANCE_ACTION_TYPES = frozenset({"הכנסה/הוצאה", "הוצאה"})
+TRANSFER_ACTION_TYPE = "העברה בין שותפים"   # partner transfers (app/services/finance_transfers.py)
+FINANCE_ACTION_TYPES = frozenset({"הכנסה/הוצאה", "הוצאה", TRANSFER_ACTION_TYPE})
 
 
 def visible_to_viewer(activity: dict) -> bool:

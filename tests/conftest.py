@@ -176,18 +176,52 @@ class MockSupabaseService:
     def delete_finance_entry(self, entry_id):
         self._stores["finance"] = [e for e in self._stores["finance"] if e["id"] != entry_id]
 
+    # ── Partner transfers (public.finance_transfers) ──
+
+    def get_finance_transfers(self, include_archived=False):
+        rows = self._stores.setdefault("finance_transfers", [])
+        if not include_archived:
+            rows = [r for r in rows if not r.get("archived_at")]
+        return [dict(r) for r in sorted(rows, key=lambda r: (r.get("transfer_date") or "", r.get("created_at") or ""), reverse=True)]
+
+    def get_finance_transfer(self, transfer_id):
+        for r in self._stores.setdefault("finance_transfers", []):
+            if r["id"] == transfer_id:
+                return dict(r)
+        return None
+
+    def create_finance_transfer(self, row):
+        data = dict(row, id=self._gen_id(), created_at=datetime.now().isoformat())
+        self._stores.setdefault("finance_transfers", []).append(data)
+        return dict(data)
+
+    def update_finance_transfer(self, transfer_id, changes):
+        for r in self._stores.setdefault("finance_transfers", []):
+            if r["id"] == transfer_id:
+                r.update(changes)
+                return dict(r)
+        return {}
+
     def get_finance_summary(self):
+        from app.services import finance_transfers
+        return finance_transfers.apply_to_summary(self._finance_summary_without_transfers(),
+                                                  self.get_finance_transfers())
+
+    def _finance_summary_without_transfers(self):
         summary = {}
         for entry in self._stores["finance"]:
             owner = entry.get("Owner", "Unknown")
             if owner not in summary:
-                summary[owner] = {"income": 0, "expenses": 0, "balance": 0}
+                summary[owner] = {"income": 0, "expenses": 0, "balance": 0, "cash_balance": 0, "bank_balance": 0}
             amount = float(entry.get("Amount", 0))
             if entry.get("Type") == "income":
                 summary[owner]["income"] += amount
             else:
                 summary[owner]["expenses"] += amount
             summary[owner]["balance"] = summary[owner]["income"] - summary[owner]["expenses"]
+            signed = amount if entry.get("Type") == "income" else -amount
+            pool = "cash_balance" if entry.get("Payment_Method") == "מזומן" else "bank_balance"
+            summary[owner][pool] += signed
         return summary
 
     # ── Tasks ─────────────────────────

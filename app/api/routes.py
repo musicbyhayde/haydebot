@@ -13,7 +13,9 @@ import json
 
 settings = get_settings()
 
-from app.core.auth import require_auth
+from app.core.auth import require_auth, require_admin
+from app.core import audit_log
+from app.services import finance_transfers
 from app.core.permissions import is_viewer
 
 public_router = APIRouter()
@@ -971,6 +973,128 @@ async def update_finance_entry(entry_id: str, request: Request):
 async def delete_finance_entry(entry_id: str):
     airtable_service.delete_finance_entry(entry_id)
     return {"status": "deleted"}
+
+# ─── Partner transfers (app/services/finance_transfers.py) ─────────
+# Read: admin + partner (viewers are denied by permissions.VIEWER_GET_DENIED).
+# Create / edit / archive: admin only (role admin, JWT). Archive instead of delete.
+
+def _transfer_actor(request: Request) -> tuple[str, str]:
+    email = getattr(request.state, "auth_user", None) or "unknown"
+    name = getattr(request.state, "auth_display_name", None) or email
+    return email, name
+
+
+def _transfer_audit(request: Request, event: str, transfer_id: str, detail: dict) -> None:
+    email, _ = _transfer_actor(request)
+    audit_log.record(event, email=email, role=getattr(request.state, "auth_role", None),
+                     method=request.method, path=request.url.path,
+                     detail={"transfer_id": transfer_id, **detail})
+
+
+def _transfer_activity(request: Request, prefix: str, row: dict) -> None:
+    _, name = _transfer_actor(request)
+    try:
+        airtable_service.create_activity(ActivityCreate(
+            actor=name, action_type=finance_transfers.ACTION_TYPE,
+            description=f"{prefix}{finance_transfers.activity_description(row)}"))
+    except Exception as e:  # the activity feed must never fail the money write
+        print(f"FINANCE_TRANSFERS: activity not written: {type(e).__name__}")
+
+
+async def _transfer_body(request: Request) -> dict:
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="גוף הבקשה חייב להיות JSON")
+    return body
+
+
+def _existing_transfer(transfer_id: str) -> dict:
+    row = airtable_service.get_finance_transfer(transfer_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="העברה לא נמצאה")
+    return row
+
+
+@protected_router.get("/finance/transfers")
+async def list_finance_transfers(include_archived: bool = Query(False)):
+    try:
+        return airtable_service.get_finance_transfers(include_archived=include_archived)
+    except Exception as e:
+        finance_transfers.warn_unavailable(e)
+        raise HTTPException(status_code=503, detail="טבלת ההעברות לא זמינה")
+
+
+@protected_router.post("/finance/transfers", status_code=201, dependencies=[Depends(require_admin)])
+async def create_finance_transfer(request: Request):
+    try:
+        row = finance_transfers.validate_new(await _transfer_body(request))
+    except finance_transfers.TransferError as e:
+        raise HTTPException(status_code=e.status, detail=e.detail)
+    row["created_by"] = _transfer_actor(request)[0]
+    created = airtable_service.create_finance_transfer(row)
+    if not created:
+        raise HTTPException(status_code=503, detail="שמירת ההעברה נכשלה")
+    _transfer_audit(request, "finance_transfer_created", created.get("id"),
+                    {k: row[k] for k in finance_transfers.EDITABLE})
+    _transfer_activity(request, "", row)
+    return created
+
+
+@protected_router.patch("/finance/transfers/{transfer_id}", dependencies=[Depends(require_admin)])
+async def update_finance_transfer(transfer_id: str, request: Request):
+    body = await _transfer_body(request)
+    current = _existing_transfer(transfer_id)
+    if current.get("archived_at"):
+        raise HTTPException(status_code=409, detail="העברה מאורכבת — יש לשחזר לפני עריכה")
+    try:
+        changes = finance_transfers.validate_update(current, body)
+    except finance_transfers.TransferError as e:
+        raise HTTPException(status_code=e.status, detail=e.detail)
+    if not changes:
+        return current
+    changes["updated_by"] = _transfer_actor(request)[0]
+    changes["updated_at"] = datetime.now().astimezone().isoformat()
+    updated = airtable_service.update_finance_transfer(transfer_id, changes)
+    _transfer_audit(request, "finance_transfer_updated", transfer_id, {
+        "before": {k: current.get(k) for k in finance_transfers.EDITABLE if k in changes},
+        "after": {k: changes[k] for k in finance_transfers.EDITABLE if k in changes}})
+    _transfer_activity(request, "עודכנה: ", {**current, **changes})
+    return updated
+
+
+@protected_router.post("/finance/transfers/{transfer_id}/archive", dependencies=[Depends(require_admin)])
+async def archive_finance_transfer(transfer_id: str, request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    reason = (body.get("reason") if isinstance(body, dict) else None) or None
+    if reason is not None:
+        reason = str(reason).strip()[:finance_transfers.MAX_NOTE] or None
+    current = _existing_transfer(transfer_id)
+    if current.get("archived_at"):
+        return current
+    updated = airtable_service.update_finance_transfer(transfer_id, {
+        "archived_at": datetime.now().astimezone().isoformat(),
+        "archived_by": _transfer_actor(request)[0], "archive_reason": reason})
+    _transfer_audit(request, "finance_transfer_archived", transfer_id, {"reason": reason})
+    _transfer_activity(request, "אורכבה: ", current)
+    return updated
+
+
+@protected_router.post("/finance/transfers/{transfer_id}/unarchive", dependencies=[Depends(require_admin)])
+async def unarchive_finance_transfer(transfer_id: str, request: Request):
+    current = _existing_transfer(transfer_id)
+    if not current.get("archived_at"):
+        return current
+    updated = airtable_service.update_finance_transfer(transfer_id, {
+        "archived_at": None, "archived_by": None, "archive_reason": None})
+    _transfer_audit(request, "finance_transfer_unarchived", transfer_id, {})
+    _transfer_activity(request, "שוחזרה: ", current)
+    return updated
 
 # ─── Tasks ───────────────────────────────────────────
 
