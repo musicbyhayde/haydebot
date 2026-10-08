@@ -2,14 +2,15 @@
 
 /**
  * Create / edit a partner transfer ("העברה בין שותפים"). Admin only (the backend enforces it).
- * One source pool -> one destination pool, between two different partners. A negative source
- * pool is allowed but warned about.
+ * One source pool -> one destination pool. Same partner on both sides = a rebalance between
+ * that partner's pools ("העברה בין מצבורים", any partner); identical partner+pool is rejected.
+ * A negative source pool is allowed but warned about.
  */
 import { useMemo, useState } from 'react';
 import { AlertCircle, ArrowLeftRight, X } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { OWNERS } from '@/lib/constants';
-import { POOLS, POOL_LABEL, previewTransfer } from '@/lib/financeTransfers';
+import { POOLS, POOL_LABEL, isRebalance, previewTransfer } from '@/lib/financeTransfers';
 import { FinancePool, FinanceSummaryItem, FinanceTransfer, FinanceTransferInput } from '@/types';
 
 interface Props {
@@ -47,17 +48,21 @@ export default function PartnerTransferModal({ summary, editing, defaultFrom, on
         [summary, fromPartner, fromPool, toPartner, toPool, amountNum, editing],
     );
 
+    const otherPool = (p: FinancePool): FinancePool => (p === 'מזומן' ? 'חשבון' : 'מזומן');
+    const rebalance = isRebalance({ from_partner: fromPartner, to_partner: toPartner });
+    // Same partner on both sides is a rebalance: keep the two pools different.
     const changeFrom = (p: string) => {
         setFromPartner(p);
-        if (p === toPartner) setToPartner(otherThan(p));
+        if (p === toPartner && fromPool === toPool) setFromPool(otherPool(toPool));
     };
     const changeTo = (p: string) => {
         setToPartner(p);
-        if (p === fromPartner) setFromPartner(otherThan(p));
+        if (p === fromPartner && fromPool === toPool) setToPool(otherPool(fromPool));
     };
 
     const validate = (): string | null => {
-        if (!fromPartner || !toPartner || fromPartner === toPartner) return 'יש לבחור שני שותפים שונים';
+        if (!fromPartner || !toPartner) return 'יש לבחור שותף בשני הצדדים';
+        if (rebalance && fromPool === toPool) return 'המקור והיעד זהים — בחר מצבור אחר';
         if (!amount || !Number.isFinite(amountNum) || amountNum <= 0) return 'חובה להזין סכום חיובי';
         if (!date) return 'חובה לבחור תאריך';
         return null;
@@ -103,15 +108,19 @@ export default function PartnerTransferModal({ summary, editing, defaultFrom, on
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}>
-            <div role="dialog" aria-label="העברה בין שותפים" className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()} dir="rtl">
+            <div role="dialog" aria-label={rebalance ? 'העברה בין מצבורים' : 'העברה בין שותפים'} className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()} dir="rtl">
                 <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
                     <h3 className="text-sm font-bold text-indigo-800 flex items-center gap-1.5">
-                        <ArrowLeftRight size={16} /> {editing ? 'עריכת העברה בין שותפים' : 'העברה בין שותפים'}
+                        <ArrowLeftRight size={16} /> {editing ? 'עריכת ' : ''}{rebalance ? `העברה בין מצבורים — ${fromPartner}` : 'העברה בין שותפים'}
                     </h3>
                     <button onClick={onClose} aria-label="סגור" className="text-slate-400 hover:text-red-500"><X size={18} /></button>
                 </div>
                 <div className="px-5 py-4 overflow-y-auto space-y-3">
-                    <p className="text-[11px] text-slate-500">העברה משנה רק את היתרה והמצבורים של השותפים — לא הכנסות, הוצאות או רווח.</p>
+                    <p className="text-[11px] text-slate-500">
+                        {rebalance
+                            ? 'העברה בין מצבורים של אותו שותף משנה רק את החלוקה בין 🏦 ל־💵 — היתרה, ההכנסות וההוצאות לא משתנות.'
+                            : 'העברה משנה רק את היתרה והמצבורים של השותפים — לא הכנסות, הוצאות או רווח.'}
+                    </p>
                     <div className="flex gap-3 items-stretch">
                         {side('מ־', fromPartner, changeFrom, fromPool, setFromPool, preview.fromBefore, preview.fromAfter, 'transfer-from')}
                         <div className="flex items-center text-indigo-400"><ArrowLeftRight size={18} /></div>

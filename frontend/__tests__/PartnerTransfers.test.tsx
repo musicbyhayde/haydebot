@@ -6,7 +6,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import FinancePage from '@/components/FinancePage';
 import { api, ApiError } from '@/lib/api';
-import { previewTransfer, transfersFor } from '@/lib/financeTransfers';
+import { isRebalance, previewTransfer, transfersFor } from '@/lib/financeTransfers';
 import { FinanceTransfer } from '@/types';
 
 jest.mock('@/lib/api', () => {
@@ -108,15 +108,20 @@ describe('FinancePage transfers', () => {
         expect(screen.queryByTestId('transfer-row')).not.toBeInTheDocument();
     });
 
-    it('admin creates a transfer; same partner is impossible; negative source warns', async () => {
+    it('admin creates a transfer; negative source warns', async () => {
         render(<FinancePage currentUser={admin} />);
         await waitFor(() => screen.getByRole('button', { name: /העברה בין שותפים/ }));
         fireEvent.click(screen.getByRole('button', { name: /העברה בין שותפים/ }));
         const dialog = screen.getByRole('dialog', { name: 'העברה בין שותפים' });
         const d = within(dialog);
-        // choosing the same partner on both sides flips the other side
+        // choosing the same partner on both sides keeps it (a rebalance) and splits the pools
         fireEvent.change(d.getByLabelText('ל־ שותף'), { target: { value: 'אילן' } });
-        expect((d.getByLabelText('מ־ שותף') as HTMLSelectElement).value).toBe('קובי');
+        expect((d.getByLabelText('מ־ שותף') as HTMLSelectElement).value).toBe('אילן');
+        expect((d.getByLabelText('מ־ מצבור') as HTMLSelectElement).value).not.toBe((d.getByLabelText('ל־ מצבור') as HTMLSelectElement).value);
+        // now a normal transfer: קובי מזומן -> אילן חשבון
+        fireEvent.change(d.getByLabelText('מ־ שותף'), { target: { value: 'קובי' } });
+        expect((d.getByLabelText('ל־ שותף') as HTMLSelectElement).value).toBe('אילן');
+        fireEvent.change(d.getByLabelText('ל־ מצבור'), { target: { value: 'חשבון' } });
         fireEvent.change(d.getByLabelText('מ־ מצבור'), { target: { value: 'מזומן' } });
         fireEvent.change(d.getByLabelText(/סכום/), { target: { value: '5000' } });
         expect(d.getByText(/יהיה שלילי אחרי ההעברה/)).toBeInTheDocument();     // 4,000 - 5,000
@@ -169,5 +174,48 @@ describe('FinancePage transfers', () => {
         await waitFor(() => expect(screen.getAllByText('מאורכבת').length).toBeGreaterThan(0));
         fireEvent.click(screen.getAllByLabelText('שחזר העברה')[0]);
         await waitFor(() => expect(m.unarchiveFinanceTransfer).toHaveBeenCalledWith('t1'));
+    });
+});
+
+describe('pool rebalance', () => {
+    it('is a rebalance only when the partner is the same', () => {
+        expect(isRebalance({ from_partner: 'קובי', to_partner: 'קובי' })).toBe(true);
+        expect(isRebalance({ from_partner: 'קובי', to_partner: 'אילן' })).toBe(false);
+    });
+
+    it('rebalance row shows pool movement without a signed amount', async () => {
+        const R: FinanceTransfer = { id: 'r1', transfer_date: '2026-10-08', amount: 500, from_partner: 'קובי',
+            from_pool: 'חשבון', to_partner: 'קובי', to_pool: 'מזומן', created_by: 'a@x.com' };
+        m.getFinanceTransfers.mockResolvedValue([R]);
+        render(<FinancePage currentUser={admin} />);
+        await waitFor(() => expect(screen.getAllByText('מחשבון למזומן').length).toBeGreaterThan(0));
+        expect(screen.getAllByText('העברה בין מצבורים').length).toBeGreaterThan(0);
+        expect(screen.queryByText(/→ ל|← מ/)).not.toBeInTheDocument();
+    });
+
+    it('admin rebalances any partner: title changes, identical pool is blocked, payload sent', async () => {
+        render(<FinancePage currentUser={admin} />);
+        await waitFor(() => screen.getByRole('button', { name: /העברה בין שותפים/ }));
+        fireEvent.click(screen.getByRole('button', { name: /העברה בין שותפים/ }));
+        const d = within(screen.getByRole('dialog'));
+        fireEvent.change(d.getByLabelText('ל־ שותף'), { target: { value: 'אילן' } });
+        expect(screen.getByRole('dialog', { name: 'העברה בין מצבורים' })).toBeInTheDocument();
+        expect(screen.getByText(/רק את החלוקה בין/)).toBeInTheDocument();
+        // force both pools identical and expect the validation error
+        fireEvent.change(d.getByLabelText('מ־ מצבור'), { target: { value: 'חשבון' } });
+        fireEvent.change(d.getByLabelText('ל־ מצבור'), { target: { value: 'חשבון' } });
+        fireEvent.change(d.getByLabelText(/סכום/), { target: { value: '100' } });
+        fireEvent.click(d.getByText('שמור העברה'));
+        expect(d.getByRole('alert')).toHaveTextContent('המקור והיעד זהים');
+        // rebalance the OTHER partner's pools (not the admin's own)
+        fireEvent.change(d.getByLabelText('מ־ שותף'), { target: { value: 'קובי' } });
+        fireEvent.change(d.getByLabelText('ל־ שותף'), { target: { value: 'קובי' } });
+        fireEvent.change(d.getByLabelText('מ־ מצבור'), { target: { value: 'חשבון' } });
+        fireEvent.change(d.getByLabelText('ל־ מצבור'), { target: { value: 'מזומן' } });
+        fireEvent.click(d.getByText('שמור העברה'));
+        await waitFor(() => expect(m.createFinanceTransfer).toHaveBeenCalledTimes(1));
+        expect(m.createFinanceTransfer.mock.calls[0][0]).toMatchObject({
+            amount: 100, from_partner: 'קובי', from_pool: 'חשבון', to_partner: 'קובי', to_pool: 'מזומן',
+        });
     });
 });

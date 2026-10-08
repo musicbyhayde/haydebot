@@ -11,9 +11,10 @@ Effect on GET /finance/summary (per partner):
   cash/bank    -= / += in the chosen pools, so cash_balance + bank_balance == balance still holds
   income, expenses: unchanged. The sum over all partners is unchanged.
 
-Rules (approved defaults): one source pool and one destination pool per transfer, sender and
-receiver are different partners, amount > 0, a source pool may go negative (the UI warns),
-archive instead of delete. Partners are validated against the existing PARTNERS list.
+Rules: one source pool and one destination pool per transfer, amount > 0, a source pool may go
+negative (the UI warns), archive instead of delete. The two sides may be the same partner when the
+pools differ (rebalancing a partner's own pools, Ilan 2026-10-08: their יתרה stays, the pools move);
+the same partner AND the same pool is rejected. Partners are validated against the existing PARTNERS list.
 """
 from __future__ import annotations
 
@@ -94,8 +95,10 @@ def _note(value) -> Optional[str]:
 
 
 def _check_pair(row: dict) -> None:
-    if row["from_partner"] == row["to_partner"]:
-        raise TransferError("העברה חייבת להיות בין שני שותפים שונים")
+    # Same partner is allowed only between the two pools (rebalance); identical source and
+    # destination would move nothing and is rejected. Mirrors the DB check constraint.
+    if row["from_partner"] == row["to_partner"] and row["from_pool"] == row["to_pool"]:
+        raise TransferError("המקור והיעד זהים — בחר מצבור אחר")
 
 
 def validate_new(body: dict) -> dict:
@@ -145,7 +148,8 @@ def _blank() -> dict:
 
 def apply_to_summary(summary: dict, transfers: Iterable[dict]) -> dict:
     """Add non-archived transfers to a per-partner summary (in place, also returned).
-    Adds transfers_in / transfers_out to every partner row; income / expenses never change."""
+    Adds transfers_in / transfers_out (between partners only) to every partner row; income /
+    expenses never change. A same-partner rebalance moves the pools and leaves the balance."""
     for row in summary.values():
         row.setdefault("transfers_in", 0)
         row.setdefault("transfers_out", 0)
@@ -165,7 +169,8 @@ def apply_to_summary(summary: dict, transfers: Iterable[dict]) -> dict:
             row["balance"] = row.get("balance", 0) + sign * amount
             pool_key = POOL_KEY.get(pool, "bank_balance")
             row[pool_key] = row.get(pool_key, 0) + sign * amount
-            row[key] += amount
+            if t.get("from_partner") != t.get("to_partner"):   # a rebalance is not a partner flow
+                row[key] += amount
     return summary
 
 
@@ -178,5 +183,7 @@ def warn_unavailable(e: Exception) -> None:
 
 
 def activity_description(row: dict) -> str:
-    return (f"מ{row['from_partner']} ({row['from_pool']}) ל{row['to_partner']} ({row['to_pool']}): "
-            f"{float(row['amount']):,.0f} ₪")
+    amount = f"{float(row['amount']):,.0f} ₪"
+    if row['from_partner'] == row['to_partner']:
+        return f"מ{row['from_pool']} ל{row['to_pool']} אצל {row['from_partner']}: {amount}"
+    return f"מ{row['from_partner']} ({row['from_pool']}) ל{row['to_partner']} ({row['to_pool']}): {amount}"

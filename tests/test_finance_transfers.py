@@ -73,7 +73,7 @@ def test_validate_new_normalizes():
 
 
 @pytest.mark.parametrize("kw", [
-    {"to_partner": P2},                    # same partner (no self transfers in v1)
+    {"to_partner": P2, "to_pool": "מזומן"},  # same partner AND same pool: moves nothing
     {"from_partner": "מישהו"},             # unknown partner
     {"from_pool": "אשראי"},                # only מזומן / חשבון
     {"amount": 0}, {"amount": -5}, {"amount": "abc"}, {"amount": None}, {"amount": "nan"},
@@ -90,7 +90,7 @@ def test_validate_update():
     assert ft.validate_update(cur, {"amount": 6000}) == {}
     assert ft.validate_update(cur, {"amount": 5000, "to_pool": "מזומן"}) == {"amount": 5000.0, "to_pool": "מזומן"}
     with pytest.raises(ft.TransferError):
-        ft.validate_update(cur, {"to_partner": P2})          # would become a self transfer
+        ft.validate_update(cur, {"to_partner": P2, "to_pool": "מזומן"})   # identical source and destination
     with pytest.raises(ft.TransferError):
         ft.validate_update(cur, {"created_by": "x"})          # not editable
 
@@ -212,8 +212,8 @@ def test_viewer_and_api_key_blocked(client):
 
 
 def test_validation_errors(client):
-    r = client.post(URL, json=body(to_partner=P2), headers=H(ADMIN))
-    assert r.status_code == 400 and "שותפים שונים" in r.json()["detail"]
+    r = client.post(URL, json=body(to_partner=P2, to_pool="מזומן"), headers=H(ADMIN))
+    assert r.status_code == 400 and "המקור והיעד זהים" in r.json()["detail"]
     assert client.post(URL, json=body(amount=0), headers=H(ADMIN)).status_code == 400
     assert client.post(URL, content="nope", headers={**H(ADMIN), "Content-Type": "application/json"}).status_code == 400
 
@@ -261,3 +261,61 @@ def test_bot_api_finance_summary_excludes_transfers(mock_service):
     with patch.object(data, "db", mock_service):
         s = data.finance_summary(None)["data"]
     assert s["by_owner"][P2]["cash_balance"] == 10000 and P1 not in s["by_owner"]
+
+
+# ─── rebalancing a partner's own pools (same partner, different pools) ──────
+
+REB = dict(from_partner=P1, from_pool="מזומן", to_partner=P1, to_pool="חשבון", amount=500)
+
+
+def test_rebalance_validates_and_update_can_switch_to_it():
+    row = ft.validate_new(body(**REB))
+    assert row["from_partner"] == row["to_partner"] == P1
+    cur = dict(ft.validate_new(body()), id="t1")             # P2 מזומן -> P1 חשבון
+    assert ft.validate_update(cur, {"from_partner": P1}) == {"from_partner": P1}
+
+
+def test_rebalance_moves_pools_not_balance():
+    s = {P1: {"income": 0, "expenses": 3000, "balance": -3000, "cash_balance": -1000, "bank_balance": -2000}}
+    ft.apply_to_summary(s, [ft.validate_new(body(**REB))])
+    assert s[P1]["balance"] == -3000
+    assert s[P1]["cash_balance"] == -1500 and s[P1]["bank_balance"] == -1500
+    assert s[P1]["cash_balance"] + s[P1]["bank_balance"] == s[P1]["balance"]
+    assert s[P1]["transfers_in"] == 0 and s[P1]["transfers_out"] == 0
+    assert (s[P1]["income"], s[P1]["expenses"]) == (0, 3000)
+
+
+def test_rebalance_activity_text():
+    assert ft.activity_description(ft.validate_new(body(**REB))) == f"ממזומן לחשבון אצל {P1}: 500 ₪"
+    assert ft.activity_description(ft.validate_new(body())).startswith(f"מ{P2} (מזומן) ל{P1} (חשבון)")
+
+
+def test_admin_creates_rebalance(client, mock_service, audit_rows):
+    before = summary(client)
+    r = client.post(URL, json=body(**REB), headers=H(ADMIN))
+    assert r.status_code == 201, r.text
+    after = summary(client)
+    assert after[P1]["balance"] == before[P1]["balance"]
+    assert after[P1]["cash_balance"] == before[P1]["cash_balance"] - 500
+    assert after[P1]["bank_balance"] == before[P1]["bank_balance"] + 500
+    assert after[P2] == before[P2]
+    assert mock_service._stores["activities"][-1]["description"] == f"ממזומן לחשבון אצל {P1}: 500 ₪"
+    assert [a["event"] for a in audit_rows if a["event"].startswith("finance_transfer_")] == ["finance_transfer_created"]
+
+
+def test_partner_cannot_rebalance(client):
+    assert client.post(URL, json=body(**{**REB, "from_partner": P2, "to_partner": P2}), headers=H(PARTNER)).status_code == 403
+
+
+def test_admin_rebalances_any_partner(client):
+    """The acting admin (display name P1, and the 'מנהל' account) may rebalance P2's pools too."""
+    for who in (ADMIN, ADMIN2):
+        before = summary(client)
+        r = client.post(URL, json=body(from_partner=P2, from_pool="חשבון", to_partner=P2, to_pool="מזומן", amount=100),
+                        headers=H(who))
+        assert r.status_code == 201, r.text
+        after = summary(client)
+        assert after[P2]["balance"] == before[P2]["balance"]
+        assert after[P2]["bank_balance"] == before[P2]["bank_balance"] - 100
+        assert after[P2]["cash_balance"] == before[P2]["cash_balance"] + 100
+        assert after[P1] == before[P1]

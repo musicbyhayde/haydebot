@@ -46,19 +46,27 @@ export function previewTransfer(
     return { fromBefore, fromAfter, toBefore, toAfter: toBefore + amount, fromNegative: fromAfter < 0 };
 }
 
-/** Transfers touching `partner`, with the direction and signed amount from that partner's view. */
+/** Same partner on both sides: a rebalance between that partner's pools (balance unchanged). */
+export function isRebalance(t: Pick<FinanceTransferInput, 'from_partner' | 'to_partner'>): boolean {
+    return !!t.from_partner && t.from_partner === t.to_partner;
+}
+
+/** Transfers touching `partner`, with the direction and signed amount from that partner's view
+ *  (a rebalance appears once, with signedAmount 0: only the pools move). */
 export function transfersFor(transfers: FinanceTransfer[], partner: string) {
     return transfers
         .filter(t => t.from_partner === partner || t.to_partner === partner)
         .map(t => {
             const outgoing = t.from_partner === partner;
+            const rebalance = isRebalance(t);
             return {
                 transfer: t,
+                rebalance,
                 outgoing,
                 counterparty: outgoing ? t.to_partner : t.from_partner,
                 counterpartyPool: outgoing ? t.to_pool : t.from_pool,
                 ownPool: outgoing ? t.from_pool : t.to_pool,
-                signedAmount: outgoing ? -Number(t.amount) : Number(t.amount),
+                signedAmount: rebalance ? 0 : outgoing ? -Number(t.amount) : Number(t.amount),
             };
         });
 }

@@ -418,19 +418,21 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                 <div className="flex-1 min-w-[120px] flex flex-col justify-center">
                     <div className={clsx("font-bold text-indigo-800 flex items-center gap-1", archived && "line-through")}>
                         <ArrowLeftRight size={11} className="shrink-0" />
-                        {item.outgoing ? `→ ל${item.counterparty} (${item.counterpartyPool})` : `← מ${item.counterparty} (${item.counterpartyPool})`}
+                        {item.rebalance
+                            ? `מ${t.from_pool} ל${t.to_pool}`
+                            : item.outgoing ? `→ ל${item.counterparty} (${item.counterpartyPool})` : `← מ${item.counterparty} (${item.counterpartyPool})`}
                     </div>
                     <div className="text-[10px] text-slate-500">
-                        העברה בין שותפים{t.note ? ` · ${t.note}` : ''}
+                        {item.rebalance ? 'העברה בין מצבורים' : 'העברה בין שותפים'}{t.note ? ` · ${t.note}` : ''}
                         {archived && <span className="mr-1 px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-bold">מאורכבת</span>}
                     </div>
                 </div>
                 <div className="w-20 shrink-0"></div>
                 <div className="w-24 shrink-0 flex flex-col items-end px-2">
-                    <span className="text-[9px] text-slate-400 text-center">{item.ownPool}</span>
+                    <span className="text-[9px] text-slate-400 text-center">{item.rebalance ? `${t.from_pool} → ${t.to_pool}` : item.ownPool}</span>
                 </div>
                 <div className={clsx("w-24 shrink-0 text-left font-bold font-mono tracking-tighter text-indigo-700", archived && "line-through")} dir="ltr">
-                    {item.outgoing ? '-' : '+'}{Number(t.amount).toLocaleString()} ₪
+                    {item.rebalance ? '' : item.outgoing ? '-' : '+'}{Number(t.amount).toLocaleString()} ₪
                 </div>
                 <div className="w-12 shrink-0 flex items-center justify-end gap-2 text-slate-400 pl-2">
                     {isAdmin && (archived ? (
@@ -624,7 +626,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                                 onClick={() => setTransferModal({ editing: null })}
                                 className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors"
                             >
-                                <ArrowLeftRight size={13} /> העברה בין שותפים
+                                <ArrowLeftRight size={13} /> העברה בין שותפים / מצבורים
                             </button>
                         )}
                         <button
