@@ -125,6 +125,9 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
     const [collectLead, setCollectLead] = useState<Lead | null>(null);
     // Finance entries belong to a partner; the admin account ('מנהל') must pick one.
     const [collectOwner, setCollectOwner] = useState<string>(isOwnerName(currentUser?.displayName) ? (currentUser?.displayName ?? '') : '');
+    // A partner collects only for themselves; the admin picks the partner.
+    const isAdminUser = currentUser?.role === 'admin';
+    const effectiveCollectOwner = isAdminUser ? collectOwner : (currentUser?.displayName || '');
     const [collectAmount, setCollectAmount] = useState('');
     const [transferModalLead, setTransferModalLead] = useState<Lead | null>(null);
     
@@ -281,7 +284,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
     const handleCollectCommission = async () => {
         if (!collectLead) return;
-        if (!isOwnerName(collectOwner)) {
+        if (!isOwnerName(effectiveCollectOwner)) {
             error('יש לבחור שותף');
             return;
         }
@@ -289,7 +292,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
             const vatText = collectLead.fields.Commission_Includes_VAT ? ' (כולל מע"מ)' : ' (+ מע"מ)';
             // Create finance entry
             await api.createFinanceEntry({
-                Owner: collectOwner,
+                Owner: effectiveCollectOwner,
                 Type: 'income',
                 Date: new Date().toISOString().split('T')[0],
                 Description: `עמלת הפניה - ${collectLead.fields.Name || 'לקוח'}${vatText}`,
@@ -1329,6 +1332,9 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-2">לזכות את:</label>
+                                {!isAdminUser ? (
+                                    <p className="text-sm text-slate-700" data-testid="collect-owner-readonly">{effectiveCollectOwner || '—'}</p>
+                                ) : (
                                 <select 
                                     value={collectOwner}
                                     onChange={(e) => setCollectOwner(e.target.value)}
@@ -1337,13 +1343,14 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     <option value="" disabled>בחר שותף</option>
                                     {OWNERS.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
+                                )}
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3">
                             <button 
                                 onClick={handleCollectCommission}
-                                disabled={!isOwnerName(collectOwner)}
+                                disabled={!isOwnerName(effectiveCollectOwner)}
                                 className="flex-1 disabled:opacity-50 bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-xl transition-colors"
                             >
                                 אישור וסיום

@@ -940,12 +940,15 @@ async def get_finance_entries(owner: Optional[str] = Query(None)):
 
 @protected_router.post("/finance")
 async def create_finance_entry(request: Request):
-    """Create a finance entry. Owner must be one of the partners (activity_text.PARTNERS);
-    the admin account ('מנהל') has to pick a partner."""
+    """Create a finance entry. Owner must be one of the partners (activity_text.PARTNERS):
+    a partner only for themselves, the admin (incl. the 'מנהל' account) for any partner."""
     body = await _transfer_body(request)
     owner = str(body.get("Owner") or "").strip()
     if owner not in activity_text.PARTNERS:
         raise HTTPException(status_code=400, detail="יש לבחור שותף")
+    # A partner records only their own entries; the admin may pick any partner (Ilan 2026-10-08).
+    if not is_admin_request(request) and owner != (getattr(request.state, "auth_display_name", None) or ""):
+        raise HTTPException(status_code=403, detail="שותף יכול לרשום תנועות רק על שמו")
     try:
         amount = float(body.get("Amount", 0))
     except (TypeError, ValueError):

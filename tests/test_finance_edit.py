@@ -141,6 +141,21 @@ def test_create_requires_a_partner_owner(client, mock_service, who, owner):
     assert len(mock_service._stores["finance"]) == before
 
 
+def test_partner_creates_only_for_themselves(client, mock_service):
+    before = len(mock_service._stores["finance"])
+    r = client.post("/api/v1/finance", json={**NEW, "Owner": P1}, headers=H(PARTNER))   # PARTNER is P2
+    assert r.status_code == 403 and r.json()["detail"] == "שותף יכול לרשום תנועות רק על שמו"
+    assert len(mock_service._stores["finance"]) == before
+    r = client.post("/api/v1/finance", json={**NEW, "Owner": P2}, headers=H(PARTNER))
+    assert r.status_code == 200 and r.json()["fields"]["Owner"] == P2
+
+
+def test_admin_creates_for_any_partner(client):
+    for p in activity_text.PARTNERS:
+        r = client.post("/api/v1/finance", json={**NEW, "Owner": p}, headers=H(ADMIN))
+        assert r.status_code == 200 and r.json()["fields"]["Owner"] == p
+
+
 def test_create_with_partner_owner(client, mock_service):
     r = client.post("/api/v1/finance", json={**NEW, "Owner": f" {P2} "}, headers=H(ADMIN))
     assert r.status_code == 200 and r.json()["fields"]["Owner"] == P2

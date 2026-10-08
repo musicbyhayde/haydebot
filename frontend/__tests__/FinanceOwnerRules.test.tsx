@@ -6,13 +6,14 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import LeadDetailPanel from '@/components/LeadDetailPanel';
 import FinancePage from '@/components/FinancePage';
+import LeadsDashboard from '@/components/LeadsDashboard';
 import { api } from '@/lib/api';
 
 jest.mock('@/lib/api', () => ({
     api: {
         getNotes: jest.fn(), getMessages: jest.fn(), getMusicians: jest.fn(), getTasks: jest.fn(),
         getFinanceEntries: jest.fn(), getLeadFinance: jest.fn(), getFinanceSummary: jest.fn(),
-        getLeads: jest.fn(), getFinanceTransfers: jest.fn(),
+        getLeads: jest.fn(), getFinanceTransfers: jest.fn(), getPendingFollowUps: jest.fn(), updateLead: jest.fn(),
         updateFinanceEntry: jest.fn(), createFinanceEntry: jest.fn(), deleteFinanceEntry: jest.fn(),
     },
 }));
@@ -27,13 +28,14 @@ const ENTRY = {
 
 beforeEach(() => {
     jest.clearAllMocks();
-    for (const f of ['getNotes', 'getMessages', 'getMusicians', 'getTasks', 'getFinanceEntries', 'getLeads', 'getFinanceTransfers'] as const) {
+    for (const f of ['getNotes', 'getMessages', 'getMusicians', 'getTasks', 'getFinanceEntries', 'getLeads', 'getFinanceTransfers', 'getPendingFollowUps'] as const) {
         m[f].mockResolvedValue([] as never);
     }
     m.getLeadFinance.mockResolvedValue([ENTRY] as never);
     m.getFinanceSummary.mockResolvedValue({});
     m.updateFinanceEntry.mockResolvedValue(ENTRY as never);
     m.createFinanceEntry.mockResolvedValue(ENTRY as never);
+    m.updateLead.mockResolvedValue({} as never);
 });
 
 // the finance modal's amount field (the panel has another '0' input above it)
@@ -76,9 +78,11 @@ describe('LeadDetailPanel finance', () => {
         await waitFor(() => expect(m.createFinanceEntry).toHaveBeenCalledWith(expect.objectContaining({ Owner: 'קובי', Lead_ID: 'lead1' })));
     });
 
-    it('partner creating defaults to themselves', async () => {
+    it('partner creating is locked to themselves', async () => {
         await panel({ currentUserName: 'קובי', isAdminUser: false });
         fireEvent.click(await screen.findByText('+ הוסף הכנסה'));
+        expect(screen.getByTestId('finance-owner-readonly')).toHaveTextContent('קובי');
+        expect(screen.queryByRole('button', { name: 'אילן' })).not.toBeInTheDocument();
         fireEvent.change(modalAmount(), { target: { value: '300' } });
         fireEvent.change(screen.getByPlaceholderText(/מקדמה, דלק/), { target: { value: 'מקדמה' } });
         fireEvent.click(screen.getByText('שמור'));
@@ -108,5 +112,29 @@ describe('FinancePage', () => {
         fireEvent.click(screen.getAllByRole('button', { name: 'קובי' })[0]);
         fireEvent.click(screen.getByText('שמור רשומה'));
         await waitFor(() => expect(m.updateFinanceEntry).toHaveBeenCalledWith('f1', expect.objectContaining({ Owner: 'קובי' })));
+    });
+});
+
+describe('LeadsDashboard commission collection', () => {
+    const referred = [{ id: 'r1', createdTime: '2026-01-01', fields: { Phone: '111', Name: 'Ref Lead', Status: 'Referred',
+        Commission_Status: 'ממתין לגבייה', Commission_Amount: 500 } }];
+    const open = async (user: { id: string; email: string; displayName: string; role: 'admin' | 'partner' }) => {
+        render(<LeadsDashboard leads={referred as never} onSelectLead={jest.fn()} currentUser={user} onRefresh={jest.fn()} />);
+        fireEvent.click((await screen.findAllByTitle('סמן כנגבה וצור פעולה כספית'))[0]);
+    };
+
+    it('partner collects only for themselves (no picker)', async () => {
+        await open({ id: '2', email: 'k@x.com', displayName: 'קובי', role: 'partner' });
+        expect(screen.getByTestId('collect-owner-readonly')).toHaveTextContent('קובי');
+        fireEvent.click(screen.getByText('אישור וסיום'));
+        await waitFor(() => expect(m.createFinanceEntry).toHaveBeenCalledWith(expect.objectContaining({ Owner: 'קובי', Lead_ID: 'r1' })));
+    });
+
+    it("admin account 'מנהל' must pick a partner", async () => {
+        await open({ id: '1', email: 'a@x.com', displayName: 'מנהל', role: 'admin' });
+        expect(screen.getByText('אישור וסיום')).toBeDisabled();
+        fireEvent.change(screen.getByDisplayValue('בחר שותף'), { target: { value: 'אילן' } });
+        fireEvent.click(screen.getByText('אישור וסיום'));
+        await waitFor(() => expect(m.createFinanceEntry).toHaveBeenCalledWith(expect.objectContaining({ Owner: 'אילן' })));
     });
 });

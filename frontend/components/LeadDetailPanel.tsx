@@ -830,7 +830,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         setFinanceType(type);
         setFinanceAmount('');
         setFinanceDesc('');
-        // A partner defaults to themselves; the admin account ('מנהל') must pick a partner.
+        // A partner records only for themselves; the admin account ('מנהל') must pick a partner.
         setFinanceOwner(isOwnerName(currentUserName) ? currentUserName : '');
         setFinanceEditId(null);
         setFinancePaymentMethod('חשבון');
@@ -2451,9 +2451,9 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 </div>
                                 <div className="pt-1">
                                     <label className="block text-[11px] font-bold text-slate-500 mb-1.5">שיוך לשותף (לאיזה יומן?)</label>
-                                    {financeEditId && !isAdminUser ? (
+                                    {!isAdminUser ? (
                                         <p className="text-xs text-slate-600" data-testid="finance-owner-readonly">
-                                            {financeOwner || '—'} <span className="text-[10px] text-slate-400">· רק מנהל יכול להעביר תנועה בין שותפים</span>
+                                            {financeOwner || '—'} <span className="text-[10px] text-slate-400">· רק מנהל יכול לשייך לשותף אחר</span>
                                         </p>
                                     ) : (
                                     <div className="flex gap-2">
