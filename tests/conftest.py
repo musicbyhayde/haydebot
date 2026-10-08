@@ -165,8 +165,16 @@ class MockSupabaseService:
         rows = [e for e in self._stores["finance"] if e.get("Lead_ID") == lead_id]
         return self._to_airtable_list(sorted(rows, key=lambda e: e.get("Date") or "", reverse=True))
 
-    def update_finance_entry(self, entry_id, data):
+    def get_finance_entry(self, entry_id):
+        for rec in self._stores["finance"]:
+            if rec["id"] == entry_id:
+                return self._to_airtable_format(dict(rec))
+        return None
+
+    def update_finance_entry(self, entry_id, data, clear=()):
         update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        for col in clear:
+            update_data[col] = None
         for rec in self._stores["finance"]:
             if rec["id"] == entry_id:
                 rec.update(update_data)

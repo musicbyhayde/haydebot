@@ -6,7 +6,7 @@ from app.services.logic import bot_logic
 from app.services import activity_text
 from app.services.lead_source import LEAD_SOURCES, MANUAL_DETAIL, MANUAL_CREATE_DETAIL
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 import uuid
 import os
 import json
@@ -963,11 +963,60 @@ async def create_finance_entry(request: Request):
     ))
     return result
 
+# Values of these fields are written to the audit log on edit (others: only the field name).
+FINANCE_AUDIT_FIELDS = ("Owner", "Lead_ID", "Amount", "Type", "Date", "Payment_Method", "Payment_Status")
+
+
+def _same_value(a, b) -> bool:
+    if isinstance(a, (int, float)) or isinstance(b, (int, float)):
+        try:
+            return float(a) == float(b)
+        except (TypeError, ValueError):
+            return False
+    return (a or None) == (b or None)
+
+
 @protected_router.patch("/finance/{entry_id}")
 async def update_finance_entry(entry_id: str, request: Request):
-    body = await request.json()
-    data = FinanceEntryUpdate(**{k: v for k, v in body.items() if v is not None})
-    return airtable_service.update_finance_entry(entry_id, data)
+    """Edit a finance entry. Owner must be one of the partners (activity_text.PARTNERS);
+    Lead_ID "" or null unlinks the entry from its lead. Changes are audited (before/after)."""
+    body = await _transfer_body(request)
+    current = airtable_service.get_finance_entry(entry_id)
+    if not current:
+        raise HTTPException(status_code=404, detail="התנועה לא נמצאה")
+    cur = current.get("fields") or {}
+    fields = {k: v for k, v in body.items() if v is not None and k not in ("Owner", "Lead_ID")}
+    clear: tuple = ()
+    if "Owner" in body:
+        owner = str(body.get("Owner") or "").strip()
+        if owner not in activity_text.PARTNERS:
+            raise HTTPException(status_code=400, detail="שותף לא מוכר")
+        fields["Owner"] = owner
+    if "Lead_ID" in body:
+        lead_id = str(body.get("Lead_ID") or "").strip()
+        if lead_id:
+            if lead_id != cur.get("Lead_ID") and not airtable_service.leads_table.get(lead_id):
+                raise HTTPException(status_code=400, detail="הליד לא נמצא")
+            fields["Lead_ID"] = lead_id
+        elif cur.get("Lead_ID"):
+            clear = ("Lead_ID",)
+    try:
+        data = FinanceEntryUpdate(**fields)
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=f"ערך לא תקין: {e.errors()[0].get('loc', [''])[-1]}")
+    new = data.model_dump(exclude_none=True, by_alias=True, mode="json")
+    new.update({c: None for c in clear})
+    changed = [k for k, v in new.items() if not _same_value(cur.get(k), v)]
+    if not changed:
+        return current
+    updated = airtable_service.update_finance_entry(entry_id, data, clear=clear)
+    audit_log.record(
+        "finance_entry_updated", email=getattr(request.state, "auth_user", None),
+        role=getattr(request.state, "auth_role", None), method=request.method, path=request.url.path,
+        detail={"entry_id": entry_id, "fields": sorted(changed),
+                "before": {k: cur.get(k) for k in FINANCE_AUDIT_FIELDS if k in changed},
+                "after": {k: new.get(k) for k in FINANCE_AUDIT_FIELDS if k in changed}})
+    return updated
 
 @protected_router.delete("/finance/{entry_id}")
 async def delete_finance_entry(entry_id: str):

@@ -223,6 +223,9 @@ class FinanceEntryUpdate(BaseSchema):
     amount: Optional[float] = Field(None, alias="Amount")
     payment_status: Optional[str] = Field(None, alias="Payment_Status")
     payment_method: Optional[str] = Field(None, alias="Payment_Method")
+    # PATCH /finance/{id} validates these two (Owner must be a partner; Lead_ID "" / null unlinks).
+    owner: Optional[str] = Field(None, alias="Owner")
+    lead_id: Optional[str] = Field(None, alias="Lead_ID")
 
 class TaskCreate(BaseSchema):
     title: str = Field(..., alias="Title")

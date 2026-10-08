@@ -390,10 +390,18 @@ class SupabaseService:
                     .order("Date", desc=True).order("id"))
         return self._to_airtable_list(self._select_all(build))
 
-    def update_finance_entry(self, entry_id: str, data: FinanceEntryUpdate) -> dict:
-        """Update a finance entry."""
+    def get_finance_entry(self, entry_id: str) -> Optional[dict]:
+        """One finance entry (Airtable format) or None."""
+        if not self.client or not entry_id: return None
+        res = self.client.table("finance").select("*").eq("id", entry_id).limit(1).execute()
+        return self._to_airtable_format(res.data[0]) if res.data else None
+
+    def update_finance_entry(self, entry_id: str, data: FinanceEntryUpdate, clear: tuple = ()) -> dict:
+        """Update a finance entry. `clear`: columns to set to NULL (e.g. ("Lead_ID",) to unlink)."""
         if not self.client: return {}
         update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        for col in clear:
+            update_data[col] = None
         response = self.client.table("finance").update(update_data).eq("id", entry_id).execute()
         return self._to_airtable_format(response.data[0]) if response.data else {}
 

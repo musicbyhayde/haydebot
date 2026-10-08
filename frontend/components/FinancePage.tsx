@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Edit, Check, X, TrendingUp, TrendingDown, Menu, AlertCircle, Link, Search, ArrowUp, ArrowDown, ArrowLeftRight, Archive, ArchiveRestore } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { FinanceEntry, Lead, FinanceSummaryItem, FinanceTransfer } from '@/types';
 import { transfersFor } from '@/lib/financeTransfers';
 import PartnerTransferModal from '@/components/PartnerTransferModal';
@@ -193,7 +193,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                     Payment_Status: form.Payment_Status,
                     Payment_Method: form.Payment_Method,
                     Date: form.Date,
-                    Lead_ID: form.Lead_ID || undefined,
+                    Lead_ID: form.Lead_ID, // '' unlinks the entry from its lead
                 });
             } else {
                 await api.createFinanceEntry({
@@ -214,7 +214,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
             fetchData();
         } catch (e) {
             console.error(e);
-            error('שגיאה בשמירת התנועה');
+            error(e instanceof ApiError && e.detail ? e.detail : 'שגיאה בשמירת התנועה');
         }
     };
 
@@ -392,8 +392,8 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                 <div className="w-12 shrink-0 flex items-center justify-end gap-2 text-slate-400 pl-2">
                     {editable && (
                         <>
-                            <button onClick={() => handleEditFinance(e)} className="hover:text-blue-500"><Edit size={12} /></button>
-                            <button onClick={() => handleDeleteFinance(e.id)} className="hover:text-red-500"><Trash2 size={12} /></button>
+                            <button onClick={() => handleEditFinance(e)} className="hover:text-blue-500" aria-label="ערוך תנועה"><Edit size={12} /></button>
+                            <button onClick={() => handleDeleteFinance(e.id)} className="hover:text-red-500" aria-label="מחק תנועה"><Trash2 size={12} /></button>
                         </>
                     )}
                 </div>
@@ -706,6 +706,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                                 {form.Lead_ID && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleLeadSelect(''); setLeadSearch(''); }}
+                                        aria-label="הסר קישור לליד"
                                         className="text-slate-300 hover:text-red-500 mr-1"
                                     >
                                         <X size={14} />

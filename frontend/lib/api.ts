@@ -292,7 +292,7 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error('Failed to update finance entry');
+        if (!res.ok) await throwWithDetail(res, 'Failed to update finance entry');
         return res.json();
     },
 
