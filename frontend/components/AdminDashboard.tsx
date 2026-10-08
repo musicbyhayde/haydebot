@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Lead, Task, Activity } from '@/types';
+import { Lead, Task, Activity, FinanceEntry } from '@/types';
+import { monthTotals } from '@/lib/financeMonth';
 import { AppUser } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { useReadOnly } from '@/lib/readOnly';
@@ -36,7 +37,7 @@ export default function AdminDashboard({
 }: AdminDashboardProps) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [activities, setActivities] = useState<Activity[]>([]);
-    const [financeSummary, setFinanceSummary] = useState<Record<string, { income: number; expenses: number; balance: number }> | null>(null);
+    const [financeEntries, setFinanceEntries] = useState<FinanceEntry[] | null>(null);
     const [loading, setLoading] = useState(true);
     const readOnly = useReadOnly();  // viewer: no finance summary, no task completion
 
@@ -44,11 +45,12 @@ export default function AdminDashboard({
         Promise.all([
             api.getTasks().catch(() => []),
             api.getActivities().catch(() => []),
-            readOnly ? Promise.resolve(null) : api.getFinanceSummary().catch(() => null),
+            // Monthly totals are computed from the entries (viewers never load finance data).
+            readOnly ? Promise.resolve(null) : api.getFinanceEntries().catch(() => null),
         ]).then(([t, a, f]) => {
             setTasks(t);
             setActivities(a);
-            setFinanceSummary(f);
+            setFinanceEntries(f);
         }).finally(() => setLoading(false));
     }, [readOnly]);
 
@@ -113,7 +115,10 @@ export default function AdminDashboard({
 
     // ─── Finance this month ─────────────────────────
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const monthFinance = financeSummary?.[currentMonth];
+    const monthFinance = useMemo(() => {
+        const t = financeEntries ? monthTotals(financeEntries, currentMonth) : null;
+        return t && t.count > 0 ? t : null;
+    }, [financeEntries, currentMonth]);
 
     const pendingCommissions = useMemo(() =>
         leads.filter(l => l.fields.Status === 'Referred' && (l.fields.Commission_Status === 'ממתין לגבייה')),
@@ -433,8 +438,8 @@ export default function AdminDashboard({
                                             <p className="text-[10px] font-medium text-red-400 mt-0.5">הוצאות</p>
                                         </div>
                                         <div className="text-center p-3 rounded-xl bg-slate-50 border border-slate-200">
-                                            <p className={clsx("text-lg font-extrabold", monthFinance.balance >= 0 ? "text-slate-800" : "text-red-600")}>{formatCurrency(monthFinance.balance)}</p>
-                                            <p className="text-[10px] font-medium text-slate-400 mt-0.5">יתרה</p>
+                                            <p className={clsx("text-lg font-extrabold", monthFinance.net >= 0 ? "text-slate-800" : "text-red-600")}>{formatCurrency(monthFinance.net)}</p>
+                                            <p className="text-[10px] font-medium text-slate-400 mt-0.5">רווח</p>
                                         </div>
                                     </div>
                                     {pendingCommissions.length > 0 && (
