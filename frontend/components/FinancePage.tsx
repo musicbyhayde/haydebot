@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { api, ApiError } from '@/lib/api';
 import { FinanceEntry, Lead, FinanceSummaryItem, FinanceTransfer } from '@/types';
 import { transfersFor } from '@/lib/financeTransfers';
+import { isOwnerName } from '@/lib/ownership';
 import PartnerTransferModal from '@/components/PartnerTransferModal';
 import { AppUser } from '@/lib/auth';
 import clsx from 'clsx';
@@ -22,6 +23,7 @@ interface FormErrors {
     Description?: string;
     Amount?: string;
     Date?: string;
+    Owner?: string;
 }
 
 interface FinanceForm {
@@ -124,6 +126,8 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
         if (!data.Description.trim()) errs.Description = 'חובה להזין פירוט / שם אירוע';
         if (!data.Amount || isNaN(parseFloat(data.Amount)) || parseFloat(data.Amount) <= 0) errs.Amount = 'חובה להזין סכום חיובי';
         if (!data.Date) errs.Date = 'חובה לבחור תאריך';
+        // Admin (incl. the 'מנהל' account) must pick a partner; partners always save as themselves.
+        if (!getAddOwner() && !isOwnerName(data.Owner)) errs.Owner = 'יש לבחור שותף';
         return errs;
     };
 
@@ -184,7 +188,8 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
             const saveOwner = getAddOwner() || form.Owner;
             if (editingId) {
                 await api.updateFinanceEntry(editingId, {
-                    Owner: saveOwner,
+                    // Moving an entry between partners is admin-only: partners never send Owner.
+                    ...(currentUser?.role === 'admin' ? { Owner: form.Owner } : {}),
                     Type: form.Type,
                     Description: form.Description,
                     Event_Name: form.Type === 'income' ? form.Description : undefined,
@@ -784,6 +789,7 @@ export default function FinancePage({ currentUser, onMenuClick }: FinancePagePro
                                     <button onClick={() => setForm({...form, Owner: 'אילן'})} className={`flex-1 py-1.5 text-xs font-bold rounded-lg ${form.Owner === 'אילן' ? 'bg-blue-100 text-blue-700 border-2 border-blue-400' : 'bg-slate-50 border border-slate-200'}`}>אילן</button>
                                     <button onClick={() => setForm({...form, Owner: 'קובי'})} className={`flex-1 py-1.5 text-xs font-bold rounded-lg ${form.Owner === 'קובי' ? 'bg-purple-100 text-purple-700 border-2 border-purple-400' : 'bg-slate-50 border border-slate-200'}`}>קובי</button>
                                 </div>
+                                <FieldError error={errors.Owner} />
                             </div>
                         )}
                         

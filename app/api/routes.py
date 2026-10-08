@@ -13,7 +13,7 @@ import json
 
 settings = get_settings()
 
-from app.core.auth import require_auth, require_admin
+from app.core.auth import require_auth, require_admin, is_admin_request
 from app.core import audit_log
 from app.services import finance_transfers
 from app.core.permissions import is_viewer
@@ -940,15 +940,24 @@ async def get_finance_entries(owner: Optional[str] = Query(None)):
 
 @protected_router.post("/finance")
 async def create_finance_entry(request: Request):
-    body = await request.json()
+    """Create a finance entry. Owner must be one of the partners (activity_text.PARTNERS);
+    the admin account ('מנהל') has to pick a partner."""
+    body = await _transfer_body(request)
+    owner = str(body.get("Owner") or "").strip()
+    if owner not in activity_text.PARTNERS:
+        raise HTTPException(status_code=400, detail="יש לבחור שותף")
+    try:
+        amount = float(body.get("Amount", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="סכום לא תקין")
     entry = FinanceEntryCreate(
-        owner=body.get("Owner", ""),
+        owner=owner,
         entry_type=body.get("Type", "income"),
         date=body.get("Date", datetime.now().strftime("%Y-%m-%d")),
         description=body.get("Description", ""),
         event_name=body.get("Event_Name"),
         musician=body.get("Musician"),
-        amount=float(body.get("Amount", 0)),
+        amount=amount,
         payment_status=body.get("Payment_Status", "לא שולם"),
         payment_method=body.get("Payment_Method", "חשבון"),
         lead_id=body.get("Lead_ID"),
@@ -991,6 +1000,9 @@ async def update_finance_entry(entry_id: str, request: Request):
         owner = str(body.get("Owner") or "").strip()
         if owner not in activity_text.PARTNERS:
             raise HTTPException(status_code=400, detail="שותף לא מוכר")
+        # Moving an entry to the other partner's pool: admin only (Ilan 2026-10-08).
+        if owner != (cur.get("Owner") or "") and not is_admin_request(request):
+            raise HTTPException(status_code=403, detail="רק מנהל יכול להעביר תנועה בין שותפים")
         fields["Owner"] = owner
     if "Lead_ID" in body:
         lead_id = str(body.get("Lead_ID") or "").strip()

@@ -22,6 +22,8 @@ interface LeadDetailPanelProps {
     lead: Lead;
     currentUserName: string;
     isAdmin?: boolean;
+    /** Real admin role (isAdmin is also true for partners). Moving finance entries between partners is admin-only. */
+    isAdminUser?: boolean;
     onClose: () => void;
     onStatusChange: (leadId: string, status: string) => void;
 }
@@ -51,7 +53,7 @@ const MANUAL_STATUSES = [
     { value: 'Completed', label: 'הושלם', color: 'bg-slate-200 text-slate-700' },
 ];
 
-export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false, onClose, onStatusChange }: LeadDetailPanelProps) {
+export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false, isAdminUser = false, onClose, onStatusChange }: LeadDetailPanelProps) {
     const { error, success, confirm: confirmToast } = useToast();
     const readOnly = useReadOnly();  // viewer: everything visible, nothing writable
     const [tab, setTab] = useState<'updates' | 'tasks' | 'team' | 'info' | 'finance'>('updates');
@@ -665,7 +667,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         try {
             if (financeEditId) {
                 await api.updateFinanceEntry(financeEditId, {
-                    Owner: financeOwner,
+                    // Moving an entry between partners is admin-only: others never send Owner.
+                    ...(isAdminUser ? { Owner: financeOwner } : {}),
                     Type: financeType,
                     Description: financeDesc,
                     Amount: parseFloat(financeAmount),
@@ -827,7 +830,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         setFinanceType(type);
         setFinanceAmount('');
         setFinanceDesc('');
-        setFinanceOwner(currentUserName);
+        // A partner defaults to themselves; the admin account ('מנהל') must pick a partner.
+        setFinanceOwner(isOwnerName(currentUserName) ? currentUserName : '');
         setFinanceEditId(null);
         setFinancePaymentMethod('חשבון');
         setFinanceModalOpen(true);
@@ -837,7 +841,7 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
         setFinanceType(entry.fields.Type);
         setFinanceAmount(entry.fields.Amount.toString());
         setFinanceDesc(entry.fields.Description);
-        setFinanceOwner(entry.fields.Owner || currentUserName);
+        setFinanceOwner(entry.fields.Owner || '');
         setFinancePaymentMethod(entry.fields.Payment_Method || 'חשבון');
         setFinanceEditId(entry.id);
         setFinanceModalOpen(true);
@@ -1900,8 +1904,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                                 </div>
                                                 {!readOnly && (
                                                 <div className="w-12 flex items-center justify-end gap-2 text-slate-400">
-                                                    <button onClick={() => handleEditFinance(entry)} className="hover:text-blue-500"><Pencil size={12} /></button>
-                                                    <button onClick={() => handleDeleteFinance(entry.id)} className="hover:text-red-500"><Trash2 size={12} /></button>
+                                                    <button onClick={() => handleEditFinance(entry)} className="hover:text-blue-500" aria-label="ערוך תנועה"><Pencil size={12} /></button>
+                                                    <button onClick={() => handleDeleteFinance(entry.id)} className="hover:text-red-500" aria-label="מחק תנועה"><Trash2 size={12} /></button>
                                                 </div>
                                                 )}
                                             </div>
@@ -2447,6 +2451,11 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                 </div>
                                 <div className="pt-1">
                                     <label className="block text-[11px] font-bold text-slate-500 mb-1.5">שיוך לשותף (לאיזה יומן?)</label>
+                                    {financeEditId && !isAdminUser ? (
+                                        <p className="text-xs text-slate-600" data-testid="finance-owner-readonly">
+                                            {financeOwner || '—'} <span className="text-[10px] text-slate-400">· רק מנהל יכול להעביר תנועה בין שותפים</span>
+                                        </p>
+                                    ) : (
                                     <div className="flex gap-2">
                                         <button
                                             type="button"
@@ -2471,6 +2480,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                                             קובי
                                         </button>
                                     </div>
+                                    )}
+                                    {!financeOwner && <p className="text-[10px] text-red-500 mt-1">יש לבחור שותף</p>}
                                 </div>
                             </div>
                             <div className="p-3.5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">

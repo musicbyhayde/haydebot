@@ -371,6 +371,7 @@ export default function Home() {
           lead={detailLead}
           currentUserName={currentUser?.displayName || ''}
           isAdmin={currentUser?.role === 'admin' || currentUser?.role === 'partner'}
+          isAdminUser={currentUser?.role === 'admin'}
           onClose={() => setDetailLeadId(null)}
           onStatusChange={() => { 
             fetchData(); 

@@ -15,7 +15,8 @@ import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
 import { Note } from '@/types';
 import PendingFollowUpsModal from './PendingFollowUpsModal';
-import { LEAD_SOURCE_OPTIONS, LEAD_SOURCE_NONE, leadSourceLabel } from '@/lib/constants';
+import { LEAD_SOURCE_OPTIONS, LEAD_SOURCE_NONE, leadSourceLabel, OWNERS } from '@/lib/constants';
+import { isOwnerName } from '@/lib/ownership';
 
 interface LeadsDashboardProps {
     leads: Lead[];
@@ -122,7 +123,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
     const [commissionModalOpen, setCommissionModalOpen] = useState(false);
     const [collectLead, setCollectLead] = useState<Lead | null>(null);
-    const [collectOwner, setCollectOwner] = useState<string>(currentUser?.displayName || 'אילן');
+    // Finance entries belong to a partner; the admin account ('מנהל') must pick one.
+    const [collectOwner, setCollectOwner] = useState<string>(isOwnerName(currentUser?.displayName) ? (currentUser?.displayName ?? '') : '');
     const [collectAmount, setCollectAmount] = useState('');
     const [transferModalLead, setTransferModalLead] = useState<Lead | null>(null);
     
@@ -279,6 +281,10 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
 
     const handleCollectCommission = async () => {
         if (!collectLead) return;
+        if (!isOwnerName(collectOwner)) {
+            error('יש לבחור שותף');
+            return;
+        }
         try {
             const vatText = collectLead.fields.Commission_Includes_VAT ? ' (כולל מע"מ)' : ' (+ מע"מ)';
             // Create finance entry
@@ -1328,9 +1334,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                                     onChange={(e) => setCollectOwner(e.target.value)}
                                     className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors"
                                 >
-                                    <option value="אילן">אילן</option>
-                                    <option value="קובי">קובי</option>
-                                    <option value="עסק">עסק (כללי)</option>
+                                    <option value="" disabled>בחר שותף</option>
+                                    {OWNERS.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -1338,7 +1343,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                         <div className="flex items-center gap-3">
                             <button 
                                 onClick={handleCollectCommission}
-                                className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-xl transition-colors"
+                                disabled={!isOwnerName(collectOwner)}
+                                className="flex-1 disabled:opacity-50 bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-xl transition-colors"
                             >
                                 אישור וסיום
                             </button>

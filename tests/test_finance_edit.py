@@ -108,9 +108,44 @@ def test_description_only_change_names_the_field_without_values(client, audit_ro
     assert a["detail"]["fields"] == ["Description"] and a["detail"]["before"] == {} and a["detail"]["after"] == {}
 
 
-def test_partner_can_still_edit(client, mock_service):
+def test_partner_cannot_move_entry_to_other_partner(client, mock_service, audit_rows):
     r = client.patch("/api/v1/finance/f1", json={"Owner": P2, "Payment_Method": "מזומן"}, headers=H(PARTNER))
-    assert r.status_code == 200 and row(mock_service)["Owner"] == P2
+    assert r.status_code == 403 and r.json()["detail"] == "רק מנהל יכול להעביר תנועה בין שותפים"
+    assert row(mock_service)["Owner"] == P1 and row(mock_service)["Payment_Method"] == "חשבון"
+    assert edits(audit_rows) == []
+
+
+def test_partner_edit_with_same_or_no_owner_is_fine(client, mock_service):
+    assert client.patch("/api/v1/finance/f1", json={"Owner": P1, "Amount": 1100}, headers=H(PARTNER)).status_code == 200
+    assert client.patch("/api/v1/finance/f1", json={"Payment_Method": "מזומן"}, headers=H(PARTNER)).status_code == 200
+    assert row(mock_service)["Owner"] == P1 and row(mock_service)["Amount"] == 1100
+    assert row(mock_service)["Payment_Method"] == "מזומן"
+
+
+def test_api_key_can_move_owner(test_client, mock_service):
+    mock_service._stores["finance"].append({"id": "f9", "Owner": P1, "Type": "income", "Amount": 5.0})
+    assert test_client.patch("/api/v1/finance/f9", json={"Owner": P2}).status_code == 200
+    assert mock_service._stores["finance"][-1]["Owner"] == P2
+
+
+NEW = {"Type": "expense", "Date": "2026-10-08", "Description": "ציוד", "Amount": 50}
+
+
+@pytest.mark.parametrize("who", [ADMIN, PARTNER])
+@pytest.mark.parametrize("owner", ["מנהל", "", None, "עסק", "missing"])
+def test_create_requires_a_partner_owner(client, mock_service, who, owner):
+    body = dict(NEW) if owner == "missing" else {**NEW, "Owner": owner}
+    before = len(mock_service._stores["finance"])
+    r = client.post("/api/v1/finance", json=body, headers=H(who))
+    assert r.status_code == 400 and r.json()["detail"] == "יש לבחור שותף"
+    assert len(mock_service._stores["finance"]) == before
+
+
+def test_create_with_partner_owner(client, mock_service):
+    r = client.post("/api/v1/finance", json={**NEW, "Owner": f" {P2} "}, headers=H(ADMIN))
+    assert r.status_code == 200 and r.json()["fields"]["Owner"] == P2
+    assert client.post("/api/v1/finance", json={**NEW, "Owner": P2, "Amount": "x"}, headers=H(ADMIN)).status_code == 400
+    assert client.post("/api/v1/finance", json={**NEW, "Owner": P2}, headers=H(VIEWER)).status_code == 403
 
 
 def test_viewer_blocked(client, mock_service, audit_rows):
