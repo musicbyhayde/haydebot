@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { notFound, useParams, useSearchParams } from 'next/navigation';
 import QuotePreview from '@/components/QuotePreview';
+import { pickPublicQuote } from '@/lib/quoteLinks';
 
 export default function QuotePage() {
     const params = useParams();
@@ -17,7 +18,7 @@ export default function QuotePage() {
 
     useEffect(() => {
         if (!leadId) return;
-        api.getPublicQuote(leadId)
+        api.getPublicQuote(leadId, qid)
             .then(data => {
                 setQuote(data);
                 setLoading(false);
@@ -27,25 +28,13 @@ export default function QuotePage() {
                 setError(true);
                 setLoading(false);
             });
-    }, [leadId]);
+    }, [leadId, qid]);
 
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6] text-[#B8986D] font-serif italic text-lg tracking-widest">טוען...</div>;
     }
 
-    let activeQuoteData = null;
-    if (quote && quote.quote_data) {
-        if (Array.isArray(quote.quote_data.quotes) && quote.quote_data.quotes.length > 0) {
-            if (qid) {
-                activeQuoteData = quote.quote_data.quotes.find((q: any) => q.id === qid);
-            }
-            if (!activeQuoteData) {
-                activeQuoteData = quote.quote_data.quotes[quote.quote_data.quotes.length - 1];
-            }
-        } else if (Object.keys(quote.quote_data).length > 0 && !quote.quote_data.quotes) {
-            activeQuoteData = quote.quote_data;
-        }
-    }
+    const activeQuoteData = pickPublicQuote(quote, qid);
 
     const noQuote = error || !quote || !activeQuoteData;
 
@@ -82,7 +71,7 @@ export default function QuotePage() {
         "במידה והנחיות פיקוד העורף לא יאפשרו את קיום האירוע לא יגבו דמי ביטול.",
         "אישור הצעה זו בהודעה חוזרת."
     ];
-    const amount = quoteData.amount !== undefined ? quoteData.amount : quote.amount;
+    const amount = quoteData.amount !== undefined ? quoteData.amount : (quote.amount ?? 0);
 
     return (
         <div className="min-h-screen bg-[#F5F2EC] font-sans selection:bg-[#EBE6DD] selection:text-slate-900 md:py-10" dir="rtl">
@@ -95,7 +84,7 @@ export default function QuotePage() {
                 notIncludingVat: quoteData.notIncludingVat,
                 service: quoteData.service,
                 date: quoteData.date || quote.date,
-                location: quote.fields?.Location || quoteData.location,
+                location: quoteData.location,
                 addons: quoteData.addons
             }} />
         </div>

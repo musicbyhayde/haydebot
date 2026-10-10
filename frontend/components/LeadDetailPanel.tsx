@@ -10,7 +10,7 @@ import CalendarEventModal from './CalendarEventModal';
 import ProposalModal from './ProposalModal';
 import TransferLeadModal from './TransferLeadModal';
 import { OWNERS, OWNER_COLORS } from '@/lib/constants';
-import { toDisplayPhone, toDbPhone, formatDateForInput, formatInputDateToDisplay } from '@/lib/formatters';
+import { toDisplayPhone, toDbPhone, formatDateForInput, formatInputDateToDisplay, leadEventSortKey } from '@/lib/formatters';
 import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
 import LeadSourceBadge from './LeadSourceBadge';
@@ -384,7 +384,8 @@ export default function LeadDetailPanel({ lead, currentUserName, isAdmin = false
                 const leads = await api.getLeads();
                 const conflicts: Record<string, string> = {};
                 leads.forEach(l => {
-                    if (l.id !== lead.id && l.fields.Event_Date === lead.fields.Event_Date) {
+                    const sameDay = leadEventSortKey(l.fields) !== '' && leadEventSortKey(l.fields) === leadEventSortKey(lead.fields);
+                    if (l.id !== lead.id && (sameDay || l.fields.Event_Date === lead.fields.Event_Date)) {
                         l.fields.Musician_Team?.forEach(mId => {
                             conflicts[mId] = l.fields.Name || 'אירוע אחר';
                         });

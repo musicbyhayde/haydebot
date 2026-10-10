@@ -10,7 +10,7 @@ import LeadDetailPanel from './LeadDetailPanel';
 import { api } from '@/lib/api';
 import { useReadOnly } from '@/lib/readOnly';
 import clsx from 'clsx';
-import { toDisplayPhone, normalizeEventDate, parseDateToSortable, toDbPhone } from '@/lib/formatters';
+import { toDisplayPhone, normalizeEventDate, toDbPhone, leadEventSortKey } from '@/lib/formatters';
 import TaskActionModal from './TaskActionModal';
 import { useToast } from '@/components/ui';
 import { Note } from '@/types';
@@ -63,8 +63,8 @@ const applyLocalSort = (items: Lead[], sort?: { column: string; order: 'asc' | '
         const { column, order } = sort;
         let cmp = 0;
         if (column === 'date') {
-            const dateA = parseDateToSortable(a.fields.Event_Date) || '';
-            const dateB = parseDateToSortable(b.fields.Event_Date) || '';
+            const dateA = leadEventSortKey(a.fields) || '';
+            const dateB = leadEventSortKey(b.fields) || '';
             if (!dateA && !dateB) return 0;
             if (!dateA) return 1;
             if (!dateB) return -1;
@@ -358,7 +358,7 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 if (!loc.includes(q)) return false;
             }
             if (filterDateFrom || filterDateTo) {
-                const leadDate = parseDateToSortable(l.fields.Event_Date);
+                const leadDate = leadEventSortKey(l.fields);
                 if (filterDateFrom && leadDate < filterDateFrom) return false;
                 if (filterDateTo && leadDate && leadDate > filterDateTo) return false;
                 if ((filterDateFrom || filterDateTo) && !leadDate) return false;
@@ -390,8 +390,8 @@ export default function LeadsDashboard({ leads, onSelectLead, onMenuClick, curre
                 return globalSort.order === 'asc' ? tA - tB : tB - tA;
             }
             if (globalSort.field === 'event_date') {
-                const dateA = parseDateToSortable(a.fields.Event_Date) || '';
-                const dateB = parseDateToSortable(b.fields.Event_Date) || '';
+                const dateA = leadEventSortKey(a.fields) || '';
+                const dateB = leadEventSortKey(b.fields) || '';
                 if (!dateA && !dateB) return 0;
                 if (!dateA) return 1;
                 if (!dateB) return -1;

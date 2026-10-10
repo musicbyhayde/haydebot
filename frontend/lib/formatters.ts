@@ -132,3 +132,13 @@ export function parseDateToSortable(dateStr: string | undefined | null): string 
     
     return '';
 }
+
+/**
+ * Sortable YYYY-MM-DD for a lead's event: the backend-parsed Event_Day when present
+ * (leads.Event_Day, written next to the free-text Event_Date), else parsed client-side.
+ */
+export function leadEventSortKey(fields: { Event_Day?: string | null; Event_Date?: string | null } | undefined | null): string {
+    if (!fields) return '';
+    if (fields.Event_Day && /^\d{4}-\d{2}-\d{2}/.test(fields.Event_Day)) return fields.Event_Day.slice(0, 10);
+    return parseDateToSortable(fields.Event_Date);
+}

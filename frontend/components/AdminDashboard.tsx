@@ -6,7 +6,7 @@ import { monthTotals } from '@/lib/financeMonth';
 import { AppUser } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { useReadOnly } from '@/lib/readOnly';
-import { normalizeEventDate, parseDateToSortable } from '@/lib/formatters';
+import { normalizeEventDate, leadEventSortKey } from '@/lib/formatters';
 import {
     LayoutDashboard, Users, CalendarDays, ListTodo, AlertCircle,
     MessageSquare, Clock, ChevronLeft, TrendingUp, DollarSign,
@@ -70,7 +70,7 @@ export default function AdminDashboard({
     const upcomingEvents30d = useMemo(() => {
         const in30 = new Date(now.getTime() + 30 * 86400000);
         return leads.filter(l => {
-            const d = parseDateToSortable(l.fields.Event_Date);
+            const d = leadEventSortKey(l.fields);
             return d && d >= todayStr && d <= in30.toISOString().split('T')[0];
         });
     }, [leads]);
@@ -91,11 +91,11 @@ export default function AdminDashboard({
         const in7 = new Date(now.getTime() + 7 * 86400000);
         const in7Str = in7.toISOString().split('T')[0];
         return leads.filter(l => {
-            const d = parseDateToSortable(l.fields.Event_Date);
+            const d = leadEventSortKey(l.fields);
             return d && d >= todayStr && d <= in7Str;
         }).sort((a, b) => {
-            const da = parseDateToSortable(a.fields.Event_Date) || '';
-            const db = parseDateToSortable(b.fields.Event_Date) || '';
+            const da = leadEventSortKey(a.fields) || '';
+            const db = leadEventSortKey(b.fields) || '';
             return da.localeCompare(db);
         });
     }, [leads]);

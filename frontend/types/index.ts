@@ -8,6 +8,7 @@ export interface Lead {
         Conversation_State?: string;
         Service?: string;
         Event_Date?: string;
+        Event_Day?: string | null; // parsed YYYY-MM-DD (backend), may be absent on old rows
         Location?: string;
         Guests?: string;
         Last_Summary?: string;
@@ -142,6 +143,7 @@ export interface Task {
         Title: string;
         Assignee?: string;
         Due_Date?: string;
+        Due_Day?: string | null;
         Is_Completed: boolean;
         Lead_ID?: string;
         Created_At?: string;

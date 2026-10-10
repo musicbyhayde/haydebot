@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # Webhook authenticity (fix #4). Log-only until the *_ENFORCE flags are set.
     META_APP_SECRET: Optional[str] = None   # Meta App Dashboard > App settings > Basic > App secret
     WEBHOOK_SIGNATURE_ENFORCE: bool = False
+    # Public quote links: true -> old /quote/<lead id>?qid= links still resolve (transition).
+    # New links use a random per-quote token. Plan: set false ~30 days after deploy.
+    QUOTE_LEGACY_ID_LINKS: bool = True
     CALENDAR_WEBHOOK_TOKEN: Optional[str] = None  # optional; derived from WHATSAPP_VERIFY_TOKEN if unset
     CALENDAR_WEBHOOK_ENFORCE: bool = False
     CALENDAR_SYNC_MIN_INTERVAL: float = 60.0

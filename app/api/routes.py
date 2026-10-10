@@ -12,10 +12,13 @@ import os
 import json
 
 settings = get_settings()
+import logging
+logger = logging.getLogger(__name__)
 
 from app.core.auth import require_auth, require_admin, is_admin_request
 from app.core import audit_log
 from app.services import finance_transfers
+from app.services import quote_links
 from app.core.permissions import is_viewer
 
 public_router = APIRouter()
@@ -117,22 +120,25 @@ async def _debounced_calendar_sync():
 from app.services.supabase_service import airtable_service
 from app.models.schemas import ActivityCreate
 
-@public_router.get("/quote/{lead_id}")
-async def get_quote_data(lead_id: str):
-    """Public endpoint to fetch a lead's public quote template."""
-    lead = airtable_service.leads_table.get(lead_id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Quote not found")
-        
-    return {
-        "id": lead["id"],
-        "name": lead["fields"].get("Name", ""),
-        "service": lead["fields"].get("Service", ""),
-        "date": lead["fields"].get("Event_Date", ""),
-        "location": lead["fields"].get("Location", ""),
-        "amount": lead["fields"].get("Closing_Amount", 0),
-        "quote_data": lead["fields"].get("Quote_Data", {})
-    }
+@public_router.get("/quote/{key}")
+async def get_quote_data(key: str, qid: Optional[str] = None):
+    """Public quote page data. `key` is the quote's random token; while
+    QUOTE_LEGACY_ID_LINKS is on, an old lead-id link (+ optional qid) also resolves.
+    404 when nothing matches or the lead has no quote. Minimal fields only."""
+    not_found = HTTPException(status_code=404, detail="Quote not found")
+    if quote_links.is_token(key):
+        lead = airtable_service.find_lead_by_quote_token(key)
+        quote = quote_links.pick_by_token((lead or {}).get("fields", {}).get("Quote_Data"), key) if lead else None
+    elif get_settings().QUOTE_LEGACY_ID_LINKS and quote_links.LEAD_ID_RE.match(key):
+        lead = airtable_service.leads_table.get(key)
+        quote = quote_links.pick_legacy((lead or {}).get("fields", {}).get("Quote_Data"), qid) if lead else None
+        if quote:
+            logger.info("QUOTE: legacy id link served")
+    else:
+        raise not_found
+    if not quote:
+        raise not_found
+    return quote_links.public_payload(lead["fields"], quote)
 
 
 @protected_router.get("/me")

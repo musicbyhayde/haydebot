@@ -48,8 +48,22 @@ class MockSupabaseService:
     def get_all_leads(self):
         return self._to_airtable_list(self._stores["leads"])
 
+    @staticmethod
+    def _derive_lead(data):
+        # mirrors SupabaseService._add_days for leads (quote tokens + Event_Day)
+        from app.core import dates
+        from app.services import quote_links
+        if isinstance(data.get("Quote_Data"), dict):
+            data = {**data, "Quote_Data": quote_links.ensure_tokens(data["Quote_Data"])}
+        return dates.with_parsed_days(data, dates.LEAD_DAY_FIELDS)
+
+    def find_lead_by_quote_token(self, token):
+        from app.services import quote_links
+        hits = [r for r in self._stores["leads"] if quote_links.pick_by_token(r.get("Quote_Data"), token)]
+        return self._to_airtable_format(hits[0]) if len(hits) == 1 else None
+
     def create_lead(self, lead):
-        data = lead.model_dump(exclude_none=True, by_alias=True, mode='json')
+        data = self._derive_lead(lead.model_dump(exclude_none=True, by_alias=True, mode='json'))
         data["id"] = self._gen_id()
         self._stores["leads"].append(data)
         return self._to_airtable_format(data)
@@ -57,6 +71,7 @@ class MockSupabaseService:
     def update_lead(self, record_id, data):
         # like SupabaseService.update_lead: LeadUpdate or a raw dict of DB columns
         update_data = dict(data) if isinstance(data, dict) else data.model_dump(exclude_none=True, by_alias=True, mode='json')
+        update_data = self._derive_lead(update_data)
         for rec in self._stores["leads"]:
             if rec["id"] == record_id:
                 rec.update(update_data)

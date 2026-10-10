@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { quoteUrl, withQuoteTokens } from '@/lib/quoteLinks';
 import { X, Send, Link, Plus, Trash2, CheckCircle2, Edit, Copy, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useReadOnly } from '@/lib/readOnly';
@@ -7,6 +8,7 @@ import QuotePreview from '@/components/QuotePreview';
 
 interface QuoteItem {
     id: string;
+    token?: string;
     createdAt: string;
     title: string;
     description: string;
@@ -85,6 +87,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
 
     const saveQuotesToDb = async (newQuotes: QuoteItem[]) => {
         setSaving(true);
+        newQuotes = withQuoteTokens(newQuotes);
         const quoteData = { quotes: newQuotes };
         try {
             await api.updateLead(leadId, { Quote_Data: quoteData });
@@ -104,7 +107,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
         
         if (mode === 'copy_last' && quotes.length > 0) {
             const lastQuote = quotes[quotes.length - 1];
-            baseQuote = { ...lastQuote };
+            baseQuote = { ...lastQuote, token: undefined };
         } else {
             baseQuote = {
                 title: `הצעת מחיר לאירוע של ${initialData.name}`,
@@ -172,7 +175,8 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
     };
 
     const copyLink = (id: string) => {
-        const url = `${window.location.origin}/quote/${leadId}?qid=${id}`;
+        const q = quotes.find(x => x.id === id);
+        const url = quoteUrl(window.location.origin, leadId, q || { id });
         navigator.clipboard.writeText(url);
         info('הקישור להצעה זו הועתק!');
     };
@@ -225,7 +229,7 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                                                     <td className="px-6 py-6 text-slate-500 text-[14px] text-right align-middle">{q.date || '-'}</td>
                                                     <td className="px-6 py-6 text-center align-middle">
                                                         <a 
-                                                            href={`${window.location.origin}/quote/${leadId}?qid=${q.id}`} 
+                                                            href={quoteUrl(window.location.origin, leadId, q)} 
                                                             target="_blank" 
                                                             rel="noopener noreferrer"
                                                             className="font-bold text-slate-700 text-[15px] leading-relaxed max-w-[280px] mx-auto hover:text-indigo-600 transition-colors block"
@@ -506,9 +510,9 @@ export default function ProposalModal({ isOpen, onClose, leadId, initialData, on
                     <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
                         <p className="text-[11px] font-bold text-blue-700 mb-2">כתובת הלינק הקבוע (מתעדכן אוטומטית גם אחרי שמירה)</p>
                         <div className="flex gap-2">
-                            <input readOnly value={`${window.location.origin}/quote/${leadId}?qid=${q.id}`} className="flex-1 text-xs bg-white border border-blue-200 rounded-lg px-3 text-slate-500 focus:outline-none" dir="ltr" />
+                            <input readOnly value={quoteUrl(window.location.origin, leadId, q)} className="flex-1 text-xs bg-white border border-blue-200 rounded-lg px-3 text-slate-500 focus:outline-none" dir="ltr" />
                             <button onClick={() => copyLink(q.id)} className="bg-white border border-blue-200 text-blue-700 px-4 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors">העתק</button>
-                            <button onClick={() => window.open(`${window.location.origin}/quote/${leadId}?qid=${q.id}`, '_blank')} className="bg-blue-600 text-white px-4 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors">פתח בחלון חדש</button>
+                            <button onClick={() => window.open(quoteUrl(window.location.origin, leadId, q), '_blank')} className="bg-blue-600 text-white px-4 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors">פתח בחלון חדש</button>
                         </div>
                     </div>
                 </div>

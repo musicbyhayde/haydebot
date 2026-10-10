@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 
 from app.bot.auth import BotContext
 from app.bot.errors import BotError
+from app.core.dates import parse_event_date  # noqa: F401  (re-exported)
 from app.services.lead_source import LEAD_SOURCE_HE, LEAD_SOURCES
 from app.services.supabase_service import supabase_service as db
 
@@ -63,26 +64,6 @@ def mask_phone(phone: Optional[str]) -> Optional[str]:
     return "***" + digits[-4:] if len(digits) >= 4 else "***"
 
 
-_DMY = re.compile(r"(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})")
-_YMD = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})")
-
-
-def parse_event_date(value: Any) -> Optional[date]:
-    """Event_Date is free text like '20.06.2026 (מחר בערב)', '20.6.26' or '2026-06-20'."""
-    if not value:
-        return None
-    s = str(value)
-    try:
-        m = _YMD.search(s)
-        if m:
-            return date(int(m[1]), int(m[2]), int(m[3]))
-        m = _DMY.search(s)
-        if m:
-            y = int(m[3])
-            return date(y + 2000 if y < 100 else y, int(m[2]), int(m[1]))
-    except ValueError:
-        return None
-    return None
 
 
 def parse_ts(value: Any) -> Optional[datetime]:

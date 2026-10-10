@@ -3,6 +3,11 @@ from app.core.config import get_settings
 from app.models.schemas import LeadCreate, LeadUpdate, LeadStatus, MessageCreate, NoteCreate, NoteUpdate, FinanceEntryCreate, FinanceEntryUpdate, TaskCreate, TaskUpdate, ActivityCreate, VideoCreate, VideoUpdate, BusinessContactCreate, BusinessContactUpdate
 from typing import List, Optional
 from app.services import finance_transfers
+from app.core import dates
+from app.services import quote_links
+import logging
+
+logger = logging.getLogger(__name__)
 import uuid
 from datetime import datetime, timedelta
 
@@ -106,13 +111,48 @@ class SupabaseService:
                     .limit(1).execute())
         return self._to_airtable_format(response.data[0]) if response.data else None
 
+    # ── parsed day columns (leads.Event_Day, tasks.Due_Day) ───────────────────────────
+    # Deploy-order safety: if the migration has not run yet, PostgREST rejects the unknown
+    # column; we then drop the day keys and remember that, so writes never fail because of it.
+    _day_columns_missing: set = set()
+
+    def _add_days(self, table: str, data: dict) -> dict:
+        pairs = dates.LEAD_DAY_FIELDS if table == "leads" else dates.TASK_DAY_FIELDS
+        if table == "leads" and isinstance(data.get("Quote_Data"), dict):
+            data = {**data, "Quote_Data": quote_links.ensure_tokens(data["Quote_Data"])}
+        if table in self._day_columns_missing:
+            return data
+        return dates.with_parsed_days(data, pairs)
+
+    def _write_days(self, table: str, data: dict, run):
+        """run(payload) executes the insert/update. Retries once without day columns."""
+        payload = self._add_days(table, data)
+        try:
+            return run(payload)
+        except Exception as e:
+            day_keys = [k for k in payload if k not in data]
+            if day_keys and any(k in str(e) for k in day_keys):
+                self._day_columns_missing.add(table)
+                logger.warning("DAY COLUMNS: %s.%s missing, writing text only", table, day_keys)
+                return run({k: v for k, v in payload.items() if k not in day_keys})
+            raise
+
     def create_lead(self, lead: LeadCreate) -> dict:
         """Create a new lead."""
         if not self.client: return {}
         data = lead.model_dump(exclude_none=True, by_alias=True, mode='json')
         data["id"] = self._generate_id()
-        response = self.client.table("leads").insert(data).execute()
+        response = self._write_days("leads", data, lambda d: self.client.table("leads").insert(d).execute())
         return self._to_airtable_format(response.data[0]) if response.data else {}
+
+    def find_lead_by_quote_token(self, token: str) -> Optional[dict]:
+        """Lead whose Quote_Data.quotes contains a quote with this token (jsonb containment)."""
+        if not self.client or not quote_links.is_token(token): return None
+        response = (self.client.table("leads").select("*")
+                    .contains("Quote_Data", {"quotes": [{"token": token}]})
+                    .limit(2).execute())
+        rows = response.data or []
+        return self._to_airtable_format(rows[0]) if len(rows) == 1 else None
 
     def update_lead(self, record_id: str, data) -> dict:
         """Update an existing lead by Record ID. Accepts LeadUpdate or raw dict."""
@@ -126,7 +166,8 @@ class SupabaseService:
             return {}
             
         try:
-            response = self.client.table("leads").update(update_data).eq("id", record_id).execute()
+            response = self._write_days("leads", update_data,
+                                        lambda d: self.client.table("leads").update(d).eq("id", record_id).execute())
             return self._to_airtable_format(response.data[0]) if response.data else {}
         except Exception as e:
             print(f"ERROR update_lead({record_id}): {e} | data keys: {list(update_data.keys())}")
@@ -490,14 +531,15 @@ class SupabaseService:
         data = task.model_dump(exclude_none=True, by_alias=True, mode='json')
         data["id"] = record_id or self._generate_id()
         data["Created_At"] = datetime.now().isoformat()
-        response = self.client.table("tasks").insert(data).execute()
+        response = self._write_days("tasks", data, lambda d: self.client.table("tasks").insert(d).execute())
         return self._to_airtable_format(response.data[0]) if response.data else {}
 
     def update_task(self, task_id: str, data: TaskUpdate) -> dict:
         """Update a task."""
         if not self.client: return {}
         update_data = data.model_dump(exclude_none=True, by_alias=True, mode='json')
-        response = self.client.table("tasks").update(update_data).eq("id", task_id).execute()
+        response = self._write_days("tasks", update_data,
+                                    lambda d: self.client.table("tasks").update(d).eq("id", task_id).execute())
         return self._to_airtable_format(response.data[0]) if response.data else {}
 
     def delete_task(self, task_id: str):

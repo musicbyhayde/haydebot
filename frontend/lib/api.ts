@@ -76,8 +76,9 @@ export const api = {
     },
 
     // --- Leads ---
-    async getPublicQuote(leadId: string): Promise<any> {
-        const res = await fetch(`${API_Base}/quote/${leadId}`);
+    async getPublicQuote(key: string, qid?: string | null): Promise<any> {
+        const qs = qid ? `?qid=${encodeURIComponent(qid)}` : '';
+        const res = await fetch(`${API_Base}/quote/${encodeURIComponent(key)}${qs}`);
         if (!res.ok) throw new Error('Failed to fetch quote');
         return res.json();
     },
